@@ -118,7 +118,7 @@ export class VendorStorefront implements OnInit, OnDestroy {
     { id: 'featuredBanner', label: 'Featured banner', blurb: 'Campaign strip', step: 5 },
     { id: 'about', label: 'Our Story & Custom', blurb: 'About cards', step: 6 },
     { id: 'trending', label: 'Trending products', blurb: 'Home product grid', step: 7 },
-    { id: 'occasions', label: 'Occasions', blurb: 'Wedding, festiveâ€¦', step: 8 },
+    { id: 'occasions', label: 'Occasions', blurb: 'Wedding, festive…', step: 8 },
     { id: 'why', label: 'Why choose us', blurb: 'Trust points', step: 9 },
     { id: 'catalogue', label: 'Catalogue promo', blurb: 'Browse strip', step: 10 },
     { id: 'testimonials', label: 'Testimonials', blurb: 'Customer quotes', step: 11 },

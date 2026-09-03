@@ -1,7 +1,9 @@
 @if (open() && viewedProduct(); as item) {
   <div class="pvm-backdrop" (click)="onBackdropClick($event)">
     <div class="pvm-modal" role="dialog" aria-modal="true">
-      <button type="button" class="pvm-close" (click)="close()" aria-label="Close">âœ•</button>
+      <button type="button" class="pvm-close" (click)="close()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
 
       <div class="pvm-layout">
         <div class="pvm-image-panel">
@@ -20,14 +22,18 @@
                   }
                 } @else {
                   <div class="pvm-slide">
-                    <div class="pvm-image-placeholder">âœ¦</div>
+                    <div class="pvm-image-placeholder"><i class="fa-solid fa-gem"></i></div>
                   </div>
                 }
               </div>
 
               @if (isVerified() && step() === 'details' && displayImages().length > 1) {
-                <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image">â€¹</button>
-                <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image">â€º</button>
+                <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
                 <div class="pvm-dots">
                   @for (img of displayImages(); track $index) {
                     <button
@@ -68,7 +74,7 @@
             @case ('auth') {
               <div class="pvm-auth">
                 <div class="pvm-lock-notice">
-                  <span class="lock-icon">ðŸ”’</span>
+                  <span class="lock-icon">Verify</span>
                   <p>Verify your mobile number to view full product details and express interest.</p>
                 </div>
 
@@ -160,7 +166,7 @@
               @if (isVerified()) {
               <div class="pvm-details">
                 <div class="pvm-verified-badge">
-                  <span>âœ“</span> Verified as {{ maskedPhone() }}
+                  <span><i class="fa-solid fa-check"></i></span> Verified as {{ maskedPhone() }}
                 </div>
 
                 @if (hasPrice(item)) {
@@ -191,7 +197,7 @@
 
                 @if (justAdded() || isInCart()) {
                   <div class="pvm-success">
-                    <span>âœ¦</span>
+                    <span><i class="fa-solid fa-gem"></i></span>
                     <p>{{ successMessage() || 'This piece is in your interest list.' }}</p>
                     <div class="pvm-actions stacked">
                       <button type="button" class="pvm-btn interested" (click)="goToCart()">
@@ -210,7 +216,7 @@
                       + Add to Interest List
                     </button>
                     <p class="pvm-action-hint">
-                      Add multiple pieces, then send one â€œI'm Interestedâ€ from your cart.
+                      Add multiple pieces, then send one "I'm Interested" from your cart.
                       {{ vendorName() }} will get a single lead with all selected products.
                     </p>
                   </div>
@@ -223,7 +229,7 @@
               } @else {
                 <div class="pvm-auth">
                   <div class="pvm-lock-notice">
-                    <span class="lock-icon">ðŸ”’</span>
+                    <span class="lock-icon">Verify</span>
                     <p>Verify your mobile number to view full product details and express interest.</p>
                   </div>
                 </div>

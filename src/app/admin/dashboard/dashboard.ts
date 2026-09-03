@@ -37,6 +37,23 @@ export class DashboardHome implements OnInit {
     return this.dashboardService.formatCompactCurrency(amount);
   }
 
+  visibleSalesLabels(points: { date: string; label: string }[]): { date: string; label: string }[] {
+    if (points.length <= 6) {
+      return points;
+    }
+    const last = points.length - 1;
+    const step = Math.max(1, Math.ceil(last / 5));
+    const picked: { date: string; label: string }[] = [];
+    for (let i = 0; i < points.length; i += step) {
+      picked.push(points[i]);
+    }
+    const lastPoint = points[last];
+    if (picked[picked.length - 1]?.date !== lastPoint.date) {
+      picked.push(lastPoint);
+    }
+    return picked;
+  }
+
   getSalesPath(points: { x: number; y: number }[]): string {
     if (!points.length) {
       return '';

@@ -266,13 +266,13 @@ export class PublicProducts implements OnInit, OnDestroy {
 
   tabIcon(tab: string): string {
     const icons: Record<string, string> = {
-      Rings: 'â—Ž',
-      Necklaces: 'â—‹',
-      Earrings: 'âœ§',
-      Bangles: 'â—¯',
-      Pendants: 'â—†',
+      Rings: 'fa-solid fa-circle',
+      Necklaces: 'fa-solid fa-gem',
+      Earrings: 'fa-solid fa-star',
+      Bangles: 'fa-solid fa-circle',
+      Pendants: 'fa-solid fa-diamond',
     };
-    return icons[tab] ?? 'â—‡';
+    return icons[tab] ?? 'fa-solid fa-gem';
   }
 
   skuLabel(product: PublicProduct): string {
@@ -321,7 +321,7 @@ export class PublicProducts implements OnInit, OnDestroy {
     const left = bits.join(' ');
     const weight = this.formatWeight(product.weight != null ? String(product.weight) : undefined);
     if (left && weight) {
-      return `${left} â€¢ ${weight}`;
+      return `${left} • ${weight}`;
     }
     return left || weight || product.category || '';
   }
@@ -531,6 +531,6 @@ export class PublicProducts implements OnInit, OnDestroy {
     if (payload.productIds?.length) {
       parts.push(`${payload.productIds.length} selected pieces`);
     }
-    return parts.length ? parts.join(' Â· ') : 'Curated selection';
+    return parts.length ? parts.join(' · ') : 'Curated selection';
   }
 }

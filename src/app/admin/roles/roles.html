@@ -30,7 +30,9 @@
     <div class="filters-card">
       <div class="filters-grid">
         <div class="filter-search">
-          <span class="filter-icon">ðŸ”</span>
+          <span class="filter-icon" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
           <input
             type="search"
             name="roleSearch"
@@ -52,7 +54,9 @@
         </select>
 
         <div class="filter-actions">
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -64,27 +68,27 @@
             <tr>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('name')">
-                  Role <span class="sort-icon">{{ sortIndicator('name') }}</span>
+                  Role <span class="sort-icon"><i [class]="sortIndicator('name')"></i></span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('code')">
-                  Code <span class="sort-icon">{{ sortIndicator('code') }}</span>
+                  Code <span class="sort-icon"><i [class]="sortIndicator('code')"></i></span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('description')">
-                  Description <span class="sort-icon">{{ sortIndicator('description') }}</span>
+                  Description <span class="sort-icon"><i [class]="sortIndicator('description')"></i></span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('status')">
-                  Status <span class="sort-icon">{{ sortIndicator('status') }}</span>
+                  Status <span class="sort-icon"><i [class]="sortIndicator('status')"></i></span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('createdOn')">
-                  Created On <span class="sort-icon">{{ sortIndicator('createdOn') }}</span>
+                  Created On <span class="sort-icon"><i [class]="sortIndicator('createdOn')"></i></span>
                 </button>
               </th>
               <th class="col-actions">Actions</th>
@@ -116,11 +120,11 @@
                         [attr.aria-expanded]="openActionsMenuId() === role.id"
                         (click)="toggleActionsMenu(role.id, $event)"
                       >
-                        â‹®
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
                       </button>
                     </div>
                   } @else {
-                    <span class="locked-icon" title="System role">ðŸ”’</span>
+                    <span class="locked-icon" title="System role"><i class="fa-solid fa-lock"></i></span>
                   }
                 </td>
               </tr>
@@ -144,11 +148,11 @@
         (click)="$event.stopPropagation()"
       >
         <button type="button" (click)="openEditRoleDrawer(role, $event)">
-          <span class="action-icon">âœŽ</span>
+          <span class="action-icon"><i class="fa-solid fa-pen"></i></span>
           Edit
         </button>
         <button type="button" class="danger" (click)="deleteRole(role, $event)">
-          <span class="action-icon">ðŸ—‘</span>
+          <span class="action-icon"><i class="fa-solid fa-trash"></i></span>
           Delete
         </button>
       </div>
@@ -163,7 +167,9 @@
           <h3 [id]="drawerMode() === 'edit' ? 'edit-role-title' : 'add-role-title'">{{ drawerTitle() }}</h3>
           <p>{{ drawerSubtitle() }}</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeDrawer()" aria-label="Close">âœ•</button>
+        <button type="button" class="drawer-close" (click)="closeDrawer()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
       <form class="drawer-form" (ngSubmit)="submitRole()">

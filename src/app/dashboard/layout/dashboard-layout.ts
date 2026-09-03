@@ -9,6 +9,26 @@ interface NavItem {
   icon: string;
 }
 
+const NAV_FA_ICONS: Record<string, string> = {
+  dashboard: 'fa-solid fa-house',
+  vendors: 'fa-solid fa-store',
+  users: 'fa-solid fa-user-plus',
+  roles: 'fa-solid fa-shield-halved',
+  catalogs: 'fa-solid fa-folder-open',
+  products: 'fa-solid fa-gem',
+  categories: 'fa-solid fa-table-cells-large',
+  collections: 'fa-solid fa-layer-group',
+  orders: 'fa-solid fa-clipboard-check',
+  subscriptions: 'fa-solid fa-id-card',
+  payments: 'fa-solid fa-credit-card',
+  reports: 'fa-solid fa-chart-column',
+  settings: 'fa-solid fa-gear',
+  leads: 'fa-solid fa-comments',
+  storefront: 'fa-solid fa-globe',
+  profile: 'fa-solid fa-user',
+  logs: 'fa-solid fa-scroll',
+};
+
 @Component({
   selector: 'app-dashboard-layout',
   imports: [RouterOutlet, RouterLink],
@@ -45,6 +65,10 @@ export class DashboardLayout implements OnInit {
 
   visibleNavItems(): NavItem[] {
     return this.isAdmin ? this.adminNavItems : this.vendorNavItems;
+  }
+
+  faIcon(icon: string): string {
+    return NAV_FA_ICONS[icon] ?? 'fa-solid fa-circle';
   }
 
   ngOnInit(): void {

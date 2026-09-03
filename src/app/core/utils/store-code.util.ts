@@ -1,7 +1,7 @@
 /**
  * Generates a deterministic, URL-safe store code from vendor id + name.
  * Format: {3-char name prefix}{3-char base36 id}{2-char checksum}
- * Example: Shubh Jewellers, id 1 â†’ "shu001l6"
+ * Example: Shubh Jewellers, id 1 → "shu001l6"
  *
  * Same inputs always produce the same code (not random).
  * The checksum helps catch typos in URLs.

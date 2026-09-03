@@ -135,9 +135,9 @@ export class AdminRoles implements OnInit {
 
   sortIndicator(column: RoleSortField): string {
     if (this.sortColumn() !== column) {
-      return 'â†•';
+      return 'fa-solid fa-sort';
     }
-    return this.sortDirection() === 'asc' ? 'â†‘' : 'â†“';
+    return this.sortDirection() === 'asc' ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down';
   }
 
   toggleActionsMenu(roleId: number, event: Event): void {

@@ -23,7 +23,7 @@
       </article>
       <article class="stat-card">
         <p class="stat-label">Total Sales</p>
-        <h3>â‚¹{{ vendor.totalSales | number }}</h3>
+        <h3>Rs {{ vendor.totalSales | number }}</h3>
       </article>
     </div>
 
@@ -47,7 +47,7 @@
         </div>
         <div class="profile-field">
           <label>Contact Person</label>
-          <span>{{ vendor.contactPerson || 'â€”' }}</span>
+          <span>{{ vendor.contactPerson || '—' }}</span>
         </div>
         <div class="profile-field">
           <label>Website</label>
@@ -55,7 +55,7 @@
         </div>
         <div class="profile-field">
           <label>Store Code</label>
-          <span class="mono">{{ vendor.storeCode || 'â€”' }}</span>
+          <span class="mono">{{ vendor.storeCode || '—' }}</span>
         </div>
         <div class="profile-field">
           <label>Joined On</label>
@@ -82,7 +82,9 @@
     <aside class="profile-drawer">
       <div class="drawer-header">
         <h3>Edit Contact Details</h3>
-        <button type="button" class="drawer-close" (click)="closeDrawer()">âœ•</button>
+        <button type="button" class="drawer-close" (click)="closeDrawer()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
       <form class="drawer-form" (ngSubmit)="saveProfile()">
         <p class="drawer-hint">Only email and phone can be changed. Other details are set by admin.</p>

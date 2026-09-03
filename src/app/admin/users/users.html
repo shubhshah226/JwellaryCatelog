@@ -30,7 +30,9 @@
     <div class="filters-card">
       <div class="filters-grid">
         <div class="filter-search">
-          <span class="filter-icon">ðŸ”</span>
+          <span class="filter-icon" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
           <input
             type="search"
             name="userSearch"
@@ -52,7 +54,9 @@
         </select>
 
         <div class="filter-actions">
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -64,22 +68,50 @@
             <tr>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('name')">
-                  User <span class="sort-icon">{{ sortIndicator('name') }}</span>
+                  User
+                  <span class="sort-icon">
+                    @switch (sortIndicator('name')) {
+                      @case ('asc') { <i class="fa-solid fa-sort-up"></i> }
+                      @case ('desc') { <i class="fa-solid fa-sort-down"></i> }
+                      @default { <i class="fa-solid fa-sort"></i> }
+                    }
+                  </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('email')">
-                  Email <span class="sort-icon">{{ sortIndicator('email') }}</span>
+                  Email
+                  <span class="sort-icon">
+                    @switch (sortIndicator('email')) {
+                      @case ('asc') { <i class="fa-solid fa-sort-up"></i> }
+                      @case ('desc') { <i class="fa-solid fa-sort-down"></i> }
+                      @default { <i class="fa-solid fa-sort"></i> }
+                    }
+                  </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('username')">
-                  Username <span class="sort-icon">{{ sortIndicator('username') }}</span>
+                  Username
+                  <span class="sort-icon">
+                    @switch (sortIndicator('username')) {
+                      @case ('asc') { <i class="fa-solid fa-sort-up"></i> }
+                      @case ('desc') { <i class="fa-solid fa-sort-down"></i> }
+                      @default { <i class="fa-solid fa-sort"></i> }
+                    }
+                  </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('role')">
-                  Role <span class="sort-icon">{{ sortIndicator('role') }}</span>
+                  Role
+                  <span class="sort-icon">
+                    @switch (sortIndicator('role')) {
+                      @case ('asc') { <i class="fa-solid fa-sort-up"></i> }
+                      @case ('desc') { <i class="fa-solid fa-sort-down"></i> }
+                      @default { <i class="fa-solid fa-sort"></i> }
+                    }
+                  </span>
                 </button>
               </th>
               <th class="col-actions">Actions</th>
@@ -96,7 +128,7 @@
                       <p class="user-meta">
                         ID: {{ user.id }}
                         @if (user.role === 'vendor' && user.vendorId) {
-                          Â· {{ getVendorName(user.vendorId) }}
+                          | {{ getVendorName(user.vendorId) }}
                         }
                       </p>
                     </div>
@@ -117,7 +149,7 @@
                       [attr.aria-expanded]="openActionsMenuId() === user.id"
                       (click)="toggleActionsMenu(user.id, $event)"
                     >
-                      â‹®
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
                   </div>
                 </td>
@@ -142,11 +174,11 @@
         (click)="$event.stopPropagation()"
       >
         <button type="button" (click)="openEditUserDrawer(user, $event)">
-          <span class="action-icon">âœŽ</span>
+          <span class="action-icon"><i class="fa-solid fa-pen"></i></span>
           Edit
         </button>
         <button type="button" class="danger" (click)="deleteUser(user, $event)">
-          <span class="action-icon">ðŸ—‘</span>
+          <span class="action-icon"><i class="fa-solid fa-trash"></i></span>
           Delete
         </button>
       </div>
@@ -161,7 +193,9 @@
           <h3 [id]="drawerMode() === 'edit' ? 'edit-user-title' : 'add-user-title'">{{ drawerTitle() }}</h3>
           <p>{{ drawerSubtitle() }}</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeDrawer()" aria-label="Close">âœ•</button>
+        <button type="button" class="drawer-close" (click)="closeDrawer()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
       <form class="drawer-form" (ngSubmit)="submitUser()">

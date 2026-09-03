@@ -1,15 +1,15 @@
 import { HomepageContent, HomepageStat } from '../models/storefront.model';
 
 /**
- * Curated jewellery photography (Unsplash) â€” gold, diamond, bridal, everyday.
+ * Curated jewellery photography (Unsplash) — gold, diamond, bridal, everyday.
  * Used as defaults before a vendor uploads their own media.
  */
 export const HOME_IMAGES = {
-  /** Banner slide 1 â€” gold jewellery close-up */
+  /** Banner slide 1 — gold jewellery close-up */
   hero: 'https://images.unsplash.com/photo-1611652022419-a9419f74343a?auto=format&fit=crop&w=1400&q=80',
-  /** Banner slide 2 â€” bridal / festive jewellery */
+  /** Banner slide 2 — bridal / festive jewellery */
   heroBridal: 'https://images.unsplash.com/photo-1601121141461-9d51bffe2d04?auto=format&fit=crop&w=1400&q=80',
-  /** Banner slide 3 â€” diamond rings */
+  /** Banner slide 3 — diamond rings */
   heroDiamond: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1400&q=80',
   rings: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=600&q=80',
   necklaces: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80',
@@ -39,7 +39,7 @@ export const DEFAULT_BANNER_URLS = [
 export function createDefaultHomepage(vendorName = ''): HomepageContent {
   const brand = vendorName || 'our atelier';
   const story = vendorName
-    ? `${vendorName} crafts hallmarked gold and certified diamond jewellery for weddings, festivals and everyday elegance â€” pieces made to be worn, loved and passed on.`
+    ? `${vendorName} crafts hallmarked gold and certified diamond jewellery for weddings, festivals and everyday elegance — pieces made to be worn, loved and passed on.`
     : 'A family of jewellers dedicated to hallmarked gold, certified diamonds and timeless design.';
 
   return {
@@ -55,31 +55,31 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
     hero: {
       headline: 'Gold & Diamond Jewellery',
       subtitle:
-        'Discover hallmarked gold, certified diamonds and bridal heirlooms â€” crafted for your most precious moments.',
+        'Discover hallmarked gold, certified diamonds and bridal heirlooms — crafted for your most precious moments.',
       ctaText: 'Explore Collection',
-      badgeText: 'BIS Hallmarked â†’',
+      badgeText: 'BIS Hallmarked →',
     },
     bannerSlides: [
       {
         headline: 'Gold & Diamond Jewellery',
         subtitle:
-          'Discover hallmarked gold, certified diamonds and bridal heirlooms â€” crafted for your most precious moments.',
+          'Discover hallmarked gold, certified diamonds and bridal heirlooms — crafted for your most precious moments.',
         ctaText: 'Explore Collection',
-        badgeText: 'BIS Hallmarked â†’',
+        badgeText: 'BIS Hallmarked →',
       },
       {
         headline: 'Bridal Heirlooms',
         subtitle:
-          'Necklace sets, polki and kundan pieces designed for the wedding day â€” and the generations after.',
+          'Necklace sets, polki and kundan pieces designed for the wedding day — and the generations after.',
         ctaText: 'View Bridal',
-        badgeText: 'Wedding Edit â†’',
+        badgeText: 'Wedding Edit →',
       },
       {
         headline: 'Diamond Solitaires',
         subtitle:
-          'Brilliant-cut diamonds in gold and platinum â€” engagement rings and everyday sparkle.',
+          'Brilliant-cut diamonds in gold and platinum — engagement rings and everyday sparkle.',
         ctaText: 'Shop Diamonds',
-        badgeText: 'Certified â†’',
+        badgeText: 'Certified →',
       },
     ],
     stats: {
@@ -94,7 +94,7 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
     collections: {
       enabled: true,
       title: 'Shop by Category',
-      subtitle: 'Browse rings, necklaces, earrings and more â€” curated for every occasion.',
+      subtitle: 'Browse rings, necklaces, earrings and more — curated for every occasion.',
       ctaText: 'View All Collections',
       items: [
         { name: 'Rings', category: 'Rings', imageUrl: HOME_IMAGES.rings },
@@ -112,7 +112,7 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
       eyebrow: 'Featured Collection',
       title: 'The Bridal Edit',
       subtitle:
-        'Temple sets, polki necklaces and matching earrings â€” jewellery for the most important day.',
+        'Temple sets, polki necklaces and matching earrings — jewellery for the most important day.',
       ctaText: 'Explore Bridal Jewellery',
       imageUrl: HOME_IMAGES.bridal,
       links: ['Necklaces', 'Earrings', 'Bangles', 'Rings'],
@@ -156,7 +156,7 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
       enabled: true,
       eyebrow: 'Bespoke',
       title: 'Crafted Just for You',
-      body: 'Bring a sketch, an heirloom stone, or a family motif â€” we will craft a piece that is uniquely yours.',
+      body: 'Bring a sketch, an heirloom stone, or a family motif — we will craft a piece that is uniquely yours.',
       ctaText: 'Start Your Design',
       imageUrl: HOME_IMAGES.sketch,
     },
@@ -173,7 +173,7 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
       title: 'Loved by Our Customers',
       items: [
         {
-          quote: 'Our bridal set from them was beyond what we imagined â€” every detail felt personal.',
+          quote: 'Our bridal set from them was beyond what we imagined — every detail felt personal.',
           name: 'Ananya S.',
           rating: 5,
         },

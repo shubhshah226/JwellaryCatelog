@@ -215,15 +215,15 @@ export class DashboardService {
   }
 
   formatCurrency(amount: number): string {
-    return `â‚¹ ${amount.toLocaleString('en-IN')}`;
+    return `Rs ${amount.toLocaleString('en-IN')}`;
   }
 
   formatCompactCurrency(amount: number): string {
     if (amount >= 100000) {
-      return `â‚¹ ${(amount / 100000).toFixed(1)}L`;
+      return `Rs ${(amount / 100000).toFixed(1)}L`;
     }
     if (amount >= 1000) {
-      return `â‚¹ ${(amount / 1000).toFixed(1)}K`;
+      return `Rs ${(amount / 1000).toFixed(1)}K`;
     }
     return this.formatCurrency(amount);
   }

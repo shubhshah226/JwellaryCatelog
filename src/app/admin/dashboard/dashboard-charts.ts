@@ -24,7 +24,7 @@ export function buildSalesChartOptions(
       textStyle: {
         color: isDark ? '#f8fafc' : '#0f172a',
       },
-      valueFormatter: (value) => `â‚¹${Number(value).toLocaleString('en-IN')}`,
+      valueFormatter: (value) => `Rs ${Number(value).toLocaleString('en-IN')}`,
     },
     xAxis: {
       type: 'category',
@@ -132,12 +132,12 @@ export function buildDonutChartOptions(
 
 function formatCompactAxis(value: number): string {
   if (value >= 100000) {
-    return `â‚¹${(value / 100000).toFixed(1)}L`;
+    return `Rs${(value / 100000).toFixed(1)}L`;
   }
 
   if (value >= 1000) {
-    return `â‚¹${Math.round(value / 1000)}k`;
+    return `Rs ${Math.round(value / 1000)}k`;
   }
 
-  return `â‚¹${value}`;
+  return `Rs ${value}`;
 }

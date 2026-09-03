@@ -5,7 +5,7 @@
   </div>
 } @else if (notFound()) {
   <div class="public-state error-state">
-    <div class="error-ornament">âœ¦</div>
+    <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
     <h1>Store Not Found</h1>
     <p>This jewellery boutique link is invalid or no longer exists.</p>
     <a href="/login" class="error-link">Go to login</a>
@@ -40,7 +40,7 @@
               <h1>{{ activeSlide(data).headline }}</h1>
               <p>{{ activeSlide(data).subtitle }}</p>
               <a class="gold-btn" [routerLink]="['/', data.storeCode, 'products']">
-                {{ activeSlide(data).ctaText }} <span>â†’</span>
+                {{ activeSlide(data).ctaText }} <span><i class="fa-solid fa-arrow-right"></i></span>
               </a>
             </div>
             <div
@@ -67,8 +67,12 @@
               }
               @if (bannerUrls(data).length > 1) {
                 <div class="hero-arrows">
-                  <button type="button" (click)="prevBanner(bannerUrls(data).length)" aria-label="Previous banner">â€¹</button>
-                  <button type="button" (click)="nextBanner(bannerUrls(data).length)" aria-label="Next banner">â€º</button>
+                  <button type="button" (click)="prevBanner(bannerUrls(data).length)" aria-label="Previous banner">
+                    <i class="fa-solid fa-chevron-left"></i>
+                  </button>
+                  <button type="button" (click)="nextBanner(bannerUrls(data).length)" aria-label="Next banner">
+                    <i class="fa-solid fa-chevron-right"></i>
+                  </button>
                 </div>
               }
             </div>
@@ -123,7 +127,7 @@
                     @if (item.imageUrl) {
                       <img [src]="item.imageUrl" [alt]="item.name" (error)="onImageError($event, 'rings')" />
                     } @else {
-                      <span class="cat-fallback">âœ¦</span>
+                      <span class="cat-fallback"><i class="fa-solid fa-gem"></i></span>
                     }
                   </span>
                   <em>{{ item.name }}</em>
@@ -131,7 +135,7 @@
               }
             </div>
             <p class="center-link">
-              <a [routerLink]="['/', data.storeCode, 'products']">{{ hp(data).collections.ctaText }} â†’</a>
+              <a [routerLink]="['/', data.storeCode, 'products']">{{ hp(data).collections.ctaText }} <i class="fa-solid fa-arrow-right"></i></a>
             </p>
           </div>
         </section>
@@ -175,7 +179,7 @@
                   <p class="lux-sub">{{ hp(data).trending.subtitle }}</p>
                 }
               </div>
-              <a class="trend-all" [routerLink]="['/', data.storeCode, 'products']">View all pieces â†’</a>
+              <a class="trend-all" [routerLink]="['/', data.storeCode, 'products']">View all pieces <i class="fa-solid fa-arrow-right"></i></a>
             </header>
             <div class="trend-tabs">
               <button type="button" [class.on]="trendingTab() === 'all'" (click)="trendingTab.set('all')">All</button>
@@ -197,7 +201,7 @@
                       <p class="p-meta">
                         {{ product.metalType || 'Jewellery' }}
                         @if (product.purity) {
-                          <span>Â· {{ product.purity }}</span>
+                          <span>· {{ product.purity }}</span>
                         }
                       </p>
                     }
@@ -209,7 +213,7 @@
                     } @else {
                       <p class="p-price locked">Verify to view price</p>
                     }
-                    <span class="p-link">View details â†’</span>
+                    <span class="p-link">View details <i class="fa-solid fa-arrow-right"></i></span>
                   </div>
                 </article>
               }
@@ -238,7 +242,7 @@
               }
             </div>
             <p class="center-link">
-              <a [routerLink]="['/', data.storeCode, 'products']">Explore Occasions â†’</a>
+              <a [routerLink]="['/', data.storeCode, 'products']">Explore Occasions <i class="fa-solid fa-arrow-right"></i></a>
             </p>
           </div>
         </section>
@@ -335,7 +339,7 @@
             <div class="quote-row">
               @for (item of hp(data).testimonials.items; track item.name) {
                 <blockquote>
-                  <p>â€œ{{ item.quote }}â€</p>
+                  <p>"{{ item.quote }}"</p>
                   <cite>{{ item.name }}</cite>
                   <span class="stars">{{ stars(item.rating) }}</span>
                 </blockquote>
@@ -350,7 +354,7 @@
           <header class="visit-contact-head">
             <span class="section-eyebrow">Visit & Contact</span>
             <h2>{{ data.vendor.name }}</h2>
-            <p>Visit our showroom or reach out â€” we will help you find the perfect piece.</p>
+            <p>Visit our showroom or reach out — we will help you find the perfect piece.</p>
           </header>
           <div class="visit-contact-grid">
             <article class="visit-panel">
@@ -358,11 +362,11 @@
               <p class="visit-note">Walk in to explore gold, diamond and bridal collections with our jewellery consultants.</p>
               <div class="visit-detail">
                 <strong>{{ data.vendor.name }}</strong>
-                <span>Showroom Â· By appointment welcome</span>
+                <span>Showroom · By appointment welcome</span>
               </div>
               @if (data.vendor.website) {
                 <a class="visit-link" [href]="contactHref('website', data.vendor.website)" target="_blank" rel="noopener">
-                  {{ data.vendor.website }} â†—
+                  {{ data.vendor.website }} ↗
                 </a>
               }
             </article>
@@ -425,8 +429,8 @@
       </div>
       <div class="footer-bottom">
         <div class="lux-wrap footer-bottom-inner">
-          <span>Â© {{ currentYear() }} {{ data.vendor.name }}. All rights reserved.</span>
-          <span class="footer-tag">Hallmarked gold Â· Certified diamonds</span>
+          <span>© {{ currentYear() }} {{ data.vendor.name }}. All rights reserved.</span>
+          <span class="footer-tag">Hallmarked gold · Certified diamonds</span>
         </div>
       </div>
     </footer>

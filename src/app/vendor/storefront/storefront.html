@@ -14,7 +14,7 @@
           Live Preview
         </button>
         @if (publicUrl()) {
-          <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline">Open live site â†—</a>
+          <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline">Open live site ↗</a>
         }
         <button type="button" class="btn btn-primary" (click)="save()" [disabled]="isSaving()">
           {{ isSaving() ? 'Saving...' : 'Save website' }}
@@ -125,7 +125,7 @@
                 Show banner on home
               </label>
               <p class="hint">
-                Each image has its own left-side text. Swiping to image 2 shows image 2â€™s headline.
+                Each image has its own left-side text. Swiping to image 2 shows image 2's headline.
                 Turn off above to hide the whole banner section.
               </p>
 
@@ -137,10 +137,14 @@
                       <div class="banner-slide-top">
                         <img [src]="url" alt="Banner {{ $index + 1 }}" />
                         <div class="banner-meta">
-                          <strong>Image {{ $index + 1 }} â€” left content</strong>
+                          <strong>Image {{ $index + 1 }} — left content</strong>
                           <div class="banner-actions">
-                            <button type="button" class="btn-text" (click)="moveBanner($index, -1)" [disabled]="$index === 0">â†‘</button>
-                            <button type="button" class="btn-text" (click)="moveBanner($index, 1)" [disabled]="$index === form.bannerUrls.length - 1">â†“</button>
+                            <button type="button" class="btn-text" (click)="moveBanner($index, -1)" [disabled]="$index === 0">
+                              <i class="fa-solid fa-arrow-up"></i>
+                            </button>
+                            <button type="button" class="btn-text" (click)="moveBanner($index, 1)" [disabled]="$index === form.bannerUrls.length - 1">
+                              <i class="fa-solid fa-arrow-down"></i>
+                            </button>
                             <button type="button" class="btn-delete" (click)="removeBanner($index)">Delete</button>
                           </div>
                         </div>
@@ -562,9 +566,11 @@
           <div class="preview-modal-actions">
             <button type="button" class="btn btn-outline btn-sm" (click)="refreshPreview()">Refresh</button>
             @if (publicUrl()) {
-              <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open in tab â†—</a>
+              <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open in tab ↗</a>
             }
-            <button type="button" class="preview-close" (click)="closeLivePreview()" aria-label="Close preview">âœ•</button>
+            <button type="button" class="preview-close" (click)="closeLivePreview()" aria-label="Close preview">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
         <div class="preview-modal-frame-wrap">

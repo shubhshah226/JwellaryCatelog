@@ -43,7 +43,7 @@ export class ApiHttpService {
     return this.request<T>('DELETE', path, undefined, params, headers);
   }
 
-  /** Multipart upload helper (does not set Content-Type â€” browser sets boundary). */
+  /** Multipart upload helper (does not set Content-Type — browser sets boundary). */
   postFormData<T>(path: string, formData: FormData, headers?: HttpHeaders): Observable<T> {
     return this.http
       .post<ApiResponse<T>>(this.url(path), formData, { headers })

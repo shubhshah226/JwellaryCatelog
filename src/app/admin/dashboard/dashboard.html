@@ -6,7 +6,7 @@
   <section class="dashboard-home">
     <div class="welcome-row">
       <div>
-        <h2>Welcome back, {{ dashboard.userName }}! 👋</h2>
+        <h2>Welcome back, {{ dashboard.userName }}!</h2>
         <p>Here's what's happening with your catalog platform today.</p>
       </div>
       <div class="date-range">{{ dashboard.dateRange }}</div>
@@ -17,16 +17,24 @@
         <article class="stat-card">
           <div class="stat-icon" [style.background]="stat.color + '22'" [style.color]="stat.color">
             @switch (stat.icon) {
-              @case ('vendors') { 👥 }
-              @case ('catalogs') { 📁 }
-              @case ('products') { 📦 }
-              @case ('enquiries') { 💬 }
+              @case ('vendors') {
+                <i class="fa-solid fa-store"></i>
+              }
+              @case ('catalogs') {
+                <i class="fa-solid fa-folder-open"></i>
+              }
+              @case ('products') {
+                <i class="fa-solid fa-gem"></i>
+              }
+              @case ('enquiries') {
+                <i class="fa-solid fa-comments"></i>
+              }
             }
           </div>
           <div class="stat-content">
             <p class="stat-label">{{ stat.label }}</p>
             <h3>{{ stat.value | number }}</h3>
-            <p class="stat-change">↑ {{ stat.change }}% from last month</p>
+            <p class="stat-change"><i class="fa-solid fa-arrow-up"></i> {{ stat.change }}% from last month</p>
           </div>
         </article>
       }
@@ -56,7 +64,7 @@
             />
           </svg>
           <div class="chart-labels">
-            @for (point of dashboard.salesChart; track point.date) {
+            @for (point of visibleSalesLabels(dashboard.salesChart); track point.date) {
               <span>{{ point.label }}</span>
             }
           </div>
@@ -64,7 +72,7 @@
         <div class="chart-y-labels">
           <span>{{ formatCompactCurrency(dashboard.salesMax) }}</span>
           <span>{{ formatCompactCurrency(dashboard.salesMax / 2) }}</span>
-          <span>₹ 0</span>
+          <span>Rs 0</span>
         </div>
       </article>
 

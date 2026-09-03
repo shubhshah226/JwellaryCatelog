@@ -9,7 +9,7 @@ import { ToastService } from '../../services/toast.service';
         <div class="toast" [class]="'toast toast-' + toast.type" role="status">
           <span class="toast-message">{{ toast.message }}</span>
           <button type="button" class="toast-close" (click)="toastService.dismiss(toast.id)" aria-label="Dismiss">
-            âœ•
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       }

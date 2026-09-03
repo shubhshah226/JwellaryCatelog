@@ -60,11 +60,13 @@
   width: 42px;
   height: 42px;
   flex-shrink: 0;
-}
-
-.brand-icon svg {
-  width: 100%;
-  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.2));
+  color: #c084fc;
+  font-size: 1.15rem;
 }
 
 .brand-title {
@@ -135,11 +137,7 @@
   justify-content: center;
   flex-shrink: 0;
   opacity: 0.95;
-}
-
-.nav-icon svg {
-  width: 20px;
-  height: 20px;
+  font-size: 0.95rem;
 }
 
 .nav-item:not(.active) .nav-icon {
@@ -167,11 +165,10 @@
   color: #a855f7;
   flex-shrink: 0;
   margin-top: 0.1rem;
-}
-
-.help-icon svg {
-  width: 100%;
-  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
 }
 
 .help-title {
@@ -239,6 +236,19 @@
 .menu-btn {
   width: 36px;
   height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.menu-btn i,
+.search-icon i,
+.theme-btn i,
+.notification-btn i,
+.sidebar-close-btn i {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .search-box {
@@ -263,6 +273,8 @@
   top: 50%;
   transform: translateY(-50%);
   opacity: 0.6;
+  display: flex;
+  pointer-events: none;
 }
 
 .header-right {
@@ -281,9 +293,8 @@
   justify-content: center;
 }
 
-.theme-btn svg {
-  width: 18px;
-  height: 18px;
+.theme-btn i {
+  font-size: 0.95rem;
 }
 
 .badge {
@@ -334,6 +345,9 @@
 .logout-btn {
   padding: 0.5rem 0.85rem;
   font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .dashboard-content {

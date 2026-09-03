@@ -35,7 +35,9 @@
     <div class="filters-card">
       <div class="filters-grid compact">
         <div class="filter-search">
-          <span class="filter-icon">ðŸ”</span>
+          <span class="filter-icon" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
           <input
             type="text"
             placeholder="Search by name, phone, product..."
@@ -53,7 +55,9 @@
         </select>
 
         <div class="filter-actions">
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -97,7 +101,7 @@
                     }
                   </button>
                   @if (lead.interestType === 'interested') {
-                    <span class="interest-badge">â™¥ Interested</span>
+                    <span class="interest-badge">Interested</span>
                   }
                   @if (isExpanded(lead.id) && lead.items?.length) {
                     <ul class="lead-items">
@@ -153,12 +157,14 @@
           <p>
             For {{ lead.customerName }}
             @if (lead.customerPhone) {
-              Â· {{ formatPhone(lead.customerPhone) }}
+              · {{ formatPhone(lead.customerPhone) }}
             }
           </p>
         }
       </div>
-      <button type="button" class="drawer-close" (click)="closeShare()" aria-label="Close">âœ•</button>
+      <button type="button" class="drawer-close" (click)="closeShare()" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     </div>
 
     <div class="share-body">
@@ -181,18 +187,18 @@
                 @if (line.imageUrl) {
                   <img [src]="line.imageUrl" [alt]="line.name" />
                 } @else {
-                  <span>âœ¦</span>
+                  <span><i class="fa-solid fa-gem"></i></span>
                 }
               </div>
               <div class="line-info">
                 <strong>{{ line.name }}</strong>
                 <span>
                   @if (line.sku) {
-                    #{{ line.sku }} Â·
+                    #{{ line.sku }} ·
                   }
                   {{ line.category || 'Product' }}
                   @if (line.fromLead) {
-                    Â· from lead
+                    · from lead
                   }
                 </span>
                 <em>Catalog {{ line.catalogPrice | currency:'INR':'symbol':'1.0-0' }}</em>
@@ -213,7 +219,7 @@
               </div>
             </li>
           } @empty {
-            <li class="empty-share">No products yet â€” add from the list below.</li>
+            <li class="empty-share">No products yet — add from the list below.</li>
           }
         </ul>
       </div>

@@ -31,7 +31,7 @@
 
       @if (submitted()) {
         <div class="cart-success">
-          <span class="success-icon">âœ¦</span>
+          <span class="success-icon"><i class="fa-solid fa-circle-check"></i></span>
           <h2>Interest Sent</h2>
           <p>{{ successMessage() }}</p>
           <p class="success-sub">They will contact you shortly on your verified number.</p>
@@ -48,7 +48,7 @@
       } @else if (!cartCount()) {
         <div class="cart-empty">
           <p>Your interest list is empty.</p>
-          <p class="hint">Open a product, verify with OTP, then tap â€œAdd to Interest Listâ€.</p>
+          <p class="hint">Open a product, verify with OTP, then tap "Add to Interest List".</p>
           <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">
             Browse Products
           </a>
@@ -62,7 +62,7 @@
                   @if (item.imageUrl) {
                     <img [src]="item.imageUrl" [alt]="item.name" />
                   } @else {
-                    <span>âœ¦</span>
+                    <span><i class="fa-solid fa-gem"></i></span>
                   }
                 </div>
                 <div class="item-info">
@@ -110,7 +110,7 @@
               (click)="submitInterest()"
               [disabled]="isSubmitting() || !isVerified()"
             >
-              {{ isSubmitting() ? 'Sending...' : "â™¥ I'm Interested â€” Notify Jeweller" }}
+              {{ isSubmitting() ? 'Sending...' : "I'm Interested - Notify Jeweller" }}
             </button>
             <p class="submit-hint">
               Creates one lead with all selected products for {{ ctx.vendor.name }}.

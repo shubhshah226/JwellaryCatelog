@@ -1,1 +1,124 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root,
+[data-theme='dark'] {
+  --app-bg: #0b0f19;
+  --app-text: #f1f5f9;
+  --app-text-secondary: #cbd5e1;
+  --app-text-muted: #94a3b8;
+  --app-text-subtle: #64748b;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.12);
+  --app-surface: #111827;
+  --app-surface-muted: #0f172a;
+  --app-sidebar-bg: #0f172a;
+  --app-backdrop: rgba(0, 0, 0, 0.55);
+  --app-hover-bg: rgba(255, 255, 255, 0.05);
+  --app-input-bg: rgba(255, 255, 255, 0.04);
+  --app-btn-bg: rgba(255, 255, 255, 0.06);
+  --app-shadow: rgba(0, 0, 0, 0.35);
+  --app-brand-title: #f8fafc;
+  --app-accent: #a855f7;
+  --app-accent-2: #6366f1;
+  --app-success: #10b981;
+  --app-warning: #f59e0b;
+  --app-danger: #ef4444;
+}
+
+[data-theme='light'] {
+  --app-bg: #f4f6fb;
+  --app-text: #0f172a;
+  --app-text-secondary: #334155;
+  --app-text-muted: #64748b;
+  --app-text-subtle: #94a3b8;
+  --app-border: rgba(15, 23, 42, 0.08);
+  --app-border-strong: rgba(15, 23, 42, 0.12);
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8fafc;
+  --app-sidebar-bg: #ffffff;
+  --app-backdrop: rgba(15, 23, 42, 0.35);
+  --app-hover-bg: rgba(15, 23, 42, 0.04);
+  --app-input-bg: #ffffff;
+  --app-btn-bg: #f8fafc;
+  --app-shadow: rgba(15, 23, 42, 0.08);
+  --app-brand-title: #0f172a;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+/* Ensure Font Awesome glyphs load from local public/webfonts (not CDN). */
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("/webfonts/fa-solid-900.woff2") format("woff2"),
+    url("/webfonts/fa-solid-900.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("/webfonts/fa-regular-400.woff2") format("woff2"),
+    url("/webfonts/fa-regular-400.ttf") format("truetype");
+}
+
+.fa-solid,
+.fas {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900;
+}
+
+.fa-regular,
+.far {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 400;
+}
+
+.filter-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.filter-icon i {
+  font-size: 0.85rem;
+}
+
+.filter-search input {
+  padding-left: 2.4rem;
+}

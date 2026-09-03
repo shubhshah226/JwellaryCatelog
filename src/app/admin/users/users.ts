@@ -141,11 +141,11 @@ export class AdminUsers implements OnInit {
     this.sortDirection.set('asc');
   }
 
-  sortIndicator(column: UserSortField): string {
+  sortIndicator(column: UserSortField): 'none' | 'asc' | 'desc' {
     if (this.sortColumn() !== column) {
-      return 'â†•';
+      return 'none';
     }
-    return this.sortDirection() === 'asc' ? 'â†‘' : 'â†“';
+    return this.sortDirection();
   }
 
   toggleActionsMenu(userId: number, event: Event): void {
@@ -316,7 +316,7 @@ export class AdminUsers implements OnInit {
 
   getVendorName(vendorId?: number): string {
     if (!vendorId) {
-      return 'â€”';
+      return '-';
     }
     return this.vendors().find((vendor) => vendor.id === vendorId)?.name ?? `Vendor #${vendorId}`;
   }

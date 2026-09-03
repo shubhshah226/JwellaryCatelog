@@ -73,6 +73,10 @@
   font-size: 1.25rem;
 }
 
+.stat-icon i {
+  font-size: 1.15rem;
+}
+
 .stat-label {
   margin: 0;
   font-size: 0.8rem;
@@ -148,9 +152,17 @@
 .chart-labels {
   display: flex;
   justify-content: space-between;
+  gap: 0.35rem;
   margin-top: 0.5rem;
   font-size: 0.7rem;
   color: var(--app-text-subtle);
+}
+
+.chart-labels span {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .chart-y-labels {

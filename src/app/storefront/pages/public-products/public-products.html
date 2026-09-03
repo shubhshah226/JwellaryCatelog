@@ -5,7 +5,7 @@
   </div>
 } @else if (notFound()) {
   <div class="public-state error-state">
-    <div class="error-ornament">âœ¦</div>
+    <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
     <h1>Not Found</h1>
     <p>This store or shared catalog link is invalid.</p>
   </div>
@@ -67,12 +67,12 @@
                       [routerLink]="['/', ctx.storeCode, 'cart']"
                       (click)="$event.stopPropagation()"
                       aria-label="Cart"
-                    >â™¡</a>
+                    ><i class="fa-regular fa-heart"></i></a>
                   }
                   @if (product.imageUrl) {
                     <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
                   } @else {
-                    <div class="ph">âœ¦</div>
+                    <div class="ph"><i class="fa-solid fa-gem"></i></div>
                   }
                 </div>
                 <div class="card-body">
@@ -95,7 +95,7 @@
                       </div>
                       <span class="stock in">In Stock</span>
                     } @else if (isSignedIn()) {
-                      <strong class="locked-price">Rs â€”</strong>
+                      <strong class="locked-price">Rs -</strong>
                       <span class="stock in">In Stock</span>
                     } @else {
                       <span class="locked-price">Verify to view price</span>
@@ -112,7 +112,7 @@
           </div>
         } @else {
           <div class="empty">
-            <span>âœ¦</span>
+            <span><i class="fa-solid fa-gem"></i></span>
             <h3>This catalog is empty</h3>
             <p>Ask the jeweller to share pieces again.</p>
           </div>
@@ -146,7 +146,9 @@
             <div class="filters-head">
               <h2>Filters</h2>
               <button type="button" class="clear-link" (click)="clearAllFilters()">Clear All</button>
-              <button type="button" class="drawer-close" (click)="closeFilters()" aria-label="Close">âœ•</button>
+              <button type="button" class="drawer-close" (click)="closeFilters()" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
             </div>
 
             <label class="side-search">
@@ -212,13 +214,13 @@
               <h3>Price Range</h3>
               @if (isSignedIn()) {
                 <div class="price-row">
-                  <input type="number" [(ngModel)]="draftMin" min="0" placeholder="Min â‚¹" />
-                  <span>â€”</span>
-                  <input type="number" [(ngModel)]="draftMax" min="0" placeholder="Max â‚¹" />
+                  <input type="number" [(ngModel)]="draftMin" min="0" placeholder="Min Rs" />
+                  <span>-</span>
+                  <input type="number" [(ngModel)]="draftMax" min="0" placeholder="Max Rs" />
                 </div>
                 <div class="price-hint">
-                  <span>â‚¹ 5,000</span>
-                  <span>â‚¹ 5,00,000+</span>
+                  <span>Rs 5,000</span>
+                  <span>Rs 5,00,000+</span>
                 </div>
               } @else {
                 <p class="locked-price">Verify mobile to filter by price</p>
@@ -232,12 +234,12 @@
             <div class="quick-tabs-wrap">
               <div class="quick-tabs">
                 <button type="button" class="tab" [class.on]="category === 'all'" (click)="setCategory('all')">
-                  <span class="tab-ico" aria-hidden="true">â—‡</span>
+                  <span class="tab-ico" aria-hidden="true"><i class="fa-solid fa-border-all"></i></span>
                   All Products
                 </button>
                 @for (tab of quickTabs; track tab) {
                   <button type="button" class="tab" [class.on]="category === tab" (click)="setCategory(tab)">
-                    <span class="tab-ico" aria-hidden="true">{{ tabIcon(tab) }}</span>
+                    <span class="tab-ico" aria-hidden="true"><i [class]="tabIcon(tab)"></i></span>
                     {{ tab }}
                   </button>
                 }
@@ -272,12 +274,12 @@
                         [routerLink]="['/', ctx.storeCode, 'cart']"
                         (click)="$event.stopPropagation()"
                         aria-label="Cart"
-                      >â™¡</a>
+                      ><i class="fa-regular fa-heart"></i></a>
                     }
                     @if (product.imageUrl) {
                       <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
                     } @else {
-                      <div class="ph">âœ¦</div>
+                      <div class="ph"><i class="fa-solid fa-gem"></i></div>
                     }
                   </div>
                   <div class="card-body">
@@ -295,7 +297,7 @@
                         </strong>
                         <span class="stock in">In Stock</span>
                       } @else if (isSignedIn()) {
-                        <strong class="locked-price">Rs â€”</strong>
+                        <strong class="locked-price">Rs -</strong>
                         <span class="stock in">In Stock</span>
                       } @else {
                         <span class="locked-price">Verify to view price</span>
@@ -313,7 +315,7 @@
                   <span>Loading more products...</span>
                 </div>
               } @else if (!hasMore() && products().length) {
-                <p class="end">Youâ€™ve seen all {{ totalCount() }} products</p>
+                <p class="end">You've seen all {{ totalCount() }} products</p>
               }
               <div class="list-end-spacer" aria-hidden="true"></div>
           } @else if (isLoading()) {
@@ -323,7 +325,7 @@
             </div>
           } @else {
             <div class="empty">
-              <span>âœ¦</span>
+              <span><i class="fa-solid fa-gem"></i></span>
               <h3>No products found</h3>
               <p>Try adjusting your filters.</p>
             </div>

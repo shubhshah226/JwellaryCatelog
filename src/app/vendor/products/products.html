@@ -10,7 +10,7 @@
         <p>Upload product images, set prices, and share curated catalogs with customers.</p>
       </div>
       <div class="header-actions">
-        <button type="button" class="btn btn-outline" (click)="openShareModal()">ðŸ”— Share Catalog</button>
+        <button type="button" class="btn btn-outline" (click)="openShareModal()">Share Catalog</button>
         <button type="button" class="btn btn-primary" (click)="openAddDrawer()">+ Add Product</button>
       </div>
     </div>
@@ -33,7 +33,9 @@
     <div class="filters-card">
       <div class="filters-grid">
         <div class="filter-search">
-          <span class="filter-icon">ðŸ”</span>
+          <span class="filter-icon" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
           <input type="text" placeholder="Search products..." [(ngModel)]="search" />
         </div>
 
@@ -58,7 +60,9 @@
         </select>
 
         <div class="filter-actions">
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -70,7 +74,7 @@
             @if (product.imageUrl) {
               <img [src]="product.imageUrl" [alt]="product.name" />
             } @else {
-              <div class="vpc-placeholder">âœ¦</div>
+              <div class="vpc-placeholder"><i class="fa-solid fa-gem"></i></div>
             }
             <span class="vpc-status" [class.inactive]="product.status === 'inactive'">
               {{ product.status === 'inactive' ? 'Inactive' : 'Active' }}
@@ -79,7 +83,7 @@
           <div class="vpc-body">
             <span class="vpc-category">{{ product.category }}</span>
             <h3>{{ product.name }}</h3>
-            <p class="vpc-meta">{{ product.metalType }} Â· {{ product.purity }} Â· {{ product.weight }}</p>
+            <p class="vpc-meta">{{ product.metalType }} · {{ product.purity }} · {{ product.weight }}</p>
             <div class="vpc-footer">
               <strong>{{ product.price | currency:'INR':'symbol':'1.0-0' }}</strong>
               <div class="vpc-actions">
@@ -105,7 +109,9 @@
           <h3>{{ drawerMode() === 'edit' ? 'Edit Product' : 'Add Product' }}</h3>
           <p>Upload image and fill in product details.</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeDrawer()">âœ•</button>
+        <button type="button" class="drawer-close" (click)="closeDrawer()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
       <form class="drawer-form" (ngSubmit)="submitProduct()">
@@ -119,11 +125,13 @@
               <div class="cover-preview">
                 <img [src]="coverImage()" alt="Cover" />
                 <span class="primary-badge">Public cover</span>
-                <button type="button" class="remove-img" (click)="removeCover()">âœ•</button>
+                <button type="button" class="remove-img" (click)="removeCover()">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
               </div>
             } @else {
               <div class="upload-placeholder">
-                <span>ðŸ“·</span>
+                <span>Photo</span>
                 <p>Upload the main image customers see before login</p>
               </div>
             }
@@ -143,13 +151,15 @@
                 @for (img of galleryImages(); track $index) {
                   <div class="img-thumb">
                     <img [src]="img" alt="Gallery" />
-                    <button type="button" class="remove-img" (click)="removeGalleryImage($index)">âœ•</button>
+                    <button type="button" class="remove-img" (click)="removeGalleryImage($index)">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
                   </div>
                 }
               </div>
             } @else {
               <div class="upload-placeholder compact">
-                <span>ðŸ–¼ï¸</span>
+                <span>Gallery</span>
                 <p>Add extra detail images (optional)</p>
               </div>
             }
@@ -186,7 +196,7 @@
 
         <div class="form-row">
           <label class="form-field">
-            <span>Price (â‚¹) <em>*</em></span>
+            <span>Price (Rs) <em>*</em></span>
             <input type="number" [(ngModel)]="productForm.price" name="price" min="0" required />
           </label>
           <label class="form-field">
@@ -250,7 +260,9 @@
           <h3>Share Catalog Link</h3>
           <p>Filter products and generate a short shareable link.</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeShareModal()">âœ•</button>
+        <button type="button" class="drawer-close" (click)="closeShareModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
       <div class="share-body">
@@ -281,11 +293,11 @@
           </div>
           <div class="form-row">
             <label class="form-field">
-              <span>Min Price (â‚¹)</span>
+              <span>Min Price (Rs)</span>
               <input type="number" [(ngModel)]="shareMinPrice" (ngModelChange)="onShareFilterChange()" min="0" />
             </label>
             <label class="form-field">
-              <span>Max Price (â‚¹)</span>
+              <span>Max Price (Rs)</span>
               <input type="number" [(ngModel)]="shareMaxPrice" (ngModelChange)="onShareFilterChange()" min="0" />
             </label>
           </div>
@@ -294,7 +306,7 @@
         <div class="share-products">
           <div class="share-products-head">
             <p class="share-label">
-              {{ shareFilteredProducts().length }} products Â· {{ shareSelectedIds().size }} selected
+              {{ shareFilteredProducts().length }} products · {{ shareSelectedIds().size }} selected
             </p>
             <div class="share-bulk-actions">
               <button type="button" class="btn-text" (click)="selectAllShareFiltered()">Select all</button>
@@ -313,12 +325,12 @@
                   @if (product.imageUrl) {
                     <img [src]="product.imageUrl" [alt]="product.name" />
                   } @else {
-                    <span>âœ¦</span>
+                    <span><i class="fa-solid fa-gem"></i></span>
                   }
                 </div>
                 <div class="spc-info">
                   <strong>{{ product.name }}</strong>
-                  <span>{{ product.category }} Â· {{ product.metalType }}</span>
+                  <span>{{ product.category }} · {{ product.metalType }}</span>
                   <em>{{ product.price | currency:'INR':'symbol':'1.0-0' }}</em>
                 </div>
               </label>
@@ -344,7 +356,7 @@
             <button type="button" class="btn btn-outline" (click)="copyShareLink()">
               {{ shareCopied() ? 'Copied!' : 'Copy Link' }}
             </button>
-            <p class="share-hint">Short link â€” customers see only filtered/selected products.</p>
+            <p class="share-hint">Short link — customers see only filtered/selected products.</p>
           </div>
         }
       </div>

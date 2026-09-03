@@ -122,7 +122,7 @@ export class VendorLeads implements OnInit {
 
   formatPhone(phone?: string): string {
     if (!phone) {
-      return 'â€”';
+      return '—';
     }
     return `+91 ${phone}`;
   }
@@ -148,7 +148,7 @@ export class VendorLeads implements OnInit {
   productSummary(lead: Enquiry): string {
     const count = this.itemCount(lead);
     if (count <= 1) {
-      return lead.items?.[0]?.productName ?? lead.productName ?? 'â€”';
+      return lead.items?.[0]?.productName ?? lead.productName ?? '—';
     }
     return `${count} products`;
   }
@@ -271,7 +271,7 @@ export class VendorLeads implements OnInit {
 
     const missingPrice = lines.find((l) => l.specialPrice == null || l.specialPrice <= 0);
     if (missingPrice) {
-      this.shareError.set(`Set a special price for â€œ${missingPrice.name}â€.`);
+      this.shareError.set(`Set a special price for "${missingPrice.name}".`);
       return;
     }
 

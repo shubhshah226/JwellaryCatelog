@@ -1,4 +1,4 @@
-/** India Standard Time â€” used for all vendor-facing timestamps. */
+/** India Standard Time — used for all vendor-facing timestamps. */
 export const INDIA_TIME_ZONE = 'Asia/Kolkata';
 
 /**
@@ -13,12 +13,12 @@ export function parseApiUtc(iso?: string | null): Date | null {
   if (!trimmed) {
     return null;
   }
-  // Already has timezone (Z or Â±HH:MM)
+  // Already has timezone (Z or ±HH:MM)
   if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(trimmed)) {
     const d = new Date(trimmed);
     return Number.isNaN(d.getTime()) ? null : d;
   }
-  // "2026-09-03T04:30:00" or "2026-09-03 04:30:00" â†’ force UTC
+  // "2026-09-03T04:30:00" or "2026-09-03 04:30:00" → force UTC
   const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
   const d = new Date(`${normalized}Z`);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -28,7 +28,7 @@ export function parseApiUtc(iso?: string | null): Date | null {
 export function formatInIndia(iso?: string | null): string {
   const date = parseApiUtc(iso);
   if (!date) {
-    return 'â€”';
+    return '—';
   }
   return date.toLocaleString('en-IN', {
     timeZone: INDIA_TIME_ZONE,

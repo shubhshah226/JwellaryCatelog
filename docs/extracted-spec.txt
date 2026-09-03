@@ -1,0 +1,828 @@
+Jewelry Catalog Platform
+Backend API Specification
+Version 1.0  |  2026-09-03Base URL (proposed): https://{host}/api/v1Auth: Bearer JWT (except public + OTP endpoints)
+1. Document Purpose
+This document defines the database tables, REST endpoints, request payloads, and response contracts required to replace the current json-server mock API with a real backend. It also covers business rules for vendor login eligibility, Phase-1 limited storefront options, and the new cart-style combined lead flow.
+1.1 Scope (Phase 1)
+Admin: dashboard stats, vendors CRUD, users CRUD, roles CRUD
+Vendor: dashboard, catalogs, products (multi-image), leads (combined cart), profile (email/phone only), My Website (limited options)
+Public storefront: home, products, short catalog share links
+Customer OTP verify + interest cart → single lead entry
+Auth: admin + vendor login with inactive / plan-expired blocking
+1.2 Out of Scope (Later)
+Dynamic custom HTML/CSS sections on vendor websites
+Advanced section placement builder
+Payment / billing gateway for plans
+Real SMS OTP provider (Phase 1 can use mock / configurable OTP)
+2. Conventions
+JSON request/response; Content-Type: application/json
+IDs are integers (BIGINT) unless noted
+Timestamps: ISO-8601 UTC (e.g. 2026-09-03T10:00:00Z)
+Money: integer/decimal INR (price stored as decimal(12,2))
+Images: upload via multipart OR send image URLs after upload service; avoid huge base64 in production
+Standard error shape: { "success": false, "error": { "code": "STRING", "message": "..." } }
+Standard success shape: { "success": true, "data": ... } or { "success": true, "data": ..., "meta": {...} }
+2.1 Common Error Codes
+HTTP
+Code
+Meaning
+400
+VALIDATION_ERROR
+Invalid payload / missing fields
+401
+UNAUTHORIZED
+Missing/invalid token
+403
+FORBIDDEN
+Role not allowed / vendor blocked
+403
+VENDOR_INACTIVE
+Vendor account inactive
+403
+PLAN_EXPIRED
+Subscription/plan expired
+404
+NOT_FOUND
+Resource missing
+409
+CONFLICT
+Duplicate username/email/storeCode
+429
+OTP_RATE_LIMIT
+Too many OTP requests
+3. Authentication & Vendor Login Rules
+Login uses username + password. On success, API returns JWT access token and user profile. For role=vendor, backend MUST enforce eligibility before issuing a token.
+3.1 Vendor Login Eligibility
+If linked vendor.status = 'inactive' → reject login with VENDOR_INACTIVE
+If vendor.subscription_type = 'expiry' OR subscription_end_date < today → reject with PLAN_EXPIRED
+If vendor.status = 'trial' and trial_end_date < today → treat as PLAN_EXPIRED (or convert status server-side)
+Admin users are never blocked by vendor plan rules
+Public storefront may still show a 'unavailable' page when vendor is inactive; login to dashboard is blocked
+3.2 Roles
+Role
+Access
+admin
+All admin APIs; manage vendors/users/roles
+vendor
+Own vendor-scoped APIs only (vendorId from JWT)
+customer (session)
+OTP-verified public session for cart/lead; not a dashboard role
+4. Database Tables
+Suggested relational schema. Enum values should match the frontend. Use soft-delete (deleted_at) where useful; Phase 1 can hard-delete products/catalogs.
+4.1 users
+Column
+Type
+Notes
+id
+BIGINT PK
+first_name
+VARCHAR(100)
+last_name
+VARCHAR(100)
+name
+VARCHAR(200)
+Computed or stored display name
+username
+VARCHAR(100) UNIQUE
+Login id
+email
+VARCHAR(200) UNIQUE
+password_hash
+VARCHAR(255)
+bcrypt/argon2 — never return
+role
+ENUM(admin,vendor)
+vendor_id
+BIGINT NULL FK→vendors
+Required when role=vendor
+status
+ENUM(active,inactive)
+User-level disable
+created_at
+DATETIME
+updated_at
+DATETIME
+4.2 roles
+Column
+Type
+Notes
+id
+BIGINT PK
+name
+VARCHAR(100)
+code
+VARCHAR(50) UNIQUE
+e.g. admin, vendor
+description
+TEXT
+status
+ENUM(active,inactive)
+is_system
+BOOLEAN
+System roles cannot be deleted
+created_on
+DATE/DATETIME
+4.3 vendors
+Column
+Type
+Notes
+id
+BIGINT PK
+store_code
+VARCHAR(20) UNIQUE
+Public URL slug; set once on create
+user_id
+BIGINT NULL FK→users
+Primary login user
+name
+VARCHAR(200)
+initials
+VARCHAR(10)
+website
+VARCHAR(255)
+email
+VARCHAR(200)
+Vendor contact (editable by vendor)
+phone
+VARCHAR(30)
+Editable by vendor
+contact_person
+VARCHAR(150)
+Admin-managed
+plan
+ENUM(premium,standard,basic)
+Hidden/irrelevant when inactive
+status
+ENUM(active,inactive,trial)
+Drives login + public availability
+subscription_type
+ENUM(renewal,expiry,trial)
+subscription_date
+DATE
+Next renewal / expiry / trial end
+subscription_label
+VARCHAR(200)
+Display string optional
+joined_on
+DATE
+address
+VARCHAR(255)
+city
+VARCHAR(100)
+state
+VARCHAR(100)
+pincode
+VARCHAR(20)
+catalogs_count
+INT
+Can be computed
+total_sales
+DECIMAL(14,2)
+Can be computed
+rank
+INT
+Admin only; do not expose on vendor profile UI
+created_at / updated_at
+DATETIME
+4.4 catalogs
+Column
+Type
+Notes
+id
+BIGINT PK
+vendor_id
+BIGINT FK
+name
+VARCHAR(150)
+status
+ENUM(active,inactive,pending,expired)
+created_at / updated_at
+DATETIME
+4.5 products
+Column
+Type
+Notes
+id
+BIGINT PK
+vendor_id
+BIGINT FK
+catalog_id
+BIGINT FK
+name
+VARCHAR(200)
+category
+VARCHAR(100)
+Necklaces, Rings, ...
+description
+TEXT
+price
+DECIMAL(12,2)
+image_url
+VARCHAR(500)
+Cover = images[0]
+metal_type
+VARCHAR(50)
+Gold, Silver, Diamond, ...
+weight
+VARCHAR(50)
+e.g. 12g
+purity
+VARCHAR(50)
+e.g. 22K
+sku
+VARCHAR(80)
+status
+ENUM(active,inactive)
+created_at / updated_at
+DATETIME
+4.6 product_images
+First image (sort_order=0 or is_cover=true) is public on listing. Additional images returned only after customer OTP verification (or on authenticated detail).
+Column
+Type
+Notes
+id
+BIGINT PK
+product_id
+BIGINT FK
+url
+VARCHAR(500)
+CDN/storage URL
+sort_order
+INT
+0 = cover / website image
+is_cover
+BOOLEAN
+Exactly one true preferred
+created_at
+DATETIME
+4.7 storefronts (Phase 1 — limited)
+Phase 1 stores basic branding + content only. Do NOT implement custom HTML/CSS sections yet (table column reserved or deferred).
+Column
+Type
+Notes
+id
+BIGINT PK
+vendor_id
+BIGINT UNIQUE FK
+One config per vendor
+tagline
+VARCHAR(255)
+about_text
+TEXT
+logo_url
+VARCHAR(500)
+show_banner
+BOOLEAN
+show_about
+BOOLEAN
+show_featured
+BOOLEAN
+show_contact
+BOOLEAN
+home_product_limit
+INT
+1–12
+theme_primary_color
+VARCHAR(20)
+theme_accent_color
+VARCHAR(20)
+theme_header_color
+VARCHAR(20)
+theme_header_text_color
+VARCHAR(20)
+theme_font_color
+VARCHAR(20)
+updated_at
+DATETIME
+4.8 storefront_banners
+Column
+Type
+Notes
+id
+BIGINT PK
+storefront_id
+BIGINT FK
+image_url
+VARCHAR(500)
+sort_order
+INT
+4.9 storefront_featured_products
+Column
+Type
+Notes
+id
+BIGINT PK
+storefront_id
+BIGINT FK
+product_id
+BIGINT FK
+sort_order
+INT
+4.10 Deferred: storefront_custom_sections (Later)
+Future table for dynamic vendor HTML/CSS blocks with placement (after_header, after_banner, after_about, before_featured, after_featured, before_contact). Not in Phase 1 API.
+4.11 leads (replaces flat enquiries — cart style)
+NEW FLOW: Customer builds an interest cart (multiple products), then submits once. Creates ONE lead header + N lead_items. Vendor Manage Leads shows one row per submission with expandable product list.
+Column
+Type
+Notes
+id
+BIGINT PK
+vendor_id
+BIGINT FK
+customer_name
+VARCHAR(150)
+customer_phone
+VARCHAR(20)
+initials
+VARCHAR(10)
+message
+TEXT NULL
+Optional note from customer
+status
+ENUM(new,in_progress,responded,closed)
+source
+ENUM(store_home,products,shared_catalog)
+Optional
+store_code
+VARCHAR(20)
+item_count
+INT
+Denormalized
+created_at
+DATETIME
+updated_at
+DATETIME
+4.12 lead_items
+Column
+Type
+Notes
+id
+BIGINT PK
+lead_id
+BIGINT FK
+product_id
+BIGINT FK
+product_name
+VARCHAR(200)
+Snapshot at submit time
+category
+VARCHAR(100)
+Snapshot
+price
+DECIMAL(12,2)
+Snapshot
+image_url
+VARCHAR(500)
+Snapshot cover
+sku
+VARCHAR(80)
+Snapshot
+quantity
+INT DEFAULT 1
+Usually 1 for jewellery interest
+4.13 interest_carts (optional server-side cart)
+Optional: persist cart between OTP session refresh. Alternatively keep cart client-side until submit. Recommended for Phase 1: client cart + submit payload; table optional.
+Column
+Type
+Notes
+id
+BIGINT PK / UUID
+store_code
+VARCHAR(20)
+customer_phone
+VARCHAR(20)
+After OTP
+session_token
+VARCHAR(100)
+Customer session id
+product_ids_json
+JSON
+Or use interest_cart_items child table
+expires_at
+DATETIME
+updated_at
+DATETIME
+4.14 catalog_shares
+Column
+Type
+Notes
+id
+BIGINT PK
+short_code
+VARCHAR(12) UNIQUE
+6+ chars a-z0-9
+vendor_id
+BIGINT FK
+store_code
+VARCHAR(20)
+payload_json
+JSON
+filters + optional productIds
+created_at
+DATETIME
+expires_at
+DATETIME NULL
+Optional
+4.15 customer_otp_sessions
+Column
+Type
+Notes
+id
+BIGINT PK
+store_code
+VARCHAR(20)
+customer_name
+VARCHAR(150)
+phone
+VARCHAR(20)
+otp_hash
+VARCHAR(255)
+attempts
+INT
+verified
+BOOLEAN
+session_token
+VARCHAR(100) NULL
+Issued after verify
+expires_at
+DATETIME
+created_at
+DATETIME
+4.16 sales + dashboard_meta (optional)
+sales: id, vendor_id, date, amount — for charts
+dashboard_meta: cached change % / date range labels OR compute live
+5. Lead Flow Change (Add-to-Cart Style)
+Current (to replace): each product interest creates a separate enquiry row.
+New flow:
+Customer browses products on public store / shared catalog
+On product click → OTP verify once per store session
+After verify: view full details + extra images; button becomes Add to Interest Cart
+Cart persists for session (client or server); show cart badge with count
+Cart page / drawer: list selected products, remove item, optional note
+Submit Interest → ONE POST creates lead + lead_items
+Vendor Leads page: one entry showing customer + N products; status updates apply to whole lead
+Optional: vendor can mark individual items as discussed later (not required Phase 1)
+6. API Endpoints
+6.1 Auth
+POST /auth/login
+Login for admin or vendor.
+Auth: Public
+Request body / params:
+{  "username": "vendor",  "password": "vendor"}
+Success response:
+{  "success": true,  "data": {    "token": "<JWT>",    "user": {      "id": 2,      "name": "Shubh Jewellers",      "firstName": "Shubh",      "lastName": "Jewellers",      "username": "vendor",      "email": "vendor@shubhjewellers.com",      "role": "vendor",      "vendorId": 1    }  }}
+Notes:
+On vendor inactive: HTTP 403, code VENDOR_INACTIVE
+On plan/subscription expired: HTTP 403, code PLAN_EXPIRED
+JWT claims: sub=userId, role, vendorId?
+POST /auth/logout
+Invalidate token/session (optional if JWT-only).
+Auth: Bearer
+Success response:
+{ "success": true }
+GET /auth/me
+Return current user from token.
+Auth: Bearer
+Success response:
+{ "success": true, "data": { "id": 2, "role": "vendor", "vendorId": 1, ... } }
+6.2 Admin — Vendors
+GET /admin/vendors
+List vendors with optional filters.
+Auth: Bearer admin
+Request body / params:
+Query: search, status, plan, page, pageSize
+Success response:
+{ "success": true, "data": [ Vendor ], "meta": { "total": 10 } }
+GET /admin/vendors/stats
+Cards: total/active/inactive/trial + sparklines.
+Auth: Bearer admin
+Success response:
+{ "success": true, "data": { "total": 12, "active": 8, "inactive": 3, "trial": 1, ... } }
+POST /admin/vendors
+Create vendor. Generate store_code server-side (immutable after create). Also create default storefront + optional user.
+Auth: Bearer admin
+Request body / params:
+{  "name": "Darshan Diamonds",  "email": "info@example.com",  "phone": "+91 98234 56789",  "website": "www.example.com",  "contactPerson": "Darshan",  "plan": "premium",  "status": "active",  "subscriptionType": "renewal",  "subscriptionDate": "2026-11-25",  "address": "", "city": "", "state": "", "pincode": "",  "createLogin": true,  "username": "draval",  "password": "tempPass123"}
+Success response:
+{ "success": true, "data": { "id": 2, "storeCode": "dar002gw", ... } }
+Notes:
+storeCode generated once; not accepted from client on create/edit
+PUT /admin/vendors/{id}
+Update vendor. storeCode read-only. If status=inactive, force subscriptionType=expiry.
+Auth: Bearer admin
+Request body / params:
+Same fields as create without storeCode / createLogin
+Success response:
+{ "success": true, "data": Vendor }
+GET /admin/vendors/{id}
+Vendor detail.
+Auth: Bearer admin
+Success response:
+{ "success": true, "data": Vendor }
+6.3 Admin — Users
+GET /admin/users
+List users.
+Auth: Bearer admin
+Request body / params:
+Query: search, role
+Success response:
+{ "success": true, "data": [ { "id", "name", "username", "email", "role", "vendorId?" } ] }
+POST /admin/users
+Create user.
+Auth: Bearer admin
+Request body / params:
+{  "firstName": "A", "lastName": "B",  "username": "ab", "email": "a@b.com",  "password": "secret",  "role": "vendor",  "vendorId": 2}
+Success response:
+{ "success": true, "data": AppUser }
+Notes:
+Never return password_hash. vendorId required if role=vendor.
+PUT /admin/users/{id}
+Update user. Password optional (only if provided).
+Auth: Bearer admin
+Request body / params:
+{ "firstName", "lastName", "username", "email", "role", "vendorId", "password?" }
+Success response:
+{ "success": true, "data": AppUser }
+DELETE /admin/users/{id}
+Delete user.
+Auth: Bearer admin
+Success response:
+{ "success": true }
+6.4 Admin — Roles
+GET /admin/roles
+List roles.
+Auth: Bearer admin
+Success response:
+{ "success": true, "data": [ Role ] }
+POST /admin/roles
+Create role.
+Auth: Bearer admin
+Request body / params:
+{ "name": "Vendor", "code": "vendor", "description": "...", "status": "active" }
+Success response:
+{ "success": true, "data": Role }
+PUT /admin/roles/{id}
+Update role.
+Auth: Bearer admin
+Request body / params:
+{ "name", "code", "description", "status" }
+Success response:
+{ "success": true, "data": Role }
+DELETE /admin/roles/{id}
+Delete non-system role.
+Auth: Bearer admin
+Success response:
+{ "success": true }
+Notes:
+Reject if is_system=true
+6.5 Admin / Vendor — Dashboard
+GET /dashboard/summary
+Aggregated counts and chart data. Admin = platform-wide; Vendor = scoped to JWT vendorId.
+Auth: Bearer admin|vendor
+Success response:
+{  "success": true,  "data": {    "vendorsCount": 12,    "catalogsCount": 40,    "productsCount": 120,    "leadsCount": 35,    "sales": [ { "date": "2026-09-01", "amount": 10000 } ],    "meta": { "dateRange": "Last 30 days", ... }  }}
+Notes:
+Vendor response omits global vendor counts or returns only own metrics
+6.6 Vendor — Profile
+GET /vendor/profile
+Current vendor profile (no rank required in UI).
+Auth: Bearer vendor
+Success response:
+{ "success": true, "data": { "id", "storeCode", "name", "email", "phone", "plan", "status", ... } }
+Notes:
+Do not require exposing rank to vendor UI
+PATCH /vendor/profile/contact
+Vendor may change ONLY email and phone.
+Auth: Bearer vendor
+Request body / params:
+{ "email": "new@mail.com", "phone": "+91 90000 00000" }
+Success response:
+{ "success": true, "data": { "email", "phone" } }
+Notes:
+Other fields admin-only. Reject unknown fields.
+6.7 Vendor — Catalogs
+GET /vendor/catalogs
+List own catalogs.
+Auth: Bearer vendor
+Success response:
+{ "success": true, "data": [ { "id", "name", "status" } ] }
+POST /vendor/catalogs
+Create catalog.
+Auth: Bearer vendor
+Request body / params:
+{ "name": "Bridal 2026", "status": "active" }
+Success response:
+{ "success": true, "data": Catalog }
+PUT /vendor/catalogs/{id}
+Update catalog (must belong to vendor).
+Auth: Bearer vendor
+Request body / params:
+{ "name", "status" }
+Success response:
+{ "success": true, "data": Catalog }
+DELETE /vendor/catalogs/{id}
+Delete catalog.
+Auth: Bearer vendor
+Success response:
+{ "success": true }
+6.8 Vendor — Products
+GET /vendor/products
+List products with filters.
+Auth: Bearer vendor
+Request body / params:
+Query: search, category, catalogId, status, metalType, minPrice, maxPrice
+Success response:
+{ "success": true, "data": [ ProductWithImages ] }
+POST /vendor/products
+Create product. Prefer uploading images first, then pass URLs; or multipart.
+Auth: Bearer vendor
+Request body / params:
+{  "name": "Bridal Necklace Set",  "category": "Necklaces",  "catalogId": 1,  "description": "...",  "price": 125000,  "metalType": "Gold",  "weight": "8g",  "purity": "22K",  "sku": "JC-01-0001",  "status": "active",  "images": [    { "url": "https://cdn/.../1.jpg", "isCover": true },    { "url": "https://cdn/.../2.jpg", "isCover": false }  ]}
+Success response:
+{ "success": true, "data": Product }
+Notes:
+images[0] / isCover=true = website public cover
+Other images visible to customer only after OTP verify
+PUT /vendor/products/{id}
+Update product + replace image set.
+Auth: Bearer vendor
+Request body / params:
+Same as create
+Success response:
+{ "success": true, "data": Product }
+DELETE /vendor/products/{id}
+Delete product.
+Auth: Bearer vendor
+Success response:
+{ "success": true }
+POST /vendor/uploads/images
+Upload one or more images; returns CDN URLs.
+Auth: Bearer vendor
+Request body / params:
+multipart/form-data: files[]
+Success response:
+{ "success": true, "data": [ { "url": "https://..." } ] }
+Notes:
+Max size e.g. 800KB–2MB per file; jpeg/png/webp
+6.9 Vendor — Catalog Share (Short Link)
+POST /vendor/catalog-shares
+Create short share link for filtered/selected products.
+Auth: Bearer vendor
+Request body / params:
+{  "payload": {    "v": 1,    "productIds": [1, 3, 5],    "category": "Rings",    "metalType": "Gold",    "minPrice": 10000,    "maxPrice": 200000  }}
+Success response:
+{  "success": true,  "data": {    "shortCode": "a1b2c3",    "url": "https://app.example.com/dar002gw/c/a1b2c3",    "createdAt": "2026-09-03T10:00:00Z"  }}
+Notes:
+Server generates shortCode; do not use long encrypted tokens for new links
+6.10 Vendor — Leads (Combined Cart Entries)
+GET /vendor/leads
+List lead submissions (one row per combined cart submit).
+Auth: Bearer vendor
+Request body / params:
+Query: status, search, page, pageSize
+Success response:
+{  "success": true,  "data": [    {      "id": 101,      "customerName": "Riya Shah",      "customerPhone": "9876543210",      "initials": "RS",      "message": "Looking for bridal set",      "status": "new",      "itemCount": 3,      "createdAt": "2026-09-03T09:00:00Z",      "items": [        { "productId": 1, "productName": "Bridal Necklace", "price": 125000, "category": "Necklaces", "imageUrl": "..." }      ]    }  ]}
+GET /vendor/leads/{id}
+Lead detail with all items.
+Auth: Bearer vendor
+Success response:
+{ success, data: LeadWithItems }
+PATCH /vendor/leads/{id}/status
+Update lead status.
+Auth: Bearer vendor
+Request body / params:
+{ "status": "in_progress" }
+Success response:
+{ success, data: Lead }
+6.11 Vendor — My Website (Phase 1 Limited)
+Limited options only: theme colors, logo, multi banners, about/tagline toggles, featured product selection, home product limit. NO custom HTML/CSS sections in Phase 1.
+GET /vendor/storefront
+Get own storefront config.
+Auth: Bearer vendor
+Success response:
+{  "success": true,  "data": {    "tagline": "...",    "aboutText": "...",    "logoUrl": "",    "showBanner": true,    "showAbout": true,    "showFeatured": true,    "showContact": true,    "homeProductLimit": 4,    "bannerUrls": ["https://..."],    "featuredProductIds": [9, 10, 11],    "theme": {      "primaryColor": "#c9a227",      "accentColor": "#1a1a2e",      "headerColor": "#1a1a2e",      "headerTextColor": "#ffffff",      "fontColor": "#1c1917"    }  }}
+PUT /vendor/storefront
+Save Phase-1 storefront settings.
+Auth: Bearer vendor
+Request body / params:
+Same shape as GET data (no customSections)
+Success response:
+{ success, data: StorefrontConfig }
+Notes:
+Reject/ignore customSections if sent
+Validate color hex + homeProductLimit 1–12
+6.12 Public Storefront
+GET /public/stores/{storeCode}
+Resolve store context. isAvailable=false when vendor not active.
+Auth: Public
+Success response:
+{  "success": true,  "data": {    "storeCode": "dar002gw",    "isAvailable": true,    "vendor": { "id": 2, "name": "...", "email": "...", "phone": "...", "website": "...", "status": "active" },    "config": { Phase1 StorefrontConfig }  }}
+GET /public/stores/{storeCode}/home
+Home page payload: config + featured products (cover image only).
+Auth: Public
+Success response:
+{ success, data: { context, featuredProducts: PublicProductCover[] } }
+Notes:
+PublicProductCover includes imageUrl cover only; omit extra images
+GET /public/stores/{storeCode}/products
+Product listing with filters. Cover image only.
+Auth: Public
+Request body / params:
+Query: search, category, metalType, minPrice, maxPrice
+Success response:
+{ success, data: { context, products: [...] } }
+GET /public/stores/{storeCode}/products/{productId}
+Product detail. Extra images only if X-Customer-Session header present & valid.
+Auth: Public / optional customer session
+Success response:
+Without session: cover + limited fields (hide price if you choose; currently price shown after OTP in UI).With verified session: full description, specs, all images.
+Notes:
+Align with frontend: listing shows cover; modal gates full details behind OTP
+Recommended: return publicCover always; return images[] only when verified
+GET /public/stores/{storeCode}/c/{shortCode}
+Resolve short catalog share and return filtered products.
+Auth: Public
+Success response:
+{ success, data: { context, products, shareLabel, payload } }
+Notes:
+404 if shortCode invalid/expired
+6.13 Public — Customer OTP
+POST /public/stores/{storeCode}/otp/send
+Send OTP to mobile for this store.
+Auth: Public
+Request body / params:
+{ "name": "Riya Shah", "phone": "9876543210" }
+Success response:
+{ "success": true, "data": { "expiresInSec": 300, "demoOtp": "123456" } }
+Notes:
+demoOtp only in non-production
+Validate Indian mobile 10-digit starting 6-9
+Rate limit
+POST /public/stores/{storeCode}/otp/verify
+Verify OTP; return customer session token.
+Auth: Public
+Request body / params:
+{ "phone": "9876543210", "otp": "123456" }
+Success response:
+{ "success": true, "data": { "sessionToken": "cst_xxx", "name": "Riya Shah", "phone": "9876543210" } }
+6.14 Public — Interest Cart → Combined Lead
+POST /public/stores/{storeCode}/leads
+Submit combined interest cart as a single lead entry.
+Auth: Customer session (Header: X-Customer-Session: cst_xxx)
+Request body / params:
+{  "productIds": [1, 3, 9],  "message": "Need these for wedding in Dec",  "source": "products"}
+Success response:
+{  "success": true,  "data": {    "leadId": 101,    "itemCount": 3,    "status": "new",    "createdAt": "2026-09-03T10:15:00Z"  }}
+Notes:
+Customer name/phone taken from verified OTP session — do not trust body for identity
+Snapshot product name/price/category/image into lead_items
+Reject empty productIds
+Products must belong to this store vendor and be active
+Do NOT create one enquiry per product
+7. Enums & Constants
+Name
+Values
+UserRole
+admin, vendor
+VendorPlan
+premium, standard, basic
+VendorStatus
+active, inactive, trial
+SubscriptionType
+renewal, expiry, trial
+CatalogStatus
+active, inactive, pending, expired
+ProductStatus
+active, inactive
+LeadStatus
+new, in_progress, responded, closed
+ProductCategories
+Necklaces, Rings, Earrings, Bangles, Chains, Pendants, Headpieces, Bracelets
+MetalTypes
+Gold, Silver, Diamond, Platinum, Gemstone, Mixed
+8. Implementation Notes for Backend Team
+Always scope vendor APIs by JWT vendorId — never trust client-supplied vendorId for writes
+On admin vendor create: generate store_code, create default storefront row + banners empty
+Public store isAvailable only when vendors.status = active
+Login eligibility is separate from public isAvailable (both should check inactive/expiry)
+Prefer image upload service returning URLs over storing base64 in DB
+Phase 1 storefront API must not accept customSections HTML/CSS
+Migrate existing enquiries → leads + lead_items (1 product each) if needed
+Short catalog links stored in catalog_shares; public route uses short_code
+CORS allow frontend origin; rate-limit OTP and login
+9. Frontend Change Summary (for alignment)
+Login: handle VENDOR_INACTIVE / PLAN_EXPIRED messages
+Product viewer: Add to Cart instead of immediate I'm Interested submit
+Add cart drawer + Submit Interest once
+Leads page: show combined lead with product list
+My Website: hide Custom HTML tab until Phase 2
+Share catalog: keep short /c/{code} links
+10. Suggested Build Order
+1. Auth + vendor eligibility checks
+2. Admin vendors/users/roles
+3. Vendor catalogs + products + uploads
+4. Public store + OTP
+5. Combined leads API + vendor leads UI binding
+6. Storefront Phase-1 + catalog shares
+7. Dashboard aggregates
+8. Phase 2: custom sections
