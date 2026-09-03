@@ -1,0 +1,113 @@
+<div class="store-chrome" [class.menu-open]="menuOpen()">
+  @if (isAvailable() && topBarItems().length) {
+    <div class="trust-topbar">
+      @for (item of topBarItems(); track item.text; let i = $index) {
+        <span class="trust-item">
+          <i [attr.data-i]="i"></i>
+          {{ item.text }}
+        </span>
+      }
+    </div>
+  }
+
+  <header class="store-header">
+    <div class="header-top">
+      <a class="nav-brand" [routerLink]="['/', storeCode(), 'home']" (click)="closeMenu()">
+        @if (logoUrl()) {
+          <img [src]="logoUrl()" [alt]="vendorName()" class="nav-logo" />
+        } @else {
+          <span class="nav-logo-fallback">{{ vendorInitials() }}</span>
+        }
+        <span class="nav-name">{{ vendorName() }}</span>
+      </a>
+
+      @if (isAvailable()) {
+        <nav class="nav-links desktop-nav" aria-label="Store">
+          <button type="button" class="nav-link" [class.active]="isHomeActive()" (click)="goHome()">Home</button>
+          <button type="button" class="nav-link" [class.active]="isCollectionsActive()" (click)="goSection('collection')">Collections</button>
+          <button type="button" class="nav-link" [class.active]="isProductsActive()" (click)="goProducts()">Products</button>
+          <button type="button" class="nav-link" [class.active]="isAboutActive()" (click)="goSection('about')">About Us</button>
+          <button type="button" class="nav-link" [class.active]="isVisitActive()" (click)="goSection('visit')">Visit</button>
+        </nav>
+
+        <div class="nav-actions">
+          @if (!menuOpen()) {
+            @if (isSignedIn()) {
+              <a class="icon-btn" [routerLink]="['/', storeCode(), 'cart']" [class.active]="isCartActive()" aria-label="Cart">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M6 7h15l-1.4 8.2a2 2 0 0 1-2 1.7H9.2a2 2 0 0 1-2-1.6L5.2 4H3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.2" fill="currentColor"/><circle cx="17" cy="20" r="1.2" fill="currentColor"/></svg>
+                @if (cart.count()) {
+                  <span class="cart-badge">{{ cart.count() }}</span>
+                }
+              </a>
+            }
+            <button type="button" class="icon-btn" (click)="toggleSignIn()" [attr.aria-label]="isSignedIn() ? 'Account' : 'Login'">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="1.6"/><path d="M5 19c1.6-3 4-4.5 7-4.5s5.4 1.5 7 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </button>
+            <button type="button" class="menu-btn" (click)="toggleMenu()" aria-label="Open menu">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          } @else {
+            <button type="button" class="close-menu-btn" (click)="closeMenu()">
+              Close
+              <span aria-hidden="true">âœ•</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (isAvailable()) {
+    <nav class="mobile-drawer" [class.open]="menuOpen()" aria-label="Mobile menu">
+      <button type="button" class="nav-link" [class.active]="isHomeActive()" (click)="goHome()">Home</button>
+      <button type="button" class="nav-link" [class.active]="isCollectionsActive()" (click)="goSection('collection')">Collections</button>
+      <button type="button" class="nav-link" [class.active]="isProductsActive()" (click)="goProducts()">Products</button>
+      <button type="button" class="nav-link" [class.active]="isAboutActive()" (click)="goSection('about')">About Us</button>
+      <button type="button" class="nav-link" [class.active]="isVisitActive()" (click)="goSection('visit')">Visit</button>
+      @if (isSignedIn()) {
+        <button type="button" class="nav-link" (click)="openAccountFromMenu()">Account</button>
+      } @else {
+        <button type="button" class="nav-link login-link" (click)="openLoginFromMenu()">Login</button>
+      }
+    </nav>
+  }
+</div>
+
+@if (signInOpen()) {
+  <div class="otp-backdrop" (click)="closeAuth()">
+    <div class="otp-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="otp-close" (click)="closeAuth()" aria-label="Close">âœ•</button>
+      @if (isSignedIn()) {
+        <h2>Account</h2>
+        <p>You are verified. You can add products to your cart.</p>
+        <button type="button" class="otp-btn" (click)="signOut()">Sign Out</button>
+      } @else if (authStep === 'form') {
+        <h2>Verify mobile</h2>
+        <p>Enter your name and mobile number to receive an OTP.</p>
+        <input type="text" [(ngModel)]="customerName" name="custName" placeholder="Your name" />
+        <input type="tel" [(ngModel)]="customerPhone" name="custPhone" placeholder="10-digit mobile" maxlength="10" />
+        @if (authError) {
+          <span class="auth-error">{{ authError }}</span>
+        }
+        <button type="button" class="otp-btn" (click)="sendOtp()" [disabled]="authBusy">
+          {{ authBusy ? 'Sending...' : 'Send OTP' }}
+        </button>
+      } @else {
+        <h2>Enter OTP</h2>
+        <p>Enter the OTP sent to your phone.</p>
+        @if (demoOtp) {
+          <code class="demo-otp">Demo OTP: {{ demoOtp }}</code>
+        }
+        <input type="text" [(ngModel)]="otpCode" name="otpCode" placeholder="OTP" maxlength="6" />
+        @if (authError) {
+          <span class="auth-error">{{ authError }}</span>
+        }
+        <button type="button" class="otp-btn" (click)="verifyOtp()" [disabled]="authBusy">
+          {{ authBusy ? 'Verifying...' : 'Verify' }}
+        </button>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,111 @@
+@if (isLoading()) {
+  <div class="state-message">Loading profile...</div>
+} @else if (errorMessage()) {
+  <div class="state-message error">{{ errorMessage() }}</div>
+} @else if (profile(); as vendor) {
+  <section class="vendor-page" [class.page-blurred]="isDrawerOpen()">
+    <div class="page-header">
+      <div>
+        <h2>Profile</h2>
+        <p>Your vendor account details (managed by admin). You can update email and phone only.</p>
+      </div>
+      <button type="button" class="btn btn-primary" (click)="openEditDrawer()">Edit Contact</button>
+    </div>
+
+    @if (successMessage()) {
+      <p class="success-banner">{{ successMessage() }}</p>
+    }
+
+    <div class="profile-stats stats-row">
+      <article class="stat-card">
+        <p class="stat-label">Catalogs</p>
+        <h3>{{ vendor.catalogsCount }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Total Sales</p>
+        <h3>â‚¹{{ vendor.totalSales | number }}</h3>
+      </article>
+    </div>
+
+    <article class="profile-card">
+      <div class="profile-hero">
+        <div class="profile-avatar">{{ vendor.initials }}</div>
+        <div>
+          <h3>{{ vendor.name }}</h3>
+          <p class="readonly-note">Business details are managed by admin</p>
+        </div>
+      </div>
+
+      <div class="profile-grid">
+        <div class="profile-field editable">
+          <label>Email <span class="edit-badge">editable</span></label>
+          <span>{{ vendor.email }}</span>
+        </div>
+        <div class="profile-field editable">
+          <label>Phone <span class="edit-badge">editable</span></label>
+          <span>{{ vendor.phone }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Contact Person</label>
+          <span>{{ vendor.contactPerson || 'â€”' }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Website</label>
+          <span>{{ vendor.website }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Store Code</label>
+          <span class="mono">{{ vendor.storeCode || 'â€”' }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Joined On</label>
+          <span>{{ vendor.joinedOn }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Plan</label>
+          <span>{{ formatPlan(vendor.plan) }}</span>
+        </div>
+        <div class="profile-field">
+          <label>Status</label>
+          <span class="badge status-{{ vendor.status }}">{{ formatStatus(vendor.status) }}</span>
+        </div>
+        <div class="profile-field span-2">
+          <label>Subscription</label>
+          <span>{{ vendor.subscription }}</span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  @if (isDrawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeDrawer()"></div>
+    <aside class="profile-drawer">
+      <div class="drawer-header">
+        <h3>Edit Contact Details</h3>
+        <button type="button" class="drawer-close" (click)="closeDrawer()">âœ•</button>
+      </div>
+      <form class="drawer-form" (ngSubmit)="saveProfile()">
+        <p class="drawer-hint">Only email and phone can be changed. Other details are set by admin.</p>
+        <label class="form-field">
+          <span>Email</span>
+          <input type="email" [(ngModel)]="editEmail" name="editEmail" required />
+        </label>
+        <label class="form-field">
+          <span>Phone</span>
+          <input type="tel" [(ngModel)]="editPhone" name="editPhone" required />
+        </label>
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-outline" (click)="closeDrawer()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
+            {{ isSaving() ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    </aside>
+  }
+} @else {
+  <div class="state-message error">Vendor profile not found.</div>
+}

@@ -1,0 +1,237 @@
+@if (open() && viewedProduct(); as item) {
+  <div class="pvm-backdrop" (click)="onBackdropClick($event)">
+    <div class="pvm-modal" role="dialog" aria-modal="true">
+      <button type="button" class="pvm-close" (click)="close()" aria-label="Close">âœ•</button>
+
+      <div class="pvm-layout">
+        <div class="pvm-image-panel">
+          <div class="pvm-gallery">
+            <div class="pvm-gallery-frame">
+              <div
+                #carouselTrack
+                class="pvm-carousel"
+                (scroll)="onCarouselScroll()"
+              >
+                @if (displayImages().length) {
+                  @for (img of displayImages(); track $index) {
+                    <div class="pvm-slide">
+                      <img [src]="img" [alt]="item.name + ' photo ' + ($index + 1)" />
+                    </div>
+                  }
+                } @else {
+                  <div class="pvm-slide">
+                    <div class="pvm-image-placeholder">âœ¦</div>
+                  </div>
+                }
+              </div>
+
+              @if (isVerified() && step() === 'details' && displayImages().length > 1) {
+                <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image">â€¹</button>
+                <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image">â€º</button>
+                <div class="pvm-dots">
+                  @for (img of displayImages(); track $index) {
+                    <button
+                      type="button"
+                      class="pvm-dot"
+                      [class.on]="activeImageIndex() === $index"
+                      (click)="selectImage($index)"
+                      [attr.aria-label]="'Image ' + ($index + 1)"
+                    ></button>
+                  }
+                </div>
+              }
+
+              <span class="pvm-category">{{ item.category }}</span>
+            </div>
+
+            @if (isVerified() && step() === 'details' && displayImages().length > 1) {
+              <div class="pvm-thumbs">
+                @for (img of displayImages(); track $index) {
+                  <button
+                    type="button"
+                    class="pvm-thumb"
+                    [class.active]="activeImageIndex() === $index"
+                    (click)="selectImage($index)"
+                  >
+                    <img [src]="img" [alt]="item.name + ' view ' + ($index + 1)" />
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="pvm-content">
+          <h2>{{ item.name }}</h2>
+
+          @switch (step()) {
+            @case ('auth') {
+              <div class="pvm-auth">
+                <div class="pvm-lock-notice">
+                  <span class="lock-icon">ðŸ”’</span>
+                  <p>Verify your mobile number to view full product details and express interest.</p>
+                </div>
+
+                <form class="pvm-form" (ngSubmit)="sendOtp($event)">
+                  <label class="pvm-field">
+                    <span>Your Name <em>*</em></span>
+                    <input
+                      type="text"
+                      [(ngModel)]="customerName"
+                      name="customerName"
+                      placeholder="Full name"
+                      autocomplete="name"
+                      required
+                    />
+                  </label>
+
+                  <label class="pvm-field">
+                    <span>Mobile Number <em>*</em></span>
+                    <div class="phone-input">
+                      <span class="phone-prefix">+91</span>
+                      <input
+                        type="tel"
+                        [(ngModel)]="customerPhone"
+                        name="customerPhone"
+                        placeholder="9876543210"
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        maxlength="10"
+                        required
+                      />
+                    </div>
+                  </label>
+
+                  @if (errorMessage()) {
+                    <p class="pvm-error">{{ errorMessage() }}</p>
+                  }
+
+                  <button type="submit" class="pvm-btn primary" [disabled]="isSendingOtp()">
+                    {{ isSendingOtp() ? 'Sending...' : 'Send OTP' }}
+                  </button>
+                </form>
+              </div>
+            }
+
+            @case ('otp') {
+              <div class="pvm-auth">
+                <p class="pvm-otp-sent">
+                  OTP sent to <strong>+91 {{ customerPhone }}</strong>
+                </p>
+
+                @if (demoOtp()) {
+                  <div class="pvm-demo-otp">
+                    <span>Demo OTP:</span>
+                    <code>{{ demoOtp() }}</code>
+                  </div>
+                }
+
+                <form class="pvm-form" (ngSubmit)="verifyOtp($event)">
+                  <label class="pvm-field">
+                    <span>Enter 6-digit OTP <em>*</em></span>
+                    <input
+                      type="text"
+                      [(ngModel)]="otpCode"
+                      name="otpCode"
+                      placeholder="000000"
+                      maxlength="6"
+                      inputmode="numeric"
+                      class="otp-input"
+                      required
+                    />
+                  </label>
+
+                  @if (errorMessage()) {
+                    <p class="pvm-error">{{ errorMessage() }}</p>
+                  }
+
+                  <button type="submit" class="pvm-btn primary" [disabled]="isVerifying()">
+                    {{ isVerifying() ? 'Verifying...' : 'Verify & Continue' }}
+                  </button>
+
+                  <button type="button" class="pvm-btn link" (click)="resendOtp()">
+                    Change number / Resend OTP
+                  </button>
+                </form>
+              </div>
+            }
+
+            @case ('details') {
+              @if (isVerified()) {
+              <div class="pvm-details">
+                <div class="pvm-verified-badge">
+                  <span>âœ“</span> Verified as {{ maskedPhone() }}
+                </div>
+
+                @if (hasPrice(item)) {
+                  <p class="pvm-price">{{ priceLabel(item) }}</p>
+                  @if (item.isSpecialPrice && item.listPrice) {
+                    <p class="pvm-list-price">Catalog {{ formatListRs(item.listPrice) }}</p>
+                  }
+                }
+
+                @if (item.description) {
+                  <p class="pvm-desc">{{ item.description }}</p>
+                }
+
+                <div class="pvm-specs">
+                  @if (item.metalType) {
+                    <div class="spec"><span>Metal</span><strong>{{ item.metalType }}</strong></div>
+                  }
+                  @if (item.purity) {
+                    <div class="spec"><span>Purity</span><strong>{{ item.purity }}</strong></div>
+                  }
+                  @if (item.weight) {
+                    <div class="spec"><span>Weight</span><strong>{{ item.weight }}</strong></div>
+                  }
+                  @if (item.sku) {
+                    <div class="spec"><span>SKU</span><strong>{{ item.sku }}</strong></div>
+                  }
+                </div>
+
+                @if (justAdded() || isInCart()) {
+                  <div class="pvm-success">
+                    <span>âœ¦</span>
+                    <p>{{ successMessage() || 'This piece is in your interest list.' }}</p>
+                    <div class="pvm-actions stacked">
+                      <button type="button" class="pvm-btn interested" (click)="goToCart()">
+                        View Interest List ({{ interestCart.count() }})
+                      </button>
+                      @if (!isInCart()) {
+                        <button type="button" class="pvm-btn primary" (click)="addToCart()">
+                          Add to Interest List
+                        </button>
+                      }
+                    </div>
+                  </div>
+                } @else {
+                  <div class="pvm-actions">
+                    <button type="button" class="pvm-btn interested" (click)="addToCart()">
+                      + Add to Interest List
+                    </button>
+                    <p class="pvm-action-hint">
+                      Add multiple pieces, then send one â€œI'm Interestedâ€ from your cart.
+                      {{ vendorName() }} will get a single lead with all selected products.
+                    </p>
+                  </div>
+
+                  @if (errorMessage()) {
+                    <p class="pvm-error">{{ errorMessage() }}</p>
+                  }
+                }
+              </div>
+              } @else {
+                <div class="pvm-auth">
+                  <div class="pvm-lock-notice">
+                    <span class="lock-icon">ðŸ”’</span>
+                    <p>Verify your mobile number to view full product details and express interest.</p>
+                  </div>
+                </div>
+              }
+            }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,184 @@
+@if (isLoading()) {
+  <div class="loading-state">Loading dashboard...</div>
+} @else if (errorMessage()) {
+  <div class="error-state">{{ errorMessage() }}</div>
+} @else if (data(); as dashboard) {
+  <section class="dashboard-home">
+    <div class="welcome-row">
+      <div>
+        <h2>Welcome back, {{ dashboard.userName }}! 👋</h2>
+        <p>Here's what's happening with your catalog platform today.</p>
+      </div>
+      <div class="date-range">{{ dashboard.dateRange }}</div>
+    </div>
+
+    <div class="stats-grid" [class.stats-grid-vendor]="!dashboard.isAdmin">
+      @for (stat of dashboard.stats; track stat.label) {
+        <article class="stat-card">
+          <div class="stat-icon" [style.background]="stat.color + '22'" [style.color]="stat.color">
+            @switch (stat.icon) {
+              @case ('vendors') { 👥 }
+              @case ('catalogs') { 📁 }
+              @case ('products') { 📦 }
+              @case ('enquiries') { 💬 }
+            }
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">{{ stat.label }}</p>
+            <h3>{{ stat.value | number }}</h3>
+            <p class="stat-change">↑ {{ stat.change }}% from last month</p>
+          </div>
+        </article>
+      }
+    </div>
+
+    <div class="middle-row">
+      <article class="panel chart-panel">
+        <div class="panel-header">
+          <h3>Sales Overview</h3>
+          <span class="panel-filter">This Month</span>
+        </div>
+        <div class="chart-wrap">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="sales-chart">
+            <defs>
+              <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(168,85,247,0.45)" />
+                <stop offset="100%" stop-color="rgba(168,85,247,0)" />
+              </linearGradient>
+            </defs>
+            <path [attr.d]="getSalesAreaPath(dashboard.salesChart)" fill="url(#salesGradient)" />
+            <path
+              [attr.d]="getSalesPath(dashboard.salesChart)"
+              fill="none"
+              stroke="#a855f7"
+              stroke-width="0.8"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          <div class="chart-labels">
+            @for (point of dashboard.salesChart; track point.date) {
+              <span>{{ point.label }}</span>
+            }
+          </div>
+        </div>
+        <div class="chart-y-labels">
+          <span>{{ formatCompactCurrency(dashboard.salesMax) }}</span>
+          <span>{{ formatCompactCurrency(dashboard.salesMax / 2) }}</span>
+          <span>₹ 0</span>
+        </div>
+      </article>
+
+      @if (dashboard.isAdmin) {
+        <article class="panel vendors-panel">
+          <div class="panel-header">
+            <h3>Top Vendors</h3>
+            <a href="#" class="view-all" (click)="$event.preventDefault()">View All</a>
+          </div>
+          <ul class="vendor-list">
+            @for (vendor of dashboard.topVendors; track vendor.id) {
+              <li>
+                <span class="rank">{{ vendor.rank.toString().padStart(2, '0') }}</span>
+                <div class="vendor-avatar">{{ vendor.initials }}</div>
+                <div class="vendor-info">
+                  <p class="vendor-name">{{ vendor.name }}</p>
+                  <p class="vendor-meta">{{ vendor.catalogsCount }} Catalogs</p>
+                </div>
+                <span class="vendor-sales">{{ formatCurrency(vendor.totalSales) }}</span>
+              </li>
+            }
+          </ul>
+        </article>
+      } @else {
+        <article class="panel vendors-panel">
+          <div class="panel-header">
+            <h3>Your Performance</h3>
+          </div>
+          <div class="vendor-summary">
+            <p class="summary-label">Total Sales</p>
+            <h3>{{ formatCurrency(dashboard.vendorSalesTotal) }}</h3>
+            <p class="summary-meta">Based on your recent sales activity</p>
+          </div>
+        </article>
+      }
+    </div>
+
+    <div class="bottom-row">
+      <article class="panel donut-panel">
+        <div class="panel-header">
+          <h3>Enquiries Overview</h3>
+        </div>
+        <div class="donut-wrap">
+          <div
+            class="donut-chart"
+            [style.background]="
+              'conic-gradient(' + getDonutSegments(dashboard.enquirySegments) + ')'
+            "
+          >
+            <div class="donut-center">
+              <strong>{{ dashboard.enquiryTotal }}</strong>
+              <span>Total</span>
+            </div>
+          </div>
+          <ul class="donut-legend">
+            @for (segment of dashboard.enquirySegments; track segment.label) {
+              <li>
+                <span class="dot" [style.background]="segment.color"></span>
+                <span>{{ segment.label }}</span>
+                <strong>{{ segment.value }} ({{ segment.percentage }}%)</strong>
+              </li>
+            }
+          </ul>
+        </div>
+      </article>
+
+      <article class="panel list-panel">
+        <div class="panel-header">
+          <h3>Recent Enquiries</h3>
+          <a href="#" class="view-all" (click)="$event.preventDefault()">View All</a>
+        </div>
+        <ul class="enquiry-list">
+          @for (enquiry of dashboard.recentEnquiries; track enquiry.id) {
+            <li>
+              <div class="enquiry-avatar" [class]="getEnquiryStatusClass(enquiry.status)">
+                {{ enquiry.initials }}
+              </div>
+              <div class="enquiry-info">
+                <p class="enquiry-name">{{ enquiry.customerName }}</p>
+                <p class="enquiry-message">{{ enquiry.message }}</p>
+              </div>
+              <span class="enquiry-time">{{ enquiry.timeAgo }}</span>
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="panel donut-panel">
+        <div class="panel-header">
+          <h3>Catalog Status</h3>
+        </div>
+        <div class="donut-wrap">
+          <div
+            class="donut-chart"
+            [style.background]="
+              'conic-gradient(' + getDonutSegments(dashboard.catalogSegments) + ')'
+            "
+          >
+            <div class="donut-center">
+              <strong>{{ dashboard.catalogTotal }}</strong>
+              <span>Total</span>
+            </div>
+          </div>
+          <ul class="donut-legend">
+            @for (segment of dashboard.catalogSegments; track segment.label) {
+              <li>
+                <span class="dot" [style.background]="segment.color"></span>
+                <span>{{ segment.label }}</span>
+                <strong>{{ segment.value }} ({{ segment.percentage }}%)</strong>
+              </li>
+            }
+          </ul>
+        </div>
+      </article>
+    </div>
+  </section>
+}

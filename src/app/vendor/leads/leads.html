@@ -1,0 +1,274 @@
+@if (isLoading()) {
+  <div class="state-message">Loading leads...</div>
+} @else if (errorMessage()) {
+  <div class="state-message error">{{ errorMessage() }}</div>
+} @else {
+  <section class="vendor-page">
+    <div class="page-header">
+      <div>
+        <h2>Manage Leads</h2>
+        <p>
+          Open a lead, set special prices, and share a catalog link so that customer sees your offer.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <article class="stat-card">
+        <p class="stat-label">Total Leads</p>
+        <h3>{{ filteredLeads().length }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">New</p>
+        <h3>{{ newCount() }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Interested</p>
+        <h3>{{ interestedCount() }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">In Progress</p>
+        <h3>{{ inProgressCount() }}</h3>
+      </article>
+    </div>
+
+    <div class="filters-card">
+      <div class="filters-grid compact">
+        <div class="filter-search">
+          <span class="filter-icon">ðŸ”</span>
+          <input
+            type="text"
+            placeholder="Search by name, phone, product..."
+            [(ngModel)]="search"
+            (input)="applyFilters()"
+          />
+        </div>
+
+        <select [(ngModel)]="status" class="filter-select" (change)="applyFilters()">
+          <option value="all">All Status</option>
+          <option value="new">New</option>
+          <option value="in_progress">In Progress</option>
+          <option value="responded">Responded</option>
+          <option value="closed">Closed</option>
+        </select>
+
+        <div class="filter-actions">
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Products</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (lead of filteredLeads(); track lead.id) {
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-avatar">{{ lead.initials }}</div>
+                    <div>
+                      <p class="user-name">{{ lead.customerName }}</p>
+                      <p class="user-meta">Lead #{{ lead.id }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="phone-cell">{{ formatPhone(lead.customerPhone) }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="products-toggle"
+                    (click)="toggleExpand(lead.id)"
+                  >
+                    <span class="product-tag">{{ productSummary(lead) }}</span>
+                    @if (itemCount(lead) > 1) {
+                      <span class="expand-hint">{{ isExpanded(lead.id) ? 'Hide' : 'View' }}</span>
+                    }
+                  </button>
+                  @if (lead.interestType === 'interested') {
+                    <span class="interest-badge">â™¥ Interested</span>
+                  }
+                  @if (isExpanded(lead.id) && lead.items?.length) {
+                    <ul class="lead-items">
+                      @for (item of lead.items; track item.productId) {
+                        <li>
+                          <strong>{{ item.productName }}</strong>
+                          @if (item.category) {
+                            <span>{{ item.category }}</span>
+                          }
+                          @if (item.price != null) {
+                            <em>{{ item.price | currency:'INR':'symbol':'1.0-0' }}</em>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                </td>
+                <td class="message-cell" [title]="lead.message">{{ lead.message }}</td>
+                <td>
+                  <span class="badge status-{{ lead.status }}">{{ formatStatus(lead.status) }}</span>
+                </td>
+                <td class="time-cell">
+                  <span class="time-ist">{{ formatLeadTime(lead) }}</span>
+                  @if (formatLeadRelative(lead)) {
+                    <span class="time-ago">{{ formatLeadRelative(lead) }}</span>
+                  }
+                </td>
+                <td>
+                  <button type="button" class="btn btn-primary btn-sm" (click)="openShareForLead(lead)">
+                    Share catalog
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="empty-row">No leads found matching your filters.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+}
+
+@if (shareOpen()) {
+  <div class="drawer-backdrop" (click)="closeShare()"></div>
+  <aside class="share-drawer" role="dialog" aria-label="Share catalog for lead">
+    <div class="drawer-header">
+      <div>
+        <h3>Share catalog</h3>
+        @if (activeLead(); as lead) {
+          <p>
+            For {{ lead.customerName }}
+            @if (lead.customerPhone) {
+              Â· {{ formatPhone(lead.customerPhone) }}
+            }
+          </p>
+        }
+      </div>
+      <button type="button" class="drawer-close" (click)="closeShare()" aria-label="Close">âœ•</button>
+    </div>
+
+    <div class="share-body">
+      <label class="field">
+        <span>Offer title</span>
+        <input type="text" [(ngModel)]="shareLabel" placeholder="Special offer for customer" />
+      </label>
+
+      <div class="share-section">
+        <div class="share-section-head">
+          <h4>Products in this offer</h4>
+          <span>{{ shareLines().length }} selected</span>
+        </div>
+        <p class="hint">Set a special price for this customer. They will see this price after verifying OTP.</p>
+
+        <ul class="share-lines">
+          @for (line of shareLines(); track line.productId) {
+            <li class="share-line">
+              <div class="line-media">
+                @if (line.imageUrl) {
+                  <img [src]="line.imageUrl" [alt]="line.name" />
+                } @else {
+                  <span>âœ¦</span>
+                }
+              </div>
+              <div class="line-info">
+                <strong>{{ line.name }}</strong>
+                <span>
+                  @if (line.sku) {
+                    #{{ line.sku }} Â·
+                  }
+                  {{ line.category || 'Product' }}
+                  @if (line.fromLead) {
+                    Â· from lead
+                  }
+                </span>
+                <em>Catalog {{ line.catalogPrice | currency:'INR':'symbol':'1.0-0' }}</em>
+              </div>
+              <div class="line-price">
+                <label>
+                  Special Rs
+                  <input
+                    type="number"
+                    min="1"
+                    [ngModel]="line.specialPrice"
+                    (ngModelChange)="setSpecialPrice(line.productId, $event)"
+                  />
+                </label>
+                <button type="button" class="link-btn" (click)="removeShareLine(line.productId)">
+                  Remove
+                </button>
+              </div>
+            </li>
+          } @empty {
+            <li class="empty-share">No products yet â€” add from the list below.</li>
+          }
+        </ul>
+      </div>
+
+      <div class="share-section">
+        <div class="share-section-head">
+          <h4>Add more products</h4>
+        </div>
+        <input
+          type="search"
+          class="add-search"
+          [ngModel]="shareProductSearch()"
+          (ngModelChange)="shareProductSearch.set($event)"
+          placeholder="Search catalog to add..."
+        />
+        <div class="add-grid">
+          @for (product of addableProducts(); track product.id) {
+            <button type="button" class="add-card" (click)="addProductToShare(product)">
+              @if (product.imageUrl) {
+                <img [src]="product.imageUrl" [alt]="product.name" />
+              }
+              <span>{{ product.name }}</span>
+              <em>{{ product.price | currency:'INR':'symbol':'1.0-0' }}</em>
+            </button>
+          } @empty {
+            <p class="empty-share">No more matching products.</p>
+          }
+        </div>
+      </div>
+
+      @if (shareError()) {
+        <p class="share-error">{{ shareError() }}</p>
+      }
+
+      <button
+        type="button"
+        class="btn btn-primary share-generate"
+        (click)="generateShareLink()"
+        [disabled]="shareGenerating() || !shareLines().length"
+      >
+        {{ shareGenerating() ? 'Generating...' : 'Generate customer link' }}
+      </button>
+
+      @if (shareLink()) {
+        <div class="share-result">
+          <p class="share-label">Send this link to the customer</p>
+          <code class="share-url">{{ shareLink() }}</code>
+          <button type="button" class="btn btn-secondary" (click)="copyShareLink()">
+            {{ shareCopied() ? 'Copied!' : 'Copy link' }}
+          </button>
+          <p class="share-hint">
+            After OTP verify, the customer sees your special prices on this shared catalog only.
+          </p>
+        </div>
+      }
+    </div>
+  </aside>
+}

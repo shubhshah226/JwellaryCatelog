@@ -1,0 +1,13 @@
+{
+    "users": [
+        {
+            "name": "Shubh Shah",
+            "firstName": "Shubh",
+            "password":"shubh",
+            "username":"shubh",
+            "email":"shubh@gmail.com",
+            "lastName": "Shah",
+            "token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlNodWJoIFNoYWgiLCJyb2xlIjoiYWRtaW4iLCJmaXJzdE5hbWUiOiJTaHViaCIsImxhc3ROYW1lIjoiU2hhaCIsImlzQWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.k7Z3-vi1witQs9mCWXj38Pva45cGTpRs_8GNEFsYg84"
+        }
+    ]
+}

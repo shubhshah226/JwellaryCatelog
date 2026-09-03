@@ -1,0 +1,123 @@
+@if (isLoading()) {
+  <div class="cart-state">
+    <div class="loader-ring"></div>
+    <p>Loading your interest list...</p>
+  </div>
+} @else if (notFound()) {
+  <div class="cart-state">
+    <h1>Store Not Found</h1>
+    <p>This jewellery boutique link is invalid.</p>
+  </div>
+} @else if (context(); as ctx) {
+  <div
+    class="interest-cart-page"
+    [style.--store-primary]="primaryColor()"
+    [style.--store-accent]="accentColor()"
+  >
+    <app-public-store-nav
+      [storeCode]="ctx.storeCode"
+      [vendorName]="ctx.vendor.name"
+      [logoUrl]="ctx.config.logoUrl"
+      [isAvailable]="ctx.isAvailable"
+      [topBarItems]="ctx.config.homepage?.topBar?.enabled ? ctx.config.homepage.topBar.items : []"
+    />
+
+    <main class="cart-main">
+      <header class="cart-header">
+        <span class="cart-label">Interest List</span>
+        <h1>Your Cart</h1>
+        <p>Add pieces you like, then send one interest request to {{ ctx.vendor.name }}.</p>
+      </header>
+
+      @if (submitted()) {
+        <div class="cart-success">
+          <span class="success-icon">âœ¦</span>
+          <h2>Interest Sent</h2>
+          <p>{{ successMessage() }}</p>
+          <p class="success-sub">They will contact you shortly on your verified number.</p>
+          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">
+            Continue Browsing
+          </a>
+        </div>
+      } @else if (!isVerified()) {
+        <div class="cart-empty">
+          <p>Verify your mobile number to use the cart.</p>
+          <p class="hint">Tap the profile icon in the header, enter OTP, then add products from the collection.</p>
+          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">Browse Products</a>
+        </div>
+      } @else if (!cartCount()) {
+        <div class="cart-empty">
+          <p>Your interest list is empty.</p>
+          <p class="hint">Open a product, verify with OTP, then tap â€œAdd to Interest Listâ€.</p>
+          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">
+            Browse Products
+          </a>
+        </div>
+      } @else {
+        <div class="cart-layout">
+          <ul class="cart-list">
+            @for (item of cartItems(); track item.id) {
+              <li class="cart-item">
+                <div class="item-thumb">
+                  @if (item.imageUrl) {
+                    <img [src]="item.imageUrl" [alt]="item.name" />
+                  } @else {
+                    <span>âœ¦</span>
+                  }
+                </div>
+                <div class="item-info">
+                  <strong>{{ item.name }}</strong>
+                  <span>{{ item.category }}</span>
+                  @if (itemPrice(item.price)) {
+                    <em>{{ itemPrice(item.price) }}</em>
+                  }
+                </div>
+                <button type="button" class="remove-btn" (click)="removeItem(item.id)" aria-label="Remove">
+                  Remove
+                </button>
+              </li>
+            }
+          </ul>
+
+          <aside class="cart-summary">
+            <h2>Send Interest</h2>
+            <p class="summary-count">{{ cartCount() }} piece{{ cartCount() === 1 ? '' : 's' }} selected</p>
+
+            @if (isVerified()) {
+              <p class="verified">Verified as {{ sessionName() }}</p>
+            } @else {
+              <p class="need-verify">
+                Verify your mobile from any product page before sending.
+              </p>
+            }
+
+            <label class="note-field">
+              <span>Optional note</span>
+              <textarea
+                [(ngModel)]="note"
+                rows="3"
+                placeholder="e.g. Looking for bridal set for December wedding"
+              ></textarea>
+            </label>
+
+            @if (errorMessage()) {
+              <p class="cart-error">{{ errorMessage() }}</p>
+            }
+
+            <button
+              type="button"
+              class="btn-interested"
+              (click)="submitInterest()"
+              [disabled]="isSubmitting() || !isVerified()"
+            >
+              {{ isSubmitting() ? 'Sending...' : "â™¥ I'm Interested â€” Notify Jeweller" }}
+            </button>
+            <p class="submit-hint">
+              Creates one lead with all selected products for {{ ctx.vendor.name }}.
+            </p>
+          </aside>
+        </div>
+      }
+    </main>
+  </div>
+}

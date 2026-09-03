@@ -1,0 +1,28 @@
+/**
+ * Unified square media frames for the public customer storefront.
+ * Every product / collection / banner image uses the same 1:1 ratio.
+ */
+.public-home,
+.public-products-page,
+.interest-cart-page,
+.pvm-modal {
+  --store-media-ratio: 1 / 1;
+  --store-media-bg: linear-gradient(180deg, #f7f2e9 0%, #efe6d6 100%);
+  --store-media-fit: cover;
+}
+
+.store-media {
+  aspect-ratio: var(--store-media-ratio);
+  width: 100%;
+  overflow: hidden;
+  background: var(--store-media-bg);
+  display: block;
+}
+
+.store-media > img {
+  width: 100%;
+  height: 100%;
+  object-fit: var(--store-media-fit);
+  object-position: center;
+  display: block;
+}

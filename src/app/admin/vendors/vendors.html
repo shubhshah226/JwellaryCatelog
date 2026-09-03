@@ -1,0 +1,391 @@
+@if (isLoading()) {
+  <div class="state-message">Loading vendors...</div>
+} @else if (errorMessage()) {
+  <div class="state-message error">{{ errorMessage() }}</div>
+} @else {
+  <section class="vendors-page" [class.page-blurred]="isDrawerOpen()">
+    <div class="page-header">
+      <div>
+        <h2>Vendors</h2>
+        <p>Manage and monitor all vendor accounts on the platform.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-outline">
+          Export
+          <span aria-hidden="true">▾</span>
+        </button>
+        <button type="button" class="btn btn-primary" (click)="openAddVendorDrawer()">+ Add Vendor</button>
+      </div>
+    </div>
+
+    @if (stats(); as vendorStats) {
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon purple">👥</div>
+            <button type="button" class="menu-dots" aria-label="Options">⋮</button>
+          </div>
+          <p class="stat-label">Total Vendors</p>
+          <h3>{{ vendorStats.total }}</h3>
+          <div class="stat-footer">
+            <span class="change up">↑ {{ vendorStats.totalChange }}%</span>
+            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
+              <path [attr.d]="getSparklinePath(vendorStats.sparklines.total)" fill="none" stroke="#a855f7" stroke-width="2" />
+            </svg>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon blue">✓</div>
+            <button type="button" class="menu-dots" aria-label="Options">⋮</button>
+          </div>
+          <p class="stat-label">Active Vendors</p>
+          <h3>{{ vendorStats.active }}</h3>
+          <div class="stat-footer">
+            <span class="change up">↑ {{ vendorStats.activeChange }}%</span>
+            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
+              <path [attr.d]="getSparklinePath(vendorStats.sparklines.active)" fill="none" stroke="#3b82f6" stroke-width="2" />
+            </svg>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon orange">⏸</div>
+            <button type="button" class="menu-dots" aria-label="Options">⋮</button>
+          </div>
+          <p class="stat-label">Inactive Vendors</p>
+          <h3>{{ vendorStats.inactive }}</h3>
+          <div class="stat-footer">
+            <span class="change down">↓ {{ vendorStats.inactiveChange | number:'1.1-1' }}%</span>
+            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
+              <path [attr.d]="getSparklinePath(vendorStats.sparklines.inactive)" fill="none" stroke="#f59e0b" stroke-width="2" />
+            </svg>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon teal">⏱</div>
+            <button type="button" class="menu-dots" aria-label="Options">⋮</button>
+          </div>
+          <p class="stat-label">Trial Vendors</p>
+          <h3>{{ vendorStats.trial }}</h3>
+          <div class="stat-footer">
+            <span class="change up">↑ {{ vendorStats.trialChange }}%</span>
+            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
+              <path [attr.d]="getSparklinePath(vendorStats.sparklines.trial)" fill="none" stroke="#14b8a6" stroke-width="2" />
+            </svg>
+          </div>
+        </article>
+      </div>
+    }
+
+    <div class="filters-card">
+      <div class="filters-grid">
+        <div class="filter-search">
+          <span class="filter-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search vendors..."
+            [(ngModel)]="draftFilters.search"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+
+        <select [(ngModel)]="draftFilters.status" class="filter-select">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="trial">Trial</option>
+        </select>
+
+        <select [(ngModel)]="draftFilters.plan" class="filter-select">
+          <option value="all">All Plans</option>
+          <option value="premium">Premium</option>
+          <option value="standard">Standard</option>
+          <option value="basic">Basic</option>
+        </select>
+
+        <select [(ngModel)]="draftFilters.subscription" class="filter-select">
+          <option value="all">All</option>
+          <option value="renewal">Renewal</option>
+          <option value="expiry">Expired</option>
+          <option value="trial">Trial</option>
+        </select>
+
+        <input
+          type="text"
+          class="filter-date"
+          placeholder="Joined Date"
+          [(ngModel)]="draftFilters.joinedDate"
+        />
+
+        <div class="filter-actions">
+          <button type="button" class="btn btn-primary" (click)="applyFilters()">Filter</button>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">↻</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-check">
+                <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
+              </th>
+              <th>Vendor</th>
+              <th>Contact</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th>Subscription</th>
+              <th>Joined On</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (vendor of paginatedVendors(); track vendor.id) {
+              <tr>
+                <td class="col-check">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(vendor.id)"
+                    (change)="toggleSelect(vendor.id, $event)"
+                  />
+                </td>
+                <td>
+                  <div class="vendor-cell">
+                    <div class="vendor-avatar">{{ vendor.initials }}</div>
+                    <div>
+                      <p class="vendor-name">{{ vendor.name }}</p>
+                      <p class="vendor-website">{{ vendor.website }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <p class="contact-email">{{ vendor.email }}</p>
+                  <p class="contact-phone">{{ vendor.phone }}</p>
+                </td>
+                <td>
+                  <span class="badge plan-{{ vendor.plan }}">{{ formatPlan(vendor.plan) }}</span>
+                </td>
+                <td>
+                  <span class="badge status-{{ vendor.status }}">{{ formatStatus(vendor.status) }}</span>
+                </td>
+                <td>
+                  <span [class]="'subscription-' + vendor.subscriptionType">{{ vendor.subscription }}</span>
+                </td>
+                <td>{{ vendor.joinedOn }}</td>
+                <td class="col-actions">
+                  <div class="actions-menu-wrap">
+                    <button
+                      type="button"
+                      class="menu-dots"
+                      aria-label="Vendor actions"
+                      (click)="toggleActionsMenu(vendor.id, $event)"
+                    >
+                      ⋮
+                    </button>
+
+                    @if (openActionsMenuId() === vendor.id) {
+                      <div class="actions-dropdown" (click)="$event.stopPropagation()">
+                        <button type="button" (click)="openEditVendorDrawer(vendor, $event)">
+                          <span class="action-icon">✎</span>
+                          Edit
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="empty-row">No vendors found matching your filters.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <p>
+          Showing {{ paginationStart() }} to {{ paginationEnd() }} of
+          {{ stats()?.total ?? filteredVendors().length }} vendors
+        </p>
+
+        <div class="pagination">
+          <button type="button" class="page-btn" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">
+            ‹
+          </button>
+          @for (page of pageNumbers(); track page) {
+            <button
+              type="button"
+              class="page-btn"
+              [class.active]="page === currentPage()"
+              (click)="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          }
+          @if (totalPages() > 5) {
+            <span class="page-ellipsis">...</span>
+            <button type="button" class="page-btn" (click)="goToPage(totalPages())">{{ totalPages() }}</button>
+          }
+          <button
+            type="button"
+            class="page-btn"
+            (click)="goToPage(currentPage() + 1)"
+            [disabled]="currentPage() === totalPages()"
+          >
+            ›
+          </button>
+        </div>
+
+        <div class="rows-per-page">
+          <span>Rows per page</span>
+          <select [value]="rowsPerPage()" (change)="onRowsPerPageChange($any($event.target).value)">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (isDrawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeVendorDrawer()"></div>
+
+    <aside class="vendor-drawer" role="dialog" aria-labelledby="vendor-drawer-title">
+      <div class="drawer-header">
+        <div>
+          <h3 id="vendor-drawer-title">{{ drawerTitle() }}</h3>
+          <p>{{ drawerSubtitle() }}</p>
+        </div>
+        <button type="button" class="drawer-close" (click)="closeVendorDrawer()" aria-label="Close">
+          ✕
+        </button>
+      </div>
+
+      <form class="drawer-form" (ngSubmit)="submitVendorForm()">
+        <div class="form-section">
+          <h4>Business Information</h4>
+          <div class="form-grid">
+            <label class="form-field span-2">
+              <span>Vendor Name <em>*</em></span>
+              <input type="text" name="name" placeholder="e.g. Shubh Jewellers" [(ngModel)]="vendorForm.name" required />
+            </label>
+
+            <label class="form-field span-2">
+              <span>Website</span>
+              <input type="text" name="website" placeholder="www.example.com" [(ngModel)]="vendorForm.website" />
+            </label>
+
+            <label class="form-field span-2">
+              <span>Contact Person</span>
+              <input type="text" name="contactPerson" placeholder="Full name" [(ngModel)]="vendorForm.contactPerson" />
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Contact Details</h4>
+          <div class="form-grid">
+            <label class="form-field">
+              <span>Email <em>*</em></span>
+              <input type="email" name="email" placeholder="vendor@email.com" [(ngModel)]="vendorForm.email" required />
+            </label>
+
+            <label class="form-field">
+              <span>Phone <em>*</em></span>
+              <input type="tel" name="phone" placeholder="+91 98765 43210" [(ngModel)]="vendorForm.phone" required />
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Plan & Subscription</h4>
+          <div class="form-grid">
+            <label class="form-field">
+              <span>Plan</span>
+              <select name="plan" [(ngModel)]="vendorForm.plan">
+                <option value="premium">Premium</option>
+                <option value="standard">Standard</option>
+                <option value="basic">Basic</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Status</span>
+              <select name="status" [(ngModel)]="vendorForm.status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="trial">Trial</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Subscription Type</span>
+              <select name="subscriptionType" [(ngModel)]="vendorForm.subscriptionType">
+                <option value="renewal">Renewal</option>
+                <option value="expiry">Expired</option>
+                <option value="trial">Trial</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Subscription Date</span>
+              <input type="date" name="subscriptionDate" [(ngModel)]="vendorForm.subscriptionDate" />
+            </label>
+
+            <label class="form-field">
+              <span>Joined On</span>
+              <input type="date" name="joinedOn" [(ngModel)]="vendorForm.joinedOn" />
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4>Address</h4>
+          <div class="form-grid">
+            <label class="form-field span-2">
+              <span>Street Address</span>
+              <input type="text" name="address" placeholder="Shop no, street, area" [(ngModel)]="vendorForm.address" />
+            </label>
+
+            <label class="form-field">
+              <span>City</span>
+              <input type="text" name="city" placeholder="City" [(ngModel)]="vendorForm.city" />
+            </label>
+
+            <label class="form-field">
+              <span>State</span>
+              <input type="text" name="state" placeholder="State" [(ngModel)]="vendorForm.state" />
+            </label>
+
+            <label class="form-field">
+              <span>Pincode</span>
+              <input type="text" name="pincode" placeholder="Pincode" [(ngModel)]="vendorForm.pincode" />
+            </label>
+          </div>
+        </div>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-outline" (click)="closeVendorDrawer()" [disabled]="isSubmitting()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+            {{ submitButtonLabel() }}
+          </button>
+        </div>
+      </form>
+    </aside>
+  }
+}

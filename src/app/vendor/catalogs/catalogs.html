@@ -1,0 +1,169 @@
+<section class="vendor-page" [class.page-blurred]="isDrawerOpen()" (click)="closeMenu()">
+  <div class="page-header">
+    <div>
+      <h2>Catalogs</h2>
+      <p>Manage your jewelry catalogs and collections.</p>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="openAddDrawer($event)">
+      + Add Catalog
+    </button>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="inline-error">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn btn-outline" (click)="loadCatalogs()">Retry</button>
+    </div>
+  }
+
+  <div class="stats-row">
+    <article class="stat-card">
+      <p class="stat-label">Total Catalogs</p>
+      <h3>{{ filteredCatalogs().length }}</h3>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Active</p>
+      <h3>{{ activeCount() }}</h3>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Pending</p>
+      <h3>{{ pendingCount() }}</h3>
+    </article>
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-grid compact">
+      <div class="filter-search">
+        <span class="filter-icon">ðŸ”</span>
+        <input
+          type="text"
+          placeholder="Search catalogs..."
+          [(ngModel)]="search"
+          (input)="applyFilters()"
+        />
+      </div>
+
+      <select [(ngModel)]="status" class="filter-select" (change)="applyFilters()">
+        <option value="all">All Status</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="pending">Pending</option>
+        <option value="expired">Expired</option>
+      </select>
+
+      <div class="filter-actions">
+        <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">â†»</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    @if (isLoading()) {
+      <div class="state-message">Loading catalogs...</div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Catalog Name</th>
+              <th>Status</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (catalog of filteredCatalogs(); track catalog.id) {
+              <tr>
+                <td>
+                  <p class="user-name">{{ catalog.name }}</p>
+                  <p class="user-meta">ID: {{ catalog.id }}</p>
+                </td>
+                <td>
+                  <span class="badge status-{{ catalog.status }}">{{ formatStatus(catalog.status) }}</span>
+                </td>
+                <td class="col-actions">
+                  <div class="actions-wrap">
+                    <button
+                      type="button"
+                      class="menu-dots"
+                      aria-label="Catalog actions"
+                      (click)="toggleMenu($event, catalog.id)"
+                    >
+                      â‹®
+                    </button>
+                    @if (openMenuId() === catalog.id) {
+                      <div class="actions-menu" (click)="$event.stopPropagation()">
+                        <button type="button" (click)="openEditDrawer(catalog, $event)">Edit</button>
+                        <button type="button" class="danger" (click)="deleteCatalog(catalog, $event)">
+                          Delete
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3" class="empty-row">
+                  No catalogs yet. Click <strong>+ Add Catalog</strong> to create one.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>
+
+@if (isDrawerOpen()) {
+  <div class="catalog-drawer-root" (click)="$event.stopPropagation()">
+    <div class="drawer-backdrop" (click)="closeDrawer($event)"></div>
+    <aside class="catalog-drawer" role="dialog" aria-modal="true" aria-labelledby="catalog-drawer-title">
+      <div class="drawer-header">
+        <div>
+          <h3 id="catalog-drawer-title">
+            {{ drawerMode() === 'edit' ? 'Edit Catalog' : 'Add Catalog' }}
+          </h3>
+          <p>Create a collection to group your products.</p>
+        </div>
+        <button type="button" class="drawer-close" (click)="closeDrawer($event)">âœ•</button>
+      </div>
+
+      <form class="drawer-form" (ngSubmit)="submitCatalog($event)">
+        <label class="form-field">
+          <span>Catalog Name <em>*</em></span>
+          <input
+            type="text"
+            [(ngModel)]="formName"
+            name="catalogName"
+            placeholder="e.g. Bridal Collection 2026"
+            required
+          />
+        </label>
+
+        <label class="form-field">
+          <span>Status</span>
+          <select [(ngModel)]="formStatus" name="catalogStatus">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="pending">Pending</option>
+            <option value="expired">Expired</option>
+          </select>
+        </label>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-outline" (click)="closeDrawer($event)" [disabled]="isSubmitting()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Saving...' : (drawerMode() === 'edit' ? 'Update Catalog' : 'Add Catalog') }}
+          </button>
+        </div>
+      </form>
+    </aside>
+  </div>
+}
