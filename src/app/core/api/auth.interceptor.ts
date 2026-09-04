@@ -35,7 +35,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         err instanceof HttpErrorResponse &&
         err.status === 401 &&
         !req.url.includes('/auth/login') &&
-        !req.url.includes('/auth/logout')
+        !req.url.includes('/auth/logout') &&
+        !req.url.includes('/auth/change-password')
       ) {
         if (authService.isAuthenticated() && !handlingUnauthorized) {
           handlingUnauthorized = true;

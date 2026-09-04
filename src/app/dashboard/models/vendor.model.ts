@@ -3,6 +3,7 @@ export type VendorStatus = 'active' | 'inactive' | 'trial';
 export type SubscriptionType = 'renewal' | 'expiry' | 'trial';
 export type VendorSortField = 'name' | 'email' | 'plan' | 'status' | 'subscription' | 'joinedOn';
 export type SortDirection = 'asc' | 'desc';
+
 export interface VendorAccount {
   id: number;
   storeCode?: string;
@@ -12,6 +13,7 @@ export interface VendorAccount {
   website: string;
   email: string;
   phone: string;
+  alternativePhone?: string;
   contactPerson?: string;
   plan: VendorPlan;
   status: VendorStatus;
@@ -26,6 +28,18 @@ export interface VendorAccount {
   catalogsCount: number;
   totalSales: number;
   rank: number;
+}
+
+export interface VendorLoginCredentials {
+  username: string;
+  password: string;
+  emailSent: boolean;
+  loginUrl?: string;
+}
+
+export interface VendorCreateResult {
+  vendor: VendorAccount;
+  loginCredentials?: VendorLoginCredentials;
 }
 
 export interface VendorStats {
@@ -54,38 +68,38 @@ export interface VendorFilters {
   joinedDate: string;
 }
 
+/** Admin jeweller form — plan/subscription stay API defaults. */
 export interface VendorFormData {
   name: string;
   website: string;
+  contactPerson: string;
   email: string;
   phone: string;
-  contactPerson: string;
-  plan: VendorPlan;
-  status: VendorStatus;
-  subscriptionType: SubscriptionType;
-  subscriptionDate: string;
-  joinedOn: string;
+  alternativePhone: string;
   address: string;
   city: string;
   state: string;
   pincode: string;
+  status: 'active' | 'inactive';
+  /** Read-only display of DB id when editing */
+  vendorId?: number | null;
+  storeCode?: string;
 }
 
 export function createEmptyVendorForm(): VendorFormData {
   return {
     name: '',
     website: '',
+    contactPerson: '',
     email: '',
     phone: '',
-    contactPerson: '',
-    plan: 'standard',
-    status: 'active',
-    subscriptionType: 'renewal',
-    subscriptionDate: '',
-    joinedOn: new Date().toISOString().slice(0, 10),
+    alternativePhone: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
+    status: 'active',
+    vendorId: null,
+    storeCode: '',
   };
 }

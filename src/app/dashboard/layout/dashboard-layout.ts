@@ -26,6 +26,7 @@ const NAV_FA_ICONS: Record<string, string> = {
   leads: 'fa-solid fa-comments',
   storefront: 'fa-solid fa-globe',
   profile: 'fa-solid fa-user',
+  password: 'fa-solid fa-key',
   logs: 'fa-solid fa-scroll',
 };
 
@@ -49,9 +50,8 @@ export class DashboardLayout implements OnInit {
 
   readonly adminNavItems: NavItem[] = [
     { label: 'Dashboard', route: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'Vendors', route: '/admin/vendors', icon: 'vendors' },
-    { label: 'Users', route: '/admin/users', icon: 'users' },
-    { label: 'Manage Roles', route: '/admin/roles', icon: 'roles' },
+    { label: 'Manage Vendors', route: '/admin/vendors', icon: 'vendors' },
+    { label: 'Change Password', route: '/admin/change-password', icon: 'password' },
   ];
 
   readonly vendorNavItems: NavItem[] = [
@@ -61,6 +61,7 @@ export class DashboardLayout implements OnInit {
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
     { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
     { label: 'Profile', route: '/vendor/profile', icon: 'profile' },
+    { label: 'Change Password', route: '/vendor/change-password', icon: 'password' },
   ];
 
   visibleNavItems(): NavItem[] {

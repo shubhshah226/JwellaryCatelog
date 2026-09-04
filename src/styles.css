@@ -70,6 +70,18 @@ select {
   font: inherit;
 }
 
+/* Native LOV/dropdown options stay readable in dark theme (Windows/Chrome). */
+select {
+  color: var(--app-text);
+  background-color: var(--app-input-bg);
+}
+
+select option,
+select optgroup {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
 img {
   max-width: 100%;
 }

@@ -3,16 +3,20 @@ import { Observable, forkJoin, map } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
 import { generateStoreCode } from '../../core/utils/store-code.util';
 import {
-  SubscriptionType,
   SortDirection,
   VendorAccount,
+  VendorCreateResult,
   VendorFilters,
   VendorFormData,
+  VendorLoginCredentials,
   VendorSortField,
   VendorStats,
 } from '../models/vendor.model';
 
-type ApiVendor = VendorAccount & { subscriptionLabel?: string };
+type ApiVendor = VendorAccount & {
+  subscriptionLabel?: string;
+  loginCredentials?: VendorLoginCredentials;
+};
 
 @Injectable({
   providedIn: 'root',
@@ -40,44 +44,44 @@ export class VendorService {
     return generateStoreCode(nextId, name.trim() || 'New Vendor');
   }
 
-  createVendor(form: VendorFormData, _existingVendors: VendorAccount[]): Observable<VendorAccount> {
+  createVendor(form: VendorFormData): Observable<VendorCreateResult> {
     const payload = {
       name: form.name.trim(),
-      website: form.website.trim(),
+      website: form.website.trim() || null,
       email: form.email.trim(),
       phone: form.phone.trim(),
-      contactPerson: form.contactPerson.trim(),
-      plan: form.plan,
+      alternativePhone: form.alternativePhone.trim() || null,
+      contactPerson: form.contactPerson.trim() || null,
       status: form.status,
-      subscriptionType: form.status === 'inactive' ? 'expiry' : form.subscriptionType,
-      subscriptionDate: form.subscriptionDate || null,
-      address: form.address.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      pincode: form.pincode.trim(),
-      createLogin: false,
+      plan: 'basic',
+      subscriptionType: form.status === 'inactive' ? 'expiry' : 'renewal',
+      address: form.address.trim() || null,
+      city: form.city.trim() || null,
+      state: form.state.trim() || null,
+      pincode: form.pincode.trim() || null,
     };
 
-    return this.api
-      .post<ApiVendor>('/admin/vendors', payload)
-      .pipe(map((vendor) => this.normalizeVendor(vendor)));
+    return this.api.post<ApiVendor>('/admin/vendors', payload).pipe(
+      map((vendor) => ({
+        vendor: this.normalizeVendor(vendor),
+        loginCredentials: vendor.loginCredentials,
+      }))
+    );
   }
 
   updateVendor(vendor: VendorAccount, form: VendorFormData): Observable<VendorAccount> {
     const payload = {
       name: form.name.trim(),
-      website: form.website.trim(),
+      website: form.website.trim() || null,
       email: form.email.trim(),
       phone: form.phone.trim(),
-      contactPerson: form.contactPerson.trim(),
-      plan: form.plan,
+      alternativePhone: form.alternativePhone.trim() || null,
+      contactPerson: form.contactPerson.trim() || null,
       status: form.status,
-      subscriptionType: form.status === 'inactive' ? 'expiry' : form.subscriptionType,
-      subscriptionDate: form.subscriptionDate || null,
-      address: form.address.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      pincode: form.pincode.trim(),
+      address: form.address.trim() || null,
+      city: form.city.trim() || null,
+      state: form.state.trim() || null,
+      pincode: form.pincode.trim() || null,
       rank: vendor.rank,
     };
 
@@ -89,19 +93,18 @@ export class VendorService {
   mapVendorToForm(vendor: VendorAccount): VendorFormData {
     return {
       name: vendor.name,
-      website: vendor.website,
+      website: vendor.website ?? '',
+      contactPerson: vendor.contactPerson ?? '',
       email: vendor.email,
       phone: vendor.phone,
-      contactPerson: vendor.contactPerson ?? '',
-      plan: vendor.plan,
-      status: vendor.status,
-      subscriptionType: vendor.subscriptionType,
-      subscriptionDate: vendor.subscriptionDate ?? this.parseSubscriptionDate(vendor.subscription),
-      joinedOn: this.parseDisplayDateToIso(vendor.joinedOn),
+      alternativePhone: vendor.alternativePhone ?? '',
       address: vendor.address ?? '',
       city: vendor.city ?? '',
       state: vendor.state ?? '',
       pincode: vendor.pincode ?? '',
+      status: vendor.status === 'inactive' ? 'inactive' : 'active',
+      vendorId: vendor.id,
+      storeCode: vendor.storeCode ?? '',
     };
   }
 
@@ -113,7 +116,9 @@ export class VendorService {
         vendor.name.toLowerCase().includes(search) ||
         vendor.email.toLowerCase().includes(search) ||
         vendor.website.toLowerCase().includes(search) ||
-        vendor.phone.includes(search);
+        vendor.phone.includes(search) ||
+        (vendor.storeCode ?? '').toLowerCase().includes(search) ||
+        String(vendor.id).includes(search);
 
       const matchesStatus = filters.status === 'all' || vendor.status === filters.status;
       const matchesPlan = filters.plan === 'all' || vendor.plan === filters.plan;
@@ -145,7 +150,9 @@ export class VendorService {
           });
           break;
         default:
-          comparison = a[field].localeCompare(b[field], undefined, { sensitivity: 'base' });
+          comparison = String(a[field] ?? '').localeCompare(String(b[field] ?? ''), undefined, {
+            sensitivity: 'base',
+          });
       }
       return direction === 'asc' ? comparison : -comparison;
     });
@@ -156,6 +163,10 @@ export class VendorService {
     return {
       ...vendor,
       id: Number(vendor.id),
+      website: vendor.website ?? '',
+      email: vendor.email ?? '',
+      phone: vendor.phone ?? '',
+      alternativePhone: vendor.alternativePhone ?? '',
       userId:
         vendor.userId !== undefined && vendor.userId !== null ? Number(vendor.userId) : undefined,
       catalogsCount: Number(vendor.catalogsCount ?? 0),
@@ -168,24 +179,5 @@ export class VendorService {
   private parseDate(value: string): number {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-  }
-
-  private parseSubscriptionDate(subscription: string): string {
-    const match = subscription.match(/(\d{1,2}\s+\w{3}\s+\d{4})/);
-    if (!match) {
-      return '';
-    }
-    return this.parseDisplayDateToIso(match[1]);
-  }
-
-  private parseDisplayDateToIso(date: string): string {
-    if (!date) {
-      return '';
-    }
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) {
-      return '';
-    }
-    return parsed.toISOString().slice(0, 10);
   }
 }

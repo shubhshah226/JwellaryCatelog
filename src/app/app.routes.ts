@@ -29,14 +29,9 @@ export const routes: Routes = [
           import('./admin/vendors/vendors').then((m) => m.Vendors),
       },
       {
-        path: 'users',
+        path: 'change-password',
         loadComponent: () =>
-          import('./admin/users/users').then((m) => m.AdminUsers),
-      },
-      {
-        path: 'roles',
-        loadComponent: () =>
-          import('./admin/roles/roles').then((m) => m.AdminRoles),
+          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
       },
     ],
   },
@@ -78,6 +73,11 @@ export const routes: Routes = [
         path: 'profile',
         loadComponent: () =>
           import('./vendor/profile/profile').then((m) => m.VendorProfile),
+      },
+      {
+        path: 'change-password',
+        loadComponent: () =>
+          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
       },
     ],
   },

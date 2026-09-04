@@ -31,7 +31,7 @@ export class Login {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    this.authService.login(username, this.password).subscribe({
+    this.authService.login(username, this.password.trim()).subscribe({
       next: () => {
         this.isLoading.set(false);
         this.authService.redirectToDashboard();

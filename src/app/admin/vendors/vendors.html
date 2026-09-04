@@ -6,8 +6,8 @@
   <section class="vendors-page" [class.page-blurred]="isDrawerOpen()">
     <div class="page-header">
       <div>
-        <h2>Vendors</h2>
-        <p>Manage and monitor all vendor accounts on the platform.</p>
+        <h2>Manage Vendors</h2>
+        <p>Create and manage jeweller accounts. Login credentials are emailed on create.</p>
       </div>
       <div class="header-actions">
         <button type="button" class="btn btn-outline">
@@ -70,23 +70,6 @@
             </svg>
           </div>
         </article>
-
-        <article class="stat-card">
-          <div class="stat-top">
-            <div class="stat-icon teal"><i class="fa-solid fa-clock"></i></div>
-            <button type="button" class="menu-dots" aria-label="Options">
-              <i class="fa-solid fa-ellipsis-vertical"></i>
-            </button>
-          </div>
-          <p class="stat-label">Trial Vendors</p>
-          <h3>{{ vendorStats.trial }}</h3>
-          <div class="stat-footer">
-            <span class="change up"><i class="fa-solid fa-arrow-up"></i> {{ vendorStats.trialChange }}%</span>
-            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
-              <path [attr.d]="getSparklinePath(vendorStats.sparklines.trial)" fill="none" stroke="#14b8a6" stroke-width="2" />
-            </svg>
-          </div>
-        </article>
       </div>
     }
 
@@ -108,21 +91,6 @@
           <option value="all">All Status</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-          <option value="trial">Trial</option>
-        </select>
-
-        <select [(ngModel)]="draftFilters.plan" class="filter-select">
-          <option value="all">All Plans</option>
-          <option value="premium">Premium</option>
-          <option value="standard">Standard</option>
-          <option value="basic">Basic</option>
-        </select>
-
-        <select [(ngModel)]="draftFilters.subscription" class="filter-select">
-          <option value="all">All</option>
-          <option value="renewal">Renewal</option>
-          <option value="expiry">Expired</option>
-          <option value="trial">Trial</option>
         </select>
 
         <input
@@ -151,9 +119,7 @@
               </th>
               <th>Vendor</th>
               <th>Contact</th>
-              <th>Plan</th>
               <th>Status</th>
-              <th>Subscription</th>
               <th>Joined On</th>
               <th class="col-actions">Actions</th>
             </tr>
@@ -182,13 +148,7 @@
                   <p class="contact-phone">{{ vendor.phone }}</p>
                 </td>
                 <td>
-                  <span class="badge plan-{{ vendor.plan }}">{{ formatPlan(vendor.plan) }}</span>
-                </td>
-                <td>
                   <span class="badge status-{{ vendor.status }}">{{ formatStatus(vendor.status) }}</span>
-                </td>
-                <td>
-                  <span [class]="'subscription-' + vendor.subscriptionType">{{ vendor.subscription }}</span>
                 </td>
                 <td>{{ vendor.joinedOn }}</td>
                 <td class="col-actions">
@@ -205,7 +165,7 @@
                     @if (openActionsMenuId() === vendor.id) {
                       <div class="actions-dropdown" (click)="$event.stopPropagation()">
                         <button type="button" (click)="openEditVendorDrawer(vendor, $event)">
-                          <span class="action-icon">Edit</span>
+                          <span class="action-icon"><i class="fa-solid fa-pen"></i></span>
                           Edit
                         </button>
                       </div>
@@ -215,7 +175,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="empty-row">No vendors found matching your filters.</td>
+                <td colspan="6" class="empty-row">No vendors found matching your filters.</td>
               </tr>
             }
           </tbody>
@@ -284,79 +244,96 @@
 
       <form class="drawer-form" (ngSubmit)="submitVendorForm()">
         <div class="form-section">
-          <h4>Business Information</h4>
+          <h4>Jeweller Account</h4>
           <div class="form-grid">
             <label class="form-field span-2">
               <span>Vendor Name <em>*</em></span>
-              <input type="text" name="name" placeholder="e.g. Shubh Jewellers" [(ngModel)]="vendorForm.name" required />
+              <input
+                type="text"
+                name="name"
+                placeholder="e.g. Shubh Jewellers"
+                [(ngModel)]="vendorForm.name"
+                required
+              />
             </label>
 
             <label class="form-field span-2">
               <span>Website</span>
-              <input type="text" name="website" placeholder="www.example.com" [(ngModel)]="vendorForm.website" />
+              <input
+                type="text"
+                name="website"
+                placeholder="www.example.com (optional)"
+                [(ngModel)]="vendorForm.website"
+              />
             </label>
 
             <label class="form-field span-2">
-              <span>Contact Person</span>
-              <input type="text" name="contactPerson" placeholder="Full name" [(ngModel)]="vendorForm.contactPerson" />
+              <span>Contact Person <em>*</em></span>
+              <input
+                type="text"
+                name="contactPerson"
+                placeholder="Full name"
+                [(ngModel)]="vendorForm.contactPerson"
+                required
+              />
             </label>
-          </div>
-        </div>
 
-        <div class="form-section">
-          <h4>Contact Details</h4>
-          <div class="form-grid">
             <label class="form-field">
               <span>Email <em>*</em></span>
-              <input type="email" name="email" placeholder="vendor@email.com" [(ngModel)]="vendorForm.email" required />
+              <input
+                type="email"
+                name="email"
+                placeholder="vendor@email.com"
+                [(ngModel)]="vendorForm.email"
+                required
+              />
             </label>
 
             <label class="form-field">
               <span>Phone <em>*</em></span>
-              <input type="tel" name="phone" placeholder="+91 98765 43210" [(ngModel)]="vendorForm.phone" required />
-            </label>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h4>Plan & Subscription</h4>
-          <div class="form-grid">
-            <label class="form-field">
-              <span>Plan</span>
-              <select name="plan" [(ngModel)]="vendorForm.plan">
-                <option value="premium">Premium</option>
-                <option value="standard">Standard</option>
-                <option value="basic">Basic</option>
-              </select>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="+91 98765 43210"
+                [(ngModel)]="vendorForm.phone"
+                required
+              />
             </label>
 
             <label class="form-field">
-              <span>Status</span>
+              <span>Alternative Phone</span>
+              <input
+                type="tel"
+                name="alternativePhone"
+                placeholder="Optional"
+                [(ngModel)]="vendorForm.alternativePhone"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Status <em>*</em></span>
               <select name="status" [(ngModel)]="vendorForm.status">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="trial">Trial</option>
               </select>
             </label>
 
             <label class="form-field">
-              <span>Subscription Type</span>
-              <select name="subscriptionType" [(ngModel)]="vendorForm.subscriptionType">
-                <option value="renewal">Renewal</option>
-                <option value="expiry">Expired</option>
-                <option value="trial">Trial</option>
-              </select>
+              <span>Vendor ID (DB)</span>
+              <input
+                type="text"
+                name="vendorId"
+                [value]="vendorForm.vendorId ?? 'Auto-generated on save'"
+                disabled
+              />
             </label>
 
-            <label class="form-field">
-              <span>Subscription Date</span>
-              <input type="date" name="subscriptionDate" [(ngModel)]="vendorForm.subscriptionDate" />
-            </label>
-
-            <label class="form-field">
-              <span>Joined On</span>
-              <input type="date" name="joinedOn" [(ngModel)]="vendorForm.joinedOn" />
-            </label>
+            @if (vendorForm.storeCode) {
+              <label class="form-field">
+                <span>Store Code</span>
+                <input type="text" name="storeCode" [value]="vendorForm.storeCode" disabled />
+              </label>
+            }
           </div>
         </div>
 
@@ -364,8 +341,13 @@
           <h4>Address</h4>
           <div class="form-grid">
             <label class="form-field span-2">
-              <span>Street Address</span>
-              <input type="text" name="address" placeholder="Shop no, street, area" [(ngModel)]="vendorForm.address" />
+              <span>Address</span>
+              <input
+                type="text"
+                name="address"
+                placeholder="Shop no, street, area"
+                [(ngModel)]="vendorForm.address"
+              />
             </label>
 
             <label class="form-field">
@@ -380,10 +362,22 @@
 
             <label class="form-field">
               <span>Pincode</span>
-              <input type="text" name="pincode" placeholder="Pincode" [(ngModel)]="vendorForm.pincode" />
+              <input
+                type="text"
+                name="pincode"
+                placeholder="Pincode"
+                [(ngModel)]="vendorForm.pincode"
+              />
             </label>
           </div>
         </div>
+
+        @if (drawerMode() === 'add') {
+          <p class="form-hint">
+            On save, a vendor login is created automatically (role = vendor) and credentials are
+            emailed to the jeweller.
+          </p>
+        }
 
         @if (formError()) {
           <p class="form-error">{{ formError() }}</p>
@@ -399,5 +393,28 @@
         </div>
       </form>
     </aside>
+  }
+
+  @if (createdCredentials(); as creds) {
+    <div class="creds-backdrop" (click)="closeCredentialsModal()"></div>
+    <div class="creds-modal" role="dialog" aria-labelledby="creds-title">
+      <h3 id="creds-title">Vendor login created</h3>
+      <p>
+        Account for <strong>{{ createdVendorName() }}</strong> is ready.
+        @if (creds.emailSent) {
+          Credentials were emailed to the jeweller.
+        } @else {
+          Email was not sent (SMTP disabled). Share these credentials manually:
+        }
+      </p>
+      <div class="creds-box">
+        <p><span>Username</span> <strong>{{ creds.username }}</strong></p>
+        <p><span>Password</span> <strong>{{ creds.password }}</strong></p>
+        @if (creds.loginUrl) {
+          <p><span>Login</span> <strong>{{ creds.loginUrl }}</strong></p>
+        }
+      </div>
+      <button type="button" class="btn btn-primary" (click)="closeCredentialsModal()">Done</button>
+    </div>
   }
 }

@@ -52,6 +52,23 @@ export class AuthService {
     );
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.api
+      .post<{ message?: string }>('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      })
+      .pipe(
+        map(() => undefined),
+        catchError((err: unknown) => {
+          if (err instanceof ApiClientError) {
+            return throwError(() => new Error(err.message || 'Unable to change password.'));
+          }
+          return throwError(() => new Error('Unable to connect to the API server.'));
+        })
+      );
+  }
+
   async ensureSessionLoaded(): Promise<void> {
     if (this.sessionLoaded) {
       return;

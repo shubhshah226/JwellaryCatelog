@@ -5,6 +5,7 @@ import {
   VendorAccount,
   VendorFilters,
   VendorFormData,
+  VendorLoginCredentials,
   VendorStats,
   createEmptyVendorForm,
 } from '../../dashboard/models/vendor.model';
@@ -35,6 +36,8 @@ export class Vendors implements OnInit {
   readonly drawerMode = signal<DrawerMode>('add');
   readonly editingVendorId = signal<number | null>(null);
   readonly openActionsMenuId = signal<number | null>(null);
+  readonly createdCredentials = signal<VendorLoginCredentials | null>(null);
+  readonly createdVendorName = signal('');
 
   vendorForm: VendorFormData = createEmptyVendorForm();
 
@@ -84,12 +87,14 @@ export class Vendors implements OnInit {
     Math.min(this.currentPage() * this.rowsPerPage(), this.filteredVendors().length)
   );
 
-  readonly drawerTitle = computed(() => (this.drawerMode() === 'edit' ? 'Edit Vendor' : 'Add Vendor'));
+  readonly drawerTitle = computed(() =>
+    this.drawerMode() === 'edit' ? 'Edit Vendor' : 'Add Vendor'
+  );
 
   readonly drawerSubtitle = computed(() =>
     this.drawerMode() === 'edit'
-      ? 'Update vendor account information.'
-      : 'Create a new vendor account on the platform.'
+      ? 'Update jeweller account information.'
+      : 'Create a jeweller account. Login credentials will be emailed automatically.'
   );
 
   readonly submitButtonLabel = computed(() => {
@@ -203,10 +208,6 @@ export class Vendors implements OnInit {
       .join(' ');
   }
 
-  formatPlan(plan: string): string {
-    return plan.charAt(0).toUpperCase() + plan.slice(1);
-  }
-
   formatStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
@@ -217,6 +218,7 @@ export class Vendors implements OnInit {
     this.vendorForm = createEmptyVendorForm();
     this.formError.set('');
     this.openActionsMenuId.set(null);
+    this.createdCredentials.set(null);
     this.isDrawerOpen.set(true);
   }
 
@@ -241,9 +243,19 @@ export class Vendors implements OnInit {
     this.drawerMode.set('add');
   }
 
+  closeCredentialsModal(): void {
+    this.createdCredentials.set(null);
+    this.createdVendorName.set('');
+  }
+
   submitVendorForm(): void {
-    if (!this.vendorForm.name.trim() || !this.vendorForm.email.trim() || !this.vendorForm.phone.trim()) {
-      this.formError.set('Please fill in vendor name, email, and phone.');
+    if (
+      !this.vendorForm.name.trim() ||
+      !this.vendorForm.email.trim() ||
+      !this.vendorForm.phone.trim() ||
+      !this.vendorForm.contactPerson.trim()
+    ) {
+      this.formError.set('Please fill in vendor name, contact person, email, and phone.');
       return;
     }
 
@@ -261,26 +273,33 @@ export class Vendors implements OnInit {
       }
 
       this.vendorService.updateVendor(existingVendor, this.vendorForm).subscribe({
-        next: (updatedVendor) => this.handleVendorSaved(updatedVendor, false),
-        error: () => {
+        next: (updatedVendor) => this.handleVendorSaved(updatedVendor),
+        error: (err: Error) => {
           this.isSubmitting.set(false);
-          this.formError.set('Failed to update vendor. Please try again.');
+          this.formError.set(err.message || 'Failed to update vendor. Please try again.');
         },
       });
 
       return;
     }
 
-    this.vendorService.createVendor(this.vendorForm, this.allVendors()).subscribe({
-      next: (vendor) => this.handleVendorSaved(vendor, true),
-      error: () => {
+    this.vendorService.createVendor(this.vendorForm).subscribe({
+      next: ({ vendor, loginCredentials }) => {
+        this.handleVendorSaved(vendor);
+        if (loginCredentials) {
+          this.createdVendorName.set(vendor.name);
+          this.createdCredentials.set(loginCredentials);
+        }
+      },
+      error: (err: Error) => {
         this.isSubmitting.set(false);
-        this.formError.set('Failed to add vendor. Please try again.');
+        this.formError.set(err.message || 'Failed to add vendor. Please try again.');
       },
     });
   }
 
-  private handleVendorSaved(vendor: VendorAccount, isNew: boolean): void {
+  private handleVendorSaved(vendor: VendorAccount): void {
+    const isNew = !this.allVendors().some((item) => item.id === vendor.id);
     if (isNew) {
       const updatedVendors = [vendor, ...this.allVendors()];
       this.allVendors.set(updatedVendors);
