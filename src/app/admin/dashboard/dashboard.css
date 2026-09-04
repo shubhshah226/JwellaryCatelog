@@ -140,13 +140,18 @@
 }
 
 .chart-wrap {
-  height: 200px;
-  margin-left: 2.5rem;
+  height: 220px;
 }
 
-.sales-chart {
+.sales-chart,
+.donut-chart-host {
+  display: block;
   width: 100%;
   height: 100%;
+}
+
+.donut-chart-host {
+  height: 180px;
 }
 
 .chart-labels {

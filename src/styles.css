@@ -100,13 +100,13 @@ a {
 .fa-solid,
 .fas {
   font-family: "Font Awesome 6 Free" !important;
-  font-weight: 900;
+  font-weight: 900 !important;
 }
 
 .fa-regular,
 .far {
   font-family: "Font Awesome 6 Free" !important;
-  font-weight: 400;
+  font-weight: 400 !important;
 }
 
 .filter-icon svg {
@@ -117,6 +117,7 @@ a {
 
 .filter-icon i {
   font-size: 0.85rem;
+  line-height: 1;
 }
 
 .filter-search input {

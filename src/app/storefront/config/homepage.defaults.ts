@@ -57,7 +57,7 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
       subtitle:
         'Discover hallmarked gold, certified diamonds and bridal heirlooms — crafted for your most precious moments.',
       ctaText: 'Explore Collection',
-      badgeText: 'BIS Hallmarked →',
+      badgeText: 'BIS Hallmarked',
     },
     bannerSlides: [
       {
@@ -65,21 +65,21 @@ export function createDefaultHomepage(vendorName = ''): HomepageContent {
         subtitle:
           'Discover hallmarked gold, certified diamonds and bridal heirlooms — crafted for your most precious moments.',
         ctaText: 'Explore Collection',
-        badgeText: 'BIS Hallmarked →',
+        badgeText: 'BIS Hallmarked',
       },
       {
         headline: 'Bridal Heirlooms',
         subtitle:
           'Necklace sets, polki and kundan pieces designed for the wedding day — and the generations after.',
         ctaText: 'View Bridal',
-        badgeText: 'Wedding Edit →',
+        badgeText: 'Wedding Edit',
       },
       {
         headline: 'Diamond Solitaires',
         subtitle:
           'Brilliant-cut diamonds in gold and platinum — engagement rings and everyday sparkle.',
         ctaText: 'Shop Diamonds',
-        badgeText: 'Certified →',
+        badgeText: 'Certified',
       },
     ],
     stats: {

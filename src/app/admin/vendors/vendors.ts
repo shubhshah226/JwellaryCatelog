@@ -109,7 +109,7 @@ export class Vendors implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Unable to load vendors. Please start json-server.');
+        this.errorMessage.set('Unable to load vendors. Please ensure the API is running on port 8001.');
         this.isLoading.set(false);
       },
     });

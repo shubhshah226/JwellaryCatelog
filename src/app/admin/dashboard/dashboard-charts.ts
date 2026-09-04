@@ -24,7 +24,7 @@ export function buildSalesChartOptions(
       textStyle: {
         color: isDark ? '#f8fafc' : '#0f172a',
       },
-      valueFormatter: (value) => `Rs ${Number(value).toLocaleString('en-IN')}`,
+      valueFormatter: (value: unknown) => `Rs ${Number(value).toLocaleString('en-IN')}`,
     },
     xAxis: {
       type: 'category',

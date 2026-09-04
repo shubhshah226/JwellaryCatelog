@@ -1,20 +1,56 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { EchartComponent } from '../../core/components/echart/echart';
+import { ThemeService } from '../../core/services/theme.service';
 import { DashboardData } from '../../dashboard/models/dashboard.model';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
+import { buildDonutChartOptions, buildSalesChartOptions } from './dashboard-charts';
 
 @Component({
   selector: 'app-dashboard-home',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, EchartComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
 export class DashboardHome implements OnInit {
   private readonly dashboardService = inject(DashboardService);
+  readonly themeService = inject(ThemeService);
 
   readonly data = signal<DashboardData | null>(null);
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
+
+  readonly salesChartOptions = computed(() => {
+    const dashboard = this.data();
+    if (!dashboard) {
+      return null;
+    }
+    return buildSalesChartOptions(dashboard.salesChart, this.themeService.theme() === 'dark');
+  });
+
+  readonly enquiryChartOptions = computed(() => {
+    const dashboard = this.data();
+    if (!dashboard) {
+      return null;
+    }
+    return buildDonutChartOptions(
+      dashboard.enquirySegments,
+      dashboard.enquiryTotal,
+      this.themeService.theme() === 'dark'
+    );
+  });
+
+  readonly catalogChartOptions = computed(() => {
+    const dashboard = this.data();
+    if (!dashboard) {
+      return null;
+    }
+    return buildDonutChartOptions(
+      dashboard.catalogSegments,
+      dashboard.catalogTotal,
+      this.themeService.theme() === 'dark'
+    );
+  });
 
   ngOnInit(): void {
     this.dashboardService.getDashboardData().subscribe({
@@ -23,7 +59,9 @@ export class DashboardHome implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Unable to load dashboard data. Please start json-server.');
+        this.errorMessage.set(
+          'Unable to load dashboard data. Please ensure the API is running on port 8001.'
+        );
         this.isLoading.set(false);
       },
     });
@@ -31,55 +69,6 @@ export class DashboardHome implements OnInit {
 
   formatCurrency(amount: number): string {
     return this.dashboardService.formatCurrency(amount);
-  }
-
-  formatCompactCurrency(amount: number): string {
-    return this.dashboardService.formatCompactCurrency(amount);
-  }
-
-  visibleSalesLabels(points: { date: string; label: string }[]): { date: string; label: string }[] {
-    if (points.length <= 6) {
-      return points;
-    }
-    const last = points.length - 1;
-    const step = Math.max(1, Math.ceil(last / 5));
-    const picked: { date: string; label: string }[] = [];
-    for (let i = 0; i < points.length; i += step) {
-      picked.push(points[i]);
-    }
-    const lastPoint = points[last];
-    if (picked[picked.length - 1]?.date !== lastPoint.date) {
-      picked.push(lastPoint);
-    }
-    return picked;
-  }
-
-  getSalesPath(points: { x: number; y: number }[]): string {
-    if (!points.length) {
-      return '';
-    }
-
-    return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-  }
-
-  getSalesAreaPath(points: { x: number; y: number }[]): string {
-    if (!points.length) {
-      return '';
-    }
-
-    const line = this.getSalesPath(points);
-    const last = points[points.length - 1];
-    const first = points[0];
-    return `${line} L ${last.x} 100 L ${first.x} 100 Z`;
-  }
-
-  getDonutSegments(segments: { percentage: number; color: string; offset: number }[]): string {
-    return segments
-      .map(
-        (segment) =>
-          `${segment.color} ${segment.offset}% ${segment.offset + segment.percentage}%`
-      )
-      .join(', ');
   }
 
   getEnquiryStatusClass(status: string): string {

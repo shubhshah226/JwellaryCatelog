@@ -47,32 +47,11 @@
           <span class="panel-filter">This Month</span>
         </div>
         <div class="chart-wrap">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="sales-chart">
-            <defs>
-              <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="rgba(168,85,247,0.45)" />
-                <stop offset="100%" stop-color="rgba(168,85,247,0)" />
-              </linearGradient>
-            </defs>
-            <path [attr.d]="getSalesAreaPath(dashboard.salesChart)" fill="url(#salesGradient)" />
-            <path
-              [attr.d]="getSalesPath(dashboard.salesChart)"
-              fill="none"
-              stroke="#a855f7"
-              stroke-width="0.8"
-              vector-effect="non-scaling-stroke"
-            />
-          </svg>
-          <div class="chart-labels">
-            @for (point of visibleSalesLabels(dashboard.salesChart); track point.date) {
-              <span>{{ point.label }}</span>
-            }
-          </div>
-        </div>
-        <div class="chart-y-labels">
-          <span>{{ formatCompactCurrency(dashboard.salesMax) }}</span>
-          <span>{{ formatCompactCurrency(dashboard.salesMax / 2) }}</span>
-          <span>Rs 0</span>
+          <app-echart
+            class="sales-chart"
+            [options]="salesChartOptions()"
+            [theme]="themeService.theme()"
+          />
         </div>
       </article>
 
@@ -85,7 +64,7 @@
           <ul class="vendor-list">
             @for (vendor of dashboard.topVendors; track vendor.id) {
               <li>
-                <span class="rank">{{ vendor.rank.toString().padStart(2, '0') }}</span>
+                <span class="rank">{{ (vendor.rank || 0).toString().padStart(2, '0') }}</span>
                 <div class="vendor-avatar">{{ vendor.initials }}</div>
                 <div class="vendor-info">
                   <p class="vendor-name">{{ vendor.name }}</p>
@@ -116,17 +95,11 @@
           <h3>Enquiries Overview</h3>
         </div>
         <div class="donut-wrap">
-          <div
-            class="donut-chart"
-            [style.background]="
-              'conic-gradient(' + getDonutSegments(dashboard.enquirySegments) + ')'
-            "
-          >
-            <div class="donut-center">
-              <strong>{{ dashboard.enquiryTotal }}</strong>
-              <span>Total</span>
-            </div>
-          </div>
+          <app-echart
+            class="donut-chart-host"
+            [options]="enquiryChartOptions()"
+            [theme]="themeService.theme()"
+          />
           <ul class="donut-legend">
             @for (segment of dashboard.enquirySegments; track segment.label) {
               <li>
@@ -165,17 +138,11 @@
           <h3>Catalog Status</h3>
         </div>
         <div class="donut-wrap">
-          <div
-            class="donut-chart"
-            [style.background]="
-              'conic-gradient(' + getDonutSegments(dashboard.catalogSegments) + ')'
-            "
-          >
-            <div class="donut-center">
-              <strong>{{ dashboard.catalogTotal }}</strong>
-              <span>Total</span>
-            </div>
-          </div>
+          <app-echart
+            class="donut-chart-host"
+            [options]="catalogChartOptions()"
+            [theme]="themeService.theme()"
+          />
           <ul class="donut-legend">
             @for (segment of dashboard.catalogSegments; track segment.label) {
               <li>

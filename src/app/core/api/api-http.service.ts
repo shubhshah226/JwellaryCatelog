@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiClientError, ApiResponse } from './api.types';
+import { ApiClientError, ApiErrorBody, ApiResponse } from './api.types';
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
@@ -117,15 +117,25 @@ export class ApiHttpService {
       return err;
     }
     if (err instanceof HttpErrorResponse) {
-      const body = err.error as ApiResponse | undefined;
-      const code = body?.error?.code ?? 'HTTP_ERROR';
+      const payload = err.error as
+        | ApiResponse
+        | { detail?: ApiResponse | string | { success?: boolean; error?: ApiErrorBody } }
+        | undefined;
+
+      const nested =
+        payload && typeof payload === 'object' && 'detail' in payload
+          ? (payload as { detail: unknown }).detail
+          : payload;
+
+      const apiBody =
+        nested && typeof nested === 'object' && !Array.isArray(nested)
+          ? (nested as ApiResponse)
+          : undefined;
+
+      const code = apiBody?.error?.code ?? 'HTTP_ERROR';
       const message =
-        body?.error?.message ||
-        (typeof err.error === 'object' &&
-        err.error &&
-        'detail' in (err.error as object)
-          ? String((err.error as { detail: unknown }).detail)
-          : null) ||
+        apiBody?.error?.message ||
+        (typeof nested === 'string' ? nested : null) ||
         err.message ||
         'Unable to reach the API server.';
       return new ApiClientError(code, message, err.status || 0);

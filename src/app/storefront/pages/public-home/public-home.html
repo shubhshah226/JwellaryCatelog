@@ -366,7 +366,8 @@
               </div>
               @if (data.vendor.website) {
                 <a class="visit-link" [href]="contactHref('website', data.vendor.website)" target="_blank" rel="noopener">
-                  {{ data.vendor.website }} ↗
+                  {{ data.vendor.website }}
+                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
                 </a>
               }
             </article>
@@ -429,7 +430,7 @@
       </div>
       <div class="footer-bottom">
         <div class="lux-wrap footer-bottom-inner">
-          <span>© {{ currentYear() }} {{ data.vendor.name }}. All rights reserved.</span>
+          <span>&copy; {{ currentYear() }} {{ data.vendor.name }}. All rights reserved.</span>
           <span class="footer-tag">Hallmarked gold · Certified diamonds</span>
         </div>
       </div>

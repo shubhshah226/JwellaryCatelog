@@ -321,7 +321,7 @@ export class PublicProducts implements OnInit, OnDestroy {
     const left = bits.join(' ');
     const weight = this.formatWeight(product.weight != null ? String(product.weight) : undefined);
     if (left && weight) {
-      return `${left} • ${weight}`;
+      return `${left} / ${weight}`;
     }
     return left || weight || product.category || '';
   }

@@ -2,7 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicStoreNav } from '../../components/public-store-nav/public-store-nav';
-import { PublicStoreContext } from '../../models/storefront.model';
+import { mergeHomepage } from '../../config/homepage.defaults';
+import { HomepageTextItem, PublicStoreContext } from '../../models/storefront.model';
 import { CustomerAuthService } from '../../services/customer-auth.service';
 import { InterestCartService } from '../../services/interest-cart.service';
 import { LeadService } from '../../services/lead.service';
@@ -53,6 +54,11 @@ export class PublicInterestCart implements OnInit {
         this.isLoading.set(false);
       },
     });
+  }
+
+  topBarItems(ctx: PublicStoreContext): HomepageTextItem[] {
+    const home = mergeHomepage(ctx.config.homepage, ctx.vendor.name);
+    return home.topBar.enabled ? home.topBar.items : [];
   }
 
   primaryColor(): string {

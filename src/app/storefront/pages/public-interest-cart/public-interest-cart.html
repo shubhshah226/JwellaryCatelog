@@ -19,7 +19,7 @@
       [vendorName]="ctx.vendor.name"
       [logoUrl]="ctx.config.logoUrl"
       [isAvailable]="ctx.isAvailable"
-      [topBarItems]="ctx.config.homepage?.topBar?.enabled ? ctx.config.homepage.topBar.items : []"
+      [topBarItems]="topBarItems(ctx)"
     />
 
     <main class="cart-main">

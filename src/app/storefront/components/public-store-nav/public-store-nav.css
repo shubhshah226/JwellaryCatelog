@@ -208,9 +208,13 @@
   cursor: pointer;
 }
 
-.icon-btn svg {
+.icon-btn svg,
+.icon-btn i {
   width: 20px;
   height: 20px;
+  font-size: 1rem;
+  line-height: 1;
+  display: block;
 }
 
 .icon-btn.active {

@@ -190,7 +190,7 @@ export class PublicHome implements OnInit {
       },
       {
         id: -8,
-        name: 'Men's Gold Chain',
+        name: "Men's Gold Chain",
         category: 'Chains',
         metalType: 'Gold',
         purity: '22K',
@@ -214,7 +214,7 @@ export class PublicHome implements OnInit {
   }
 
   stars(count: number): string {
-    return '★'.repeat(Math.max(1, Math.min(5, count || 5)));
+    return '*'.repeat(Math.max(1, Math.min(5, count || 5)));
   }
 
   vendorInitials(name: string): string {

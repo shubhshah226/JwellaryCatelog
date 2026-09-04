@@ -146,9 +146,9 @@
   font-size: 1.5rem;
 }
 
-.logo svg {
-  width: 100%;
-  height: 100%;
+.logo i {
+  font-size: 1.35rem;
+  line-height: 1;
 }
 
 .brand-title {
@@ -214,9 +214,9 @@
   font-size: 0.95rem;
 }
 
-.input-icon svg {
-  width: 18px;
-  height: 18px;
+.input-icon i {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .input-group input {
@@ -267,9 +267,9 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-.toggle-password svg {
-  width: 18px;
-  height: 18px;
+.toggle-password i {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .form-options {
@@ -328,9 +328,9 @@
   cursor: not-allowed;
 }
 
-.login-btn svg {
-  width: 18px;
-  height: 18px;
+.login-btn i {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .login-hint {

@@ -14,7 +14,10 @@
           Live Preview
         </button>
         @if (publicUrl()) {
-          <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline">Open live site ↗</a>
+          <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline">
+            Open live site
+            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+          </a>
         }
         <button type="button" class="btn btn-primary" (click)="save()" [disabled]="isSaving()">
           {{ isSaving() ? 'Saving...' : 'Save website' }}
@@ -566,7 +569,10 @@
           <div class="preview-modal-actions">
             <button type="button" class="btn btn-outline btn-sm" (click)="refreshPreview()">Refresh</button>
             @if (publicUrl()) {
-              <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open in tab ↗</a>
+              <a [href]="publicUrl()" target="_blank" rel="noopener" class="btn btn-outline btn-sm">
+                Open in tab
+                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+              </a>
             }
             <button type="button" class="preview-close" (click)="closeLivePreview()" aria-label="Close preview">
               <i class="fa-solid fa-xmark"></i>
