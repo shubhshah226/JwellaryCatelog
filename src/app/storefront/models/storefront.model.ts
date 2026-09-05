@@ -186,7 +186,8 @@ export interface PublicStoreContext {
   storeCode: string;
   vendor: PublicVendor;
   config: StorefrontConfig;
-  isAvailable: boolean;
+  /** Present on full store endpoints; omitted from slim share responses. */
+  isAvailable?: boolean;
 }
 
 export interface PublicStorefrontPage extends PublicStoreContext {
@@ -222,6 +223,7 @@ export interface CatalogShareRecord {
 export interface CatalogSharePayload {
   v?: number;
   productIds?: number[];
+  catalogId?: number;
   category?: string;
   metalType?: string;
   minPrice?: number;

@@ -1,5 +1,8 @@
 @if (isLoading()) {
-  <div class="state-message">Loading leads...</div>
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading leads...</span>
+  </div>
 } @else if (errorMessage()) {
   <div class="state-message error">{{ errorMessage() }}</div>
 } @else {
@@ -63,7 +66,7 @@
     </div>
 
     <div class="table-card">
-      <div class="table-wrap">
+      <div class="table-wrap desktop-only">
         <table>
           <thead>
             <tr>
@@ -142,6 +145,58 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <div class="mobile-list">
+        @for (lead of filteredLeads(); track lead.id; let i = $index) {
+          <article class="ml-card">
+            <div class="ml-card-top">
+              <span class="ml-icon accent-{{ i % 3 }}" aria-hidden="true">
+                {{ lead.initials }}
+              </span>
+              <div class="ml-card-info">
+                <p class="user-name">{{ lead.customerName }}</p>
+                <p class="user-meta">{{ formatPhone(lead.customerPhone) }} · Lead #{{ lead.id }}</p>
+              </div>
+            </div>
+            <div class="ml-card-bottom">
+              <button type="button" class="ml-stat ml-stat-btn" (click)="toggleExpand(lead.id)">
+                <i class="fa-solid fa-cube" aria-hidden="true"></i>
+                <span>{{ productSummary(lead) }}</span>
+              </button>
+              <span class="badge status-{{ lead.status }}">
+                <span class="badge-dot" aria-hidden="true"></span>
+                {{ formatStatus(lead.status) }}
+              </span>
+            </div>
+            @if (lead.message) {
+              <p class="ml-message">{{ lead.message }}</p>
+            }
+            @if (isExpanded(lead.id) && lead.items?.length) {
+              <ul class="lead-items">
+                @for (item of lead.items; track item.productId) {
+                  <li>
+                    <strong>{{ item.productName }}</strong>
+                    @if (item.category) {
+                      <span>{{ item.category }}</span>
+                    }
+                    @if (item.price != null) {
+                      <em>{{ item.price | currency:'INR':'symbol':'1.0-0' }}</em>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+            <div class="ml-card-actions">
+              <span class="ml-time">{{ formatLeadTime(lead) }}</span>
+              <button type="button" class="btn btn-primary btn-sm" (click)="openShareForLead(lead)">
+                Share catalog
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-mobile">No leads found matching your filters.</p>
+        }
       </div>
     </div>
   </section>

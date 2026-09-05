@@ -2,11 +2,12 @@
   <div class="page-header">
     <div>
       <h2>Master Data</h2>
-      <p>Manage categories and metal types used in your product form.</p>
     </div>
-    <button type="button" class="btn btn-primary" (click)="openAddPage($event)">
-      + Add {{ entityLabel() }}
-    </button>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary master-add-btn" (click)="openAddPage($event)">
+        + Add {{ entityLabel() }}
+      </button>
+    </div>
   </div>
 
   <div class="master-tabs">
@@ -80,9 +81,12 @@
 
   <div class="table-card">
     @if (isLoading()) {
-      <div class="state-message">Loading master data...</div>
+      <div class="state-message">
+        <div class="page-loader-ring" aria-hidden="true"></div>
+        <span>Loading master data...</span>
+      </div>
     } @else {
-      <div class="table-wrap">
+      <div class="table-wrap desktop-only">
         <table>
           <thead>
             <tr>
@@ -142,6 +146,68 @@
             }
           </tbody>
         </table>
+      </div>
+
+      <div class="mobile-list">
+        @for (item of filteredItems(); track item.id; let i = $index) {
+          <article class="ml-card">
+            <div class="ml-card-top">
+              <span class="ml-icon accent-{{ i % 3 }}" aria-hidden="true">
+                <i
+                  class="fa-solid"
+                  [class.fa-tags]="activeTab() === 'categories'"
+                  [class.fa-coins]="activeTab() === 'metals'"
+                ></i>
+              </span>
+              <div class="ml-card-info">
+                <p class="user-name">{{ item.name }}</p>
+                <p class="user-meta">ID: {{ item.id }}</p>
+              </div>
+              <div class="ml-card-menu actions-wrap">
+                <button
+                  type="button"
+                  class="menu-dots"
+                  aria-label="Item actions"
+                  (click)="toggleMenu($event, item.id)"
+                >
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                @if (openMenuId() === item.id) {
+                  <div class="actions-menu" (click)="$event.stopPropagation()">
+                    <button type="button" (click)="openEditPage(item, $event)">
+                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                      Edit
+                    </button>
+                    <button type="button" class="danger" (click)="deleteItem(item, $event)">
+                      <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                      Delete
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="ml-card-bottom">
+              <div class="ml-stat">
+                <i
+                  class="fa-solid"
+                  [class.fa-tag]="activeTab() === 'categories'"
+                  [class.fa-gem]="activeTab() === 'metals'"
+                  aria-hidden="true"
+                ></i>
+                <span>{{ entityLabel() }}</span>
+              </div>
+              <span class="badge status-{{ item.status }}">
+                <span class="badge-dot" aria-hidden="true"></span>
+                {{ item.status }}
+              </span>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-mobile">
+            No {{ activeTab() === 'categories' ? 'categories' : 'metal types' }} yet.
+            Tap <strong>+ Add {{ entityLabel() }}</strong> to create one.
+          </p>
+        }
       </div>
     }
   </div>

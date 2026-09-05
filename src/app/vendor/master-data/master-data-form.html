@@ -1,5 +1,8 @@
 @if (isLoading()) {
-  <div class="state-message">Loading...</div>
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading...</span>
+  </div>
 } @else if (pageError()) {
   <div class="state-message error">
     <p>{{ pageError() }}</p>

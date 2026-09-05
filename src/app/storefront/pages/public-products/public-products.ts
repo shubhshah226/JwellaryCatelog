@@ -10,7 +10,6 @@ import {
   effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NgStyle } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { CatalogShareService } from '../../../core/services/catalog-share.service';
 import { resolveMediaUrl } from '../../../core/utils/media-url.util';
@@ -19,11 +18,10 @@ import { PublicProduct, PublicStoreContext, PublicVendor } from '../../models/st
 import { CustomerAuthService } from '../../services/customer-auth.service';
 import { InterestCartService } from '../../services/interest-cart.service';
 import { StorefrontService } from '../../services/storefront.service';
-import { DEFAULT_STOREFRONT_THEME } from '../../config/default-storefront.config';
 
 @Component({
   selector: 'app-public-products',
-  imports: [FormsModule, NgStyle, ProductViewerModal],
+  imports: [FormsModule, ProductViewerModal],
   templateUrl: './public-products.html',
   styleUrl: './public-products.css',
 })
@@ -172,6 +170,7 @@ export class PublicProducts implements OnInit, OnDestroy {
     }
     this.observer?.disconnect();
     this.observer = null;
+    this.setBodyScrollLocked(false);
   }
 
   onProductSearch(value: string): void {
@@ -226,36 +225,13 @@ export class PublicProducts implements OnInit, OnDestroy {
     this.logoBroken.set(true);
   }
 
-  headerVars(ctx: PublicStoreContext): Record<string, string> {
-    const theme = ctx.config?.theme ?? {};
-    const header =
-      theme.headerColor || DEFAULT_STOREFRONT_THEME.headerColor || '#141414';
-    const text =
-      theme.headerTextColor || DEFAULT_STOREFRONT_THEME.headerTextColor || '#ffffff';
-    const accent =
-      theme.primaryColor || DEFAULT_STOREFRONT_THEME.primaryColor || '#c9a227';
-    const sidebar =
-      theme.accentColor || DEFAULT_STOREFRONT_THEME.accentColor || '#141414';
-    return {
-      '--header-bg': header,
-      '--header-text': text,
-      '--header-muted': 'rgba(255,255,255,0.7)',
-      '--header-line': 'rgba(255,255,255,0.1)',
-      '--header-accent': accent,
-      '--gold': accent,
-      '--sidebar': sidebar,
-      '--store-primary': accent,
-      '--store-accent': sidebar,
-    };
-  }
-
   selectCategory(category: string): void {
     if (this.selectedCategory() === category) {
       this.categoriesOpen.set(false);
       return;
     }
     this.selectedCategory.set(category);
-    this.categoriesOpen.set(false);
+    this.closeCategories();
 
     if (this.isSharedView()) {
       this.applySharedCategoryFilter();
@@ -265,11 +241,21 @@ export class PublicProducts implements OnInit, OnDestroy {
   }
 
   toggleCategories(): void {
-    this.categoriesOpen.update((open) => !open);
+    const next = !this.categoriesOpen();
+    this.categoriesOpen.set(next);
+    this.setBodyScrollLocked(next);
   }
 
   closeCategories(): void {
     this.categoriesOpen.set(false);
+    this.setBodyScrollLocked(false);
+  }
+
+  private setBodyScrollLocked(locked: boolean): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    document.body.style.overflow = locked ? 'hidden' : '';
   }
 
   activeCategoryLabel(): string {
@@ -395,7 +381,7 @@ export class PublicProducts implements OnInit, OnDestroy {
         }
         this.context.set(data.context);
         this.logoBroken.set(false);
-        this.applySharedProducts(data.products, data.payload, data.shareLabel);
+        this.applySharedProducts(data.products, null, data.shareLabel);
         this.isLoading.set(false);
       },
       error: () => {

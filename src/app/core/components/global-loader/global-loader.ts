@@ -19,11 +19,12 @@ import { LoadingService } from '../../services/loading.service';
     .global-loader {
       position: fixed;
       inset: 0;
-      z-index: 9999;
+      z-index: 100000;
       display: grid;
       place-items: center;
       background: rgba(11, 15, 25, 0.45);
       backdrop-filter: blur(2px);
+      pointer-events: all;
     }
 
     .loader-panel {

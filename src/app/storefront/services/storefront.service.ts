@@ -31,7 +31,6 @@ interface PublicShareResponse {
   context: PublicStoreContext;
   products: PublicProduct[];
   shareLabel?: string;
-  payload?: CatalogSharePayload;
 }
 
 interface PublicProductDetailResponse {
@@ -187,7 +186,6 @@ export class StorefrontService {
     context: PublicStoreContext;
     products: PublicProduct[];
     shareLabel: string;
-    payload: CatalogSharePayload | null;
   } | null> {
     return this.api
       .get<PublicShareResponse>(`/public/stores/${storeCode}/c/${shortCode}`, undefined, this.customerHeaders(storeCode))
@@ -195,8 +193,7 @@ export class StorefrontService {
         map((res) => ({
           context: this.normalizeContext(res.context),
           products: (res.products ?? []).map((p) => this.toPublicProduct(p)),
-          shareLabel: res.shareLabel ?? 'Curated selection',
-          payload: res.payload ?? null,
+          shareLabel: res.shareLabel ?? 'Shared Catalog',
         }))
       );
   }

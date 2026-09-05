@@ -50,6 +50,16 @@ export const routes: Routes = [
           import('./admin/dashboard/dashboard').then((m) => m.DashboardHome),
       },
       {
+        path: 'catalogs/new',
+        loadComponent: () =>
+          import('./vendor/catalogs/catalog-form').then((m) => m.VendorCatalogForm),
+      },
+      {
+        path: 'catalogs/:id/edit',
+        loadComponent: () =>
+          import('./vendor/catalogs/catalog-form').then((m) => m.VendorCatalogForm),
+      },
+      {
         path: 'catalogs',
         loadComponent: () =>
           import('./vendor/catalogs/catalogs').then((m) => m.VendorCatalogs),

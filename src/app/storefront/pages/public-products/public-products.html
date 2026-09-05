@@ -10,7 +10,7 @@
     <p>This store or shared catalog link is invalid.</p>
   </div>
 } @else if (context(); as ctx) {
-  <div class="catalog-page" [ngStyle]="headerVars(ctx)">
+  <div class="catalog-page">
     @if (categoriesOpen()) {
       <button type="button" class="cat-scrim" (click)="closeCategories()" aria-label="Close menu"></button>
     }
@@ -71,14 +71,19 @@
 
     <div class="catalog-shell">
       <header class="biz-header">
-        <button
-          type="button"
-          class="mobile-cat-btn"
-          (click)="toggleCategories()"
-          aria-label="Open categories"
-        >
-          <i class="fa-solid fa-bars"></i>
-        </button>
+        <div class="header-lead">
+          <button
+            type="button"
+            class="mobile-cat-btn"
+            (click)="toggleCategories()"
+            aria-label="Open categories"
+          >
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="mobile-brand">
+            <span class="mobile-brand-name">{{ ctx.vendor.name }}</span>
+          </div>
+        </div>
 
         <label class="product-search">
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
@@ -86,7 +91,7 @@
             type="search"
             [ngModel]="productSearch()"
             (ngModelChange)="onProductSearch($event)"
-            placeholder="Search for products, categories..."
+            placeholder="Search products..."
           />
         </label>
 
@@ -105,7 +110,7 @@
               </a>
             }
             @if (ctx.vendor.phone) {
-              <a class="contact-item" [href]="'tel:' + ctx.vendor.phone">
+              <a class="contact-item phone" [href]="'tel:' + ctx.vendor.phone" [title]="ctx.vendor.phone">
                 <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
                 <span class="contact-text">{{ ctx.vendor.phone }}</span>
               </a>
@@ -113,10 +118,6 @@
           </div>
         }
       </header>
-
-      @if (!ctx.isAvailable) {
-        <p class="unavailable-notice">This store is currently inactive. Pieces are shown for reference only.</p>
-      }
 
       <main class="catalog-main">
         <nav class="crumbs" aria-label="Breadcrumb">

@@ -16,6 +16,9 @@ export interface Catalog {
   vendorId: number;
   name: string;
   status: CatalogStatus;
+  productCount?: number;
+  shareUrl?: string | null;
+  shortCode?: string | null;
 }
 
 export type ProductStatus = 'in_stock' | 'out_of_stock' | 'make_to_order' | 'active' | 'inactive';

@@ -8,12 +8,21 @@
 
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-icon">
-        <i class="fa-solid fa-gem" aria-hidden="true"></i>
-      </div>
+      @if (!isAdmin && vendorLogo()) {
+        <img class="brand-logo" [src]="vendorLogo()" [alt]="vendorDisplayName()" (error)="onBrandLogoError()" />
+      } @else {
+        <div class="brand-icon">
+          <i class="fa-solid fa-gem" aria-hidden="true"></i>
+        </div>
+      }
       <div class="brand-text">
-        <p class="brand-title">CATALOG</p>
-        <p class="brand-subtitle">MANAGEMENT SYSTEM</p>
+        @if (!isAdmin && vendorDisplayName()) {
+          <p class="brand-title">{{ vendorDisplayName() }}</p>
+          <p class="brand-subtitle">JEWELLERY CATALOG</p>
+        } @else {
+          <p class="brand-title">CATALOG</p>
+          <p class="brand-subtitle">MANAGEMENT SYSTEM</p>
+        }
       </div>
       <button type="button" class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close sidebar">
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
@@ -96,9 +105,9 @@
           </div>
         </div>
 
-        <button type="button" class="logout-btn" (click)="logout()">
+        <button type="button" class="logout-btn" (click)="logout()" aria-label="Logout">
           <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-          Logout
+          <span class="logout-label">Logout</span>
         </button>
       </div>
     </header>

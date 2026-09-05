@@ -2,6 +2,8 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService } from '../../auth/services/auth.service';
+import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { VendorDataService } from '../../vendor/services/vendor-data.service';
 
 interface NavItem {
   label: string;
@@ -39,9 +41,12 @@ const NAV_FA_ICONS: Record<string, string> = {
 export class DashboardLayout implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly vendorData = inject(VendorDataService);
   readonly themeService = inject(ThemeService);
 
   readonly isSidebarOpen = signal(this.isDesktopViewport());
+  readonly vendorLogo = signal('');
+  readonly vendorDisplayName = signal('');
 
   readonly user = this.authService.getSession()?.user;
   readonly isAdmin = this.user?.role === 'admin';
@@ -76,6 +81,11 @@ export class DashboardLayout implements OnInit {
   ngOnInit(): void {
     this.themeService.init();
     this.syncSidebarWithViewport();
+    this.loadVendorBrand();
+  }
+
+  onBrandLogoError(): void {
+    this.vendorLogo.set('');
   }
 
   @HostListener('window:resize')
@@ -103,6 +113,12 @@ export class DashboardLayout implements OnInit {
 
   pageTitle(): string {
     const url = this.router.url;
+    if (url.includes('/catalogs/new')) {
+      return 'Add Catalog';
+    }
+    if (/\/catalogs\/\d+\/edit/.test(url)) {
+      return 'Edit Catalog';
+    }
     if (url.includes('/products/new')) {
       return 'Add Product';
     }
@@ -120,11 +136,30 @@ export class DashboardLayout implements OnInit {
   }
 
   isNavActive(route: string): boolean {
-    return this.router.url === route || this.router.url.startsWith(`${route}/`);
+    const path = this.router.url.split('?')[0].split('#')[0];
+    return path === route || path.startsWith(`${route}/`);
   }
 
   logout(): void {
     this.authService.logout();
+  }
+
+  private loadVendorBrand(): void {
+    if (this.isAdmin) {
+      return;
+    }
+    this.vendorData.getProfile().subscribe({
+      next: (profile) => {
+        if (!profile) {
+          return;
+        }
+        this.vendorDisplayName.set(profile.name || '');
+        this.vendorLogo.set(resolveMediaUrl(profile.logoUrl || '') || '');
+      },
+      error: () => {
+        /* keep default brand */
+      },
+    });
   }
 
   private isDesktopViewport(): boolean {

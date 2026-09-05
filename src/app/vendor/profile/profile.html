@@ -1,5 +1,8 @@
 @if (isLoading()) {
-  <div class="state-message">Loading profile...</div>
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading profile...</span>
+  </div>
 } @else if (errorMessage()) {
   <div class="state-message error">{{ errorMessage() }}</div>
 } @else if (profile(); as vendor) {

@@ -1,0 +1,141 @@
+@if (isLoading()) {
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading catalog...</span>
+  </div>
+} @else if (pageError()) {
+  <div class="state-message error">
+    <p>{{ pageError() }}</p>
+    <button type="button" class="btn btn-outline" (click)="goBack()">Back to Catalogs</button>
+  </div>
+} @else {
+  <section class="catalog-form-page">
+    <div class="mf-toolbar">
+      <button type="button" class="mf-back" (click)="goBack()" [disabled]="isSubmitting()" aria-label="Back">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Back</span>
+      </button>
+      <div class="mf-title">
+        <h2>{{ mode() === 'edit' ? 'Edit Catalog' : 'Add Catalog' }}</h2>
+        <p>Select products for this catalog. The share link always shows the current list.</p>
+      </div>
+    </div>
+
+    <form class="mf-form" (ngSubmit)="submit()">
+      <section class="mf-card">
+        <h3 class="card-title">Details</h3>
+        <div class="form-row details-row">
+          <label class="form-field form-field-name">
+            <span>Catalog Name <em>*</em></span>
+            <input
+              type="text"
+              [(ngModel)]="formName"
+              name="catalogName"
+              placeholder="e.g. Catalog for Shubh"
+              required
+              autofocus
+            />
+          </label>
+
+          <label class="form-field form-field-status">
+            <span>Status</span>
+            <select [(ngModel)]="formStatus" name="catalogStatus">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="mf-card">
+        <div class="products-head">
+          <div>
+            <h3 class="card-title">Products</h3>
+            <p class="card-sub">{{ selectedCount() }} selected</p>
+          </div>
+          <div class="picker-actions">
+            <button type="button" class="link-btn" (click)="selectAllFiltered()">Select visible</button>
+            <button type="button" class="link-btn" (click)="clearSelection()">Clear</button>
+          </div>
+        </div>
+
+        <label class="product-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            [ngModel]="productSearch()"
+            (ngModelChange)="productSearch.set($event)"
+            name="productSearch"
+            placeholder="Search by name, SKU, or category..."
+          />
+        </label>
+
+        @if (loadingProducts()) {
+          <p class="picker-hint">Loading catalog products...</p>
+        } @else if (!allProducts().length) {
+          <p class="picker-hint">No products yet. Add products from Manage Products first.</p>
+        } @else {
+          <div class="product-picker-grid">
+            @for (product of filteredPickerProducts(); track product.id) {
+              <label class="picker-card" [class.selected]="isProductSelected(product.id)">
+                <input
+                  type="checkbox"
+                  class="picker-check"
+                  [checked]="isProductSelected(product.id)"
+                  (change)="toggleProduct(product.id)"
+                />
+                <div class="picker-thumb">
+                  @if (productImage(product); as img) {
+                    <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
+                    <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
+                  } @else {
+                    <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
+                  }
+                </div>
+                <div class="picker-info">
+                  <span class="picker-name">{{ product.name }}</span>
+                  <span class="picker-meta">{{ product.sku || ('#' + product.id) }}</span>
+                  @if (product.category) {
+                    <span class="picker-cat">{{ product.category }}</span>
+                  }
+                </div>
+              </label>
+            } @empty {
+              <p class="picker-hint">No products match your search.</p>
+            }
+          </div>
+        }
+      </section>
+
+      @if (mode() === 'edit' && shareLink() && formStatus === 'active') {
+        <section class="mf-card share-card">
+          <div class="share-head">
+            <div>
+              <h3 class="card-title">Share link</h3>
+              <p class="card-sub">Anyone with this link can view the catalog products.</p>
+            </div>
+            <button type="button" class="btn btn-outline" (click)="copyShareLink()">
+              {{ shareCopied() ? 'Copied' : 'Copy link' }}
+            </button>
+          </div>
+          <code class="share-url">{{ shareLink() }}</code>
+        </section>
+      } @else if (mode() === 'edit' && formStatus !== 'active') {
+        <p class="picker-hint notice">Set status to Active to enable the public share link.</p>
+      }
+
+      @if (formError()) {
+        <p class="form-error mf-error">{{ formError() }}</p>
+      }
+
+      <div class="mf-footer">
+        <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update Catalog' : 'Save Catalog') }}
+        </button>
+      </div>
+    </form>
+  </section>
+}

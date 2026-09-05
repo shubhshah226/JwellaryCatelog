@@ -31,3 +31,46 @@ export function buildPublicStoreUrl(storeCode: string): string {
   }
   return `${window.location.origin}/${storeCode}/products`;
 }
+
+/** Absolute public share URL for a catalog short code. */
+export function buildCatalogShareUrl(storeCode: string, shortCode: string): string {
+  const path = `/${storeCode}/c/${shortCode}`.replace(/\/{2,}/g, '/');
+  if (typeof window === 'undefined') {
+    return path;
+  }
+  return `${window.location.origin}${path}`;
+}
+
+/** Normalize API share path or absolute URL to current origin. */
+export function resolveShareUrl(
+  urlOrPath: string | null | undefined,
+  storeCode?: string,
+  shortCode?: string | null
+): string {
+  if (storeCode && shortCode) {
+    return buildCatalogShareUrl(storeCode, shortCode);
+  }
+  if (!urlOrPath) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(urlOrPath)) {
+    try {
+      const parsed = new URL(urlOrPath);
+      const match = parsed.pathname.match(/\/([^/]+)\/c\/([^/]+)/);
+      if (match) {
+        return buildCatalogShareUrl(match[1], match[2]);
+      }
+      if (typeof window !== 'undefined') {
+        return `${window.location.origin}${parsed.pathname}`;
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  if (urlOrPath.startsWith('/')) {
+    return typeof window === 'undefined'
+      ? urlOrPath
+      : `${window.location.origin}${urlOrPath}`;
+  }
+  return urlOrPath;
+}

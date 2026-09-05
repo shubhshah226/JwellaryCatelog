@@ -1,10 +1,19 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PRODUCT_STOCK_STATUSES, Product } from '../../dashboard/models/dashboard.model';
-import { CatalogShareService } from '../../core/services/catalog-share.service';
-import { buildPublicStoreUrl } from '../../core/utils/store-code.util';
+import { resolveShareUrl } from '../../core/utils/store-code.util';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 import { VendorDataService } from '../services/vendor-data.service';
 import { MasterDataService } from '../services/master-data.service';
@@ -16,12 +25,24 @@ import { ProductService } from '../services/product.service';
   templateUrl: './products.html',
   styleUrls: ['../shared/vendor-page.css', './products.css'],
 })
-export class VendorProducts implements OnInit {
+export class VendorProducts implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly vendorData = inject(VendorDataService);
   private readonly productService = inject(ProductService);
   private readonly masterDataService = inject(MasterDataService);
-  private readonly catalogShareService = inject(CatalogShareService);
+  private fabHostedOnBody = false;
+
+  @ViewChild('addFab')
+  set addFab(ref: ElementRef<HTMLButtonElement> | undefined) {
+    const el = ref?.nativeElement;
+    if (!el) {
+      return;
+    }
+    if (el.parentElement !== document.body) {
+      document.body.appendChild(el);
+      this.fabHostedOnBody = true;
+    }
+  }
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
@@ -45,12 +66,15 @@ export class VendorProducts implements OnInit {
   readonly maxWeight = signal<number | null>(null);
   readonly selectedIds = signal<Set<number>>(new Set());
   readonly brokenImageIds = signal<Set<number>>(new Set());
+  readonly sortBy = signal<'latest' | 'name' | 'price_asc' | 'price_desc'>('latest');
+  readonly filtersOpen = signal(false);
+  readonly openMenuId = signal<number | null>(null);
 
   readonly stockStatuses = PRODUCT_STOCK_STATUSES;
   shareCatalogName = '';
 
-  readonly filteredProducts = computed(() =>
-    this.productService.filterProducts(
+  readonly filteredProducts = computed(() => {
+    const list = this.productService.filterProducts(
       this.allProducts(),
       this.search(),
       this.category(),
@@ -61,8 +85,21 @@ export class VendorProducts implements OnInit {
       this.maxPrice(),
       this.minWeight(),
       this.maxWeight()
-    )
-  );
+    );
+    const sort = this.sortBy();
+    return [...list].sort((a, b) => {
+      if (sort === 'name') {
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      }
+      if (sort === 'price_asc') {
+        return (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY);
+      }
+      if (sort === 'price_desc') {
+        return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY);
+      }
+      return b.id - a.id;
+    });
+  });
 
   readonly categoryFilterOptions = computed(() =>
     this.categories()
@@ -70,6 +107,17 @@ export class VendorProducts implements OnInit {
       .map((c) => c.name)
       .sort((a, b) => a.localeCompare(b))
   );
+
+  readonly activeFilterCount = computed(() => {
+    let n = 0;
+    if (this.category() !== 'all') n += 1;
+    if (this.status() !== 'all') n += 1;
+    if (this.minPrice() != null) n += 1;
+    if (this.maxPrice() != null) n += 1;
+    if (this.minWeight() != null) n += 1;
+    if (this.maxWeight() != null) n += 1;
+    return n;
+  });
 
   readonly selectedProducts = computed(() => {
     const ids = this.selectedIds();
@@ -92,12 +140,27 @@ export class VendorProducts implements OnInit {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.filtersOpen()) {
+      this.closeFilters();
+      return;
+    }
+    if (this.openMenuId() != null) {
+      this.openMenuId.set(null);
+      return;
+    }
     if (this.isShareOpen()) {
       this.closeShareDrawer();
     }
   }
 
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.openMenuId.set(null);
+  }
+
   loadProducts(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
     this.productService.getVendorProducts().subscribe({
       next: (products) => {
         this.allProducts.set(products);
@@ -158,6 +221,70 @@ export class VendorProducts implements OnInit {
     this.maxWeight.set(null);
   }
 
+  resetSheetFilters(): void {
+    this.status.set('all');
+    this.minPrice.set(null);
+    this.maxPrice.set(null);
+    this.minWeight.set(null);
+    this.maxWeight.set(null);
+  }
+
+  openFilters(event?: Event): void {
+    event?.stopPropagation();
+    this.openMenuId.set(null);
+    this.filtersOpen.set(true);
+    document.body.classList.add('mp-filter-open');
+  }
+
+  closeFilters(): void {
+    this.filtersOpen.set(false);
+    document.body.classList.remove('mp-filter-open');
+  }
+
+  applyFiltersSheet(): void {
+    this.closeFilters();
+  }
+
+  ngOnDestroy(): void {
+    document.body.classList.remove('mp-filter-open');
+    const fab = document.getElementById('mp-add-product-fab');
+    if (this.fabHostedOnBody && fab?.parentElement === document.body) {
+      fab.remove();
+    }
+  }
+
+  onSortChange(value: string): void {
+    if (
+      value === 'latest' ||
+      value === 'name' ||
+      value === 'price_asc' ||
+      value === 'price_desc'
+    ) {
+      this.sortBy.set(value);
+    }
+  }
+
+  toggleMenu(event: Event, productId: number): void {
+    event.stopPropagation();
+    this.openMenuId.update((id) => (id === productId ? null : productId));
+  }
+
+  productMeta(product: Product): string {
+    const parts: string[] = [];
+    if (product.metalType) {
+      parts.push(product.metalType);
+    }
+    if (product.purity) {
+      parts.push(product.purity);
+    }
+    if (product.weight) {
+      parts.push(
+        this.weightHasUnit(product.weight) ? product.weight : `${product.weight}g`
+      );
+    }
+    return parts.join(' · ') || '—';
+  }
+
   private toNullableNumber(value: string | number | null | undefined): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
@@ -190,6 +317,7 @@ export class VendorProducts implements OnInit {
 
   toggleSelect(product: Product, event?: Event): void {
     event?.stopPropagation();
+    this.openMenuId.set(null);
     const ids = new Set(this.selectedIds());
     if (ids.has(product.id)) {
       ids.delete(product.id);
@@ -276,28 +404,31 @@ export class VendorProducts implements OnInit {
     this.shareError.set('');
     this.shareLink.set('');
 
-    this.vendorData.createCatalog(name, 'active').subscribe({
-      next: () => {
-        this.catalogShareService
-          .createShortLink(Number(profile.id), profile.storeCode!, {
-            v: 1,
-            productIds,
-          })
-          .subscribe({
-            next: (record) => {
-              this.shareLink.set(
-                record.url ||
-                  `${buildPublicStoreUrl(profile.storeCode!).replace(/\/(home|products)$/, '')}/c/${record.shortCode}`
-              );
-              this.shareGenerating.set(false);
-            },
-            error: () => {
-              this.shareGenerating.set(false);
-              this.shareError.set(
-                'Catalog created, but share link failed. Check Catalogs page for the new entry.'
-              );
-            },
-          });
+    this.vendorData.createCatalog(name, 'active', productIds).subscribe({
+      next: (catalog) => {
+        if (catalog.shareUrl || catalog.shortCode) {
+          this.shareLink.set(
+            resolveShareUrl(catalog.shareUrl, profile.storeCode!, catalog.shortCode)
+          );
+          this.shareGenerating.set(false);
+          this.selectedIds.set(new Set());
+          return;
+        }
+        this.vendorData.ensureCatalogShare(catalog.id).subscribe({
+          next: (share) => {
+            this.shareLink.set(
+              resolveShareUrl(share.url, profile.storeCode!, share.shortCode)
+            );
+            this.shareGenerating.set(false);
+            this.selectedIds.set(new Set());
+          },
+          error: () => {
+            this.shareGenerating.set(false);
+            this.shareError.set(
+              'Catalog created, but share link failed. Open Catalogs to copy the link.'
+            );
+          },
+        });
       },
       error: () => {
         this.shareGenerating.set(false);

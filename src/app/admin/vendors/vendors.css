@@ -564,7 +564,7 @@ tbody tr:hover {
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(520px, 100vw);
+  width: min(520px, 100%);
   background: var(--app-surface);
   border-left: 1px solid var(--app-border);
   z-index: 210;
@@ -725,7 +725,7 @@ tbody tr:hover {
 
 @media (max-width: 560px) {
   .vendor-drawer {
-    width: 100vw;
+    width: 100%;
   }
 
   .form-grid {
@@ -770,7 +770,7 @@ tbody tr:hover {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 121;
-  width: min(420px, calc(100vw - 2rem));
+  width: min(420px, calc(100% - 2rem));
   padding: 1.35rem 1.4rem 1.2rem;
   border-radius: 14px;
   background: var(--app-surface);

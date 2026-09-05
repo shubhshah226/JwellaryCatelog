@@ -28,6 +28,9 @@ export class VendorDataService {
             ...c,
             id: Number(c.id),
             vendorId: Number(c.vendorId),
+            productCount: Number(c.productCount ?? 0),
+            shareUrl: c.shareUrl || null,
+            shortCode: c.shortCode || null,
           }))
           // Hide system Default catalog used for product FK / auto-assign
           .filter((c) => c.name !== 'Default')
@@ -35,14 +38,25 @@ export class VendorDataService {
     );
   }
 
-  createCatalog(name: string, status: Catalog['status'] = 'active'): Observable<Catalog> {
+  createCatalog(
+    name: string,
+    status: Catalog['status'] = 'active',
+    productIds: number[] = []
+  ): Observable<Catalog> {
     return this.api
-      .post<Catalog>('/vendor/catalogs', { name: name.trim(), status })
+      .post<Catalog>('/vendor/catalogs', {
+        name: name.trim(),
+        status,
+        productIds,
+      })
       .pipe(
         map((c) => ({
           ...c,
           id: Number(c.id),
           vendorId: Number(c.vendorId),
+          productCount: Number(c.productCount ?? 0),
+          shareUrl: c.shareUrl || null,
+          shortCode: c.shortCode || null,
         }))
       );
   }
@@ -56,7 +70,45 @@ export class VendorDataService {
         ...c,
         id: Number(c.id),
         vendorId: Number(c.vendorId),
+        productCount: Number(c.productCount ?? 0),
+        shareUrl: c.shareUrl || null,
+        shortCode: c.shortCode || null,
       }))
+    );
+  }
+
+  getCatalogProducts(catalogId: number): Observable<Product[]> {
+    return this.api.get<Product[]>(`/vendor/catalogs/${catalogId}/products`).pipe(
+      map((items) =>
+        items.map((p) => ({
+          ...p,
+          id: Number(p.id),
+          catalogId: Number(p.catalogId),
+          vendorId: Number(p.vendorId),
+        }))
+      )
+    );
+  }
+
+  setCatalogProducts(catalogId: number, productIds: number[]): Observable<Catalog> {
+    return this.api
+      .put<Catalog>(`/vendor/catalogs/${catalogId}/products`, { productIds })
+      .pipe(
+        map((c) => ({
+          ...c,
+          id: Number(c.id),
+          vendorId: Number(c.vendorId),
+          productCount: Number(c.productCount ?? 0),
+          shareUrl: c.shareUrl || null,
+          shortCode: c.shortCode || null,
+        }))
+      );
+  }
+
+  ensureCatalogShare(catalogId: number): Observable<{ shortCode: string; url: string }> {
+    return this.api.post<{ shortCode: string; url: string; catalogId: number }>(
+      `/vendor/catalogs/${catalogId}/share`,
+      {}
     );
   }
 
