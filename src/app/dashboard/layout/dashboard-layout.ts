@@ -58,8 +58,9 @@ export class DashboardLayout implements OnInit {
     { label: 'Dashboard', route: '/vendor/dashboard', icon: 'dashboard' },
     { label: 'Catalogs', route: '/vendor/catalogs', icon: 'catalogs' },
     { label: 'Manage Products', route: '/vendor/products', icon: 'products' },
+    { label: 'Master Data', route: '/vendor/master-data', icon: 'categories' },
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
-    { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
+    // { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
     { label: 'Profile', route: '/vendor/profile', icon: 'profile' },
     { label: 'Change Password', route: '/vendor/change-password', icon: 'password' },
   ];
@@ -101,6 +102,19 @@ export class DashboardLayout implements OnInit {
   }
 
   pageTitle(): string {
+    const url = this.router.url;
+    if (url.includes('/products/new')) {
+      return 'Add Product';
+    }
+    if (/\/products\/\d+\/edit/.test(url)) {
+      return 'Edit Product';
+    }
+    if (url.includes('/master-data/new')) {
+      return url.includes('type=metals') ? 'Add Metal Type' : 'Add Category';
+    }
+    if (/\/master-data\/\d+\/edit/.test(url)) {
+      return url.includes('type=metals') ? 'Edit Metal Type' : 'Edit Category';
+    }
     const current = this.visibleNavItems().find((item) => this.isNavActive(item.route));
     return current?.label ?? 'Dashboard';
   }

@@ -211,6 +211,10 @@ export class ProductViewerModal implements OnDestroy {
     return formatRs(amount);
   }
 
+  skuLabel(product: PublicProduct): string {
+    return product.sku || `P${product.id}`;
+  }
+
   displayImages(): string[] {
     const product = this.viewedProduct();
     if (!product) {

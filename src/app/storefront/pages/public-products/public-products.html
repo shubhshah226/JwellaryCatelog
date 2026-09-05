@@ -10,330 +10,179 @@
     <p>This store or shared catalog link is invalid.</p>
   </div>
 } @else if (context(); as ctx) {
-  <div
-    class="public-products-page"
-    [class.shared-catalog]="isSharedView()"
-    [style.--store-primary]="primaryColor()"
-    [style.--store-accent]="accentColor()"
-  >
-    <app-public-store-nav
-      [storeCode]="ctx.storeCode"
-      [vendorName]="ctx.vendor.name"
-      [logoUrl]="ctx.config.logoUrl"
-      [isAvailable]="ctx.isAvailable"
-      [topBarItems]="ctx.config.homepage.topBar.enabled ? ctx.config.homepage.topBar.items : []"
-    />
+  <div class="catalog-page" [ngStyle]="headerVars(ctx)">
+    @if (categoriesOpen()) {
+      <button type="button" class="cat-scrim" (click)="closeCategories()" aria-label="Close menu"></button>
+    }
 
-    @if (isSharedView()) {
-      <section class="share-hero">
-        <div class="share-hero-copy">
-          <p class="share-brand">{{ ctx.vendor.name }}</p>
-          <h1>{{ shareHeadline() }}</h1>
-          <p class="share-lead">{{ shareSubcopy(ctx.vendor.name) }}</p>
-          <div class="share-cta">
-            @if (!isSignedIn()) {
-              <button type="button" class="share-btn" (click)="openSharedIntro()">Verify to view prices</button>
+    <aside class="cat-sidebar" [class.open]="categoriesOpen()">
+      <div class="side-brand">
+        <button type="button" class="drawer-close" (click)="closeCategories()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        @if (logoUrl(ctx); as logo) {
+          <img class="side-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
+        } @else {
+          <span class="side-logo-fallback"><i class="fa-solid fa-gem"></i></span>
+        }
+        <h1 class="side-name">{{ ctx.vendor.name }}</h1>
+      </div>
+
+      <div class="side-nav">
+        <h2>Select Category</h2>
+        <label class="cat-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            [ngModel]="categorySearch()"
+            (ngModelChange)="categorySearch.set($event)"
+            placeholder="Search categories..."
+          />
+        </label>
+        <nav class="cat-list" aria-label="Categories">
+          <button
+            type="button"
+            class="cat-item"
+            [class.active]="selectedCategory() === 'all'"
+            (click)="selectCategory('all')"
+          >
+            <i class="fa-solid fa-border-all" aria-hidden="true"></i>
+            All Products
+          </button>
+          @for (cat of filteredCategories(); track cat) {
+            <button
+              type="button"
+              class="cat-item"
+              [class.active]="selectedCategory() === cat"
+              (click)="selectCategory(cat)"
+            >
+              <i class="fa-solid fa-circle cat-dot" aria-hidden="true"></i>
+              {{ cat }}
+            </button>
+          }
+        </nav>
+      </div>
+
+      <div class="side-promo">
+        <i class="fa-regular fa-gem" aria-hidden="true"></i>
+        <p>Timeless jewellery for a brighter tomorrow.</p>
+      </div>
+    </aside>
+
+    <div class="catalog-shell">
+      <header class="biz-header">
+        <button
+          type="button"
+          class="mobile-cat-btn"
+          (click)="toggleCategories()"
+          aria-label="Open categories"
+        >
+          <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <label class="product-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            [ngModel]="productSearch()"
+            (ngModelChange)="onProductSearch($event)"
+            placeholder="Search for products, categories..."
+          />
+        </label>
+
+        @if (hasContact(ctx.vendor)) {
+          <div class="biz-contact">
+            @if (vendorAddress(ctx.vendor); as address) {
+              <div class="contact-item address" [title]="address">
+                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-location-dot"></i></span>
+                <span class="contact-text">{{ address }}</span>
+              </div>
             }
-            <a class="share-ghost" [routerLink]="['/', ctx.storeCode, 'home']">Visit the store</a>
+            @if (ctx.vendor.email) {
+              <a class="contact-item" [href]="'mailto:' + ctx.vendor.email" [title]="ctx.vendor.email">
+                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-envelope"></i></span>
+                <span class="contact-text">{{ ctx.vendor.email }}</span>
+              </a>
+            }
+            @if (ctx.vendor.phone) {
+              <a class="contact-item" [href]="'tel:' + ctx.vendor.phone">
+                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
+                <span class="contact-text">{{ ctx.vendor.phone }}</span>
+              </a>
+            }
           </div>
-        </div>
-      </section>
+        }
+      </header>
 
       @if (!ctx.isAvailable) {
-        <p class="unavailable-notice share-notice">This store is currently inactive. Pieces are shown for reference only.</p>
+        <p class="unavailable-notice">This store is currently inactive. Pieces are shown for reference only.</p>
       }
 
-      <section id="shared-pieces" class="share-lookbook">
-        <header class="lookbook-head">
-          <h2>Your pieces</h2>
-          <p>
-            @if (isSignedIn()) {
-              Special prices on this link are for you.
-            } @else {
-              Tap a piece to verify and unlock prices.
-            }
-          </p>
-        </header>
+      <main class="catalog-main">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <span>Home</span>
+          <span class="sep">›</span>
+          <span>{{ activeCategoryLabel() }}</span>
+        </nav>
+
+        <div class="section-head">
+          <h2>{{ isSharedView() ? (shareLabel() || 'Shared Catalog') : activeCategoryLabel() }}</h2>
+          <p class="result-count">{{ totalCount() }} pieces</p>
+        </div>
 
         @if (products().length) {
-          <div class="product-grid share-grid">
+          <div class="product-grid">
             @for (product of products(); track product.id) {
-              <article class="product-card share-card" (click)="openProduct(product)">
-                <div class="card-visual store-media">
-                  <span class="sku">{{ skuLabel(product) }}</span>
-                  @if (isSignedIn()) {
-                    <a
-                      class="wish"
-                      [routerLink]="['/', ctx.storeCode, 'cart']"
-                      (click)="$event.stopPropagation()"
-                      aria-label="Cart"
-                    ><i class="fa-regular fa-heart"></i></a>
+              <article class="product-card" (click)="openProduct(product)">
+                <div class="card-media">
+                  @if (product.category) {
+                    <span class="cat-badge">{{ product.category }}</span>
                   }
                   @if (product.imageUrl) {
-                    <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
-                  } @else {
-                    <div class="ph"><i class="fa-solid fa-gem"></i></div>
+                    <img
+                      [src]="product.imageUrl"
+                      [alt]="product.name"
+                      loading="lazy"
+                      (error)="onImgError($event)"
+                    />
                   }
+                  <div class="ph" [class.visible]="!product.imageUrl"><i class="fa-solid fa-gem"></i></div>
                 </div>
                 <div class="card-body">
                   <h3>{{ product.name }}</h3>
-                  @if (isSignedIn() && productMeta(product)) {
-                    <p class="meta">{{ productMeta(product) }}</p>
-                  }
-                  <div class="card-foot">
-                    @if (isSignedIn() && hasPrice(product)) {
-                      <div class="price-stack">
-                        @if (product.isSpecialPrice && product.listPrice) {
-                          <s>{{ listPriceLabel(product) }}</s>
-                        }
-                        <strong>
-                          {{ priceLabel(product) }}
-                          @if (product.isSpecialPrice) {
-                            <span class="special-tag">For you</span>
-                          }
-                        </strong>
-                      </div>
-                      <span class="stock in">In Stock</span>
-                    } @else if (isSignedIn()) {
-                      <strong class="locked-price">Rs -</strong>
-                      <span class="stock in">In Stock</span>
-                    } @else {
-                      <span class="locked-price">Verify to view price</span>
-                    }
-                  </div>
+                  <p class="sku">{{ skuLabel(product) }}</p>
+                  <button type="button" class="view-btn" (click)="openProduct(product); $event.stopPropagation()">
+                    <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                    View Details
+                  </button>
                 </div>
               </article>
             }
           </div>
+
+          @if (!isSharedView()) {
+            <div #loadMoreSentinel class="sentinel" aria-hidden="true"></div>
+            @if (isLoadingMore()) {
+              <div class="more-status">
+                <div class="loader-ring small"></div>
+                <span>Loading more...</span>
+              </div>
+            }
+          }
         } @else if (isLoading()) {
           <div class="empty">
             <div class="loader-ring"></div>
-            <p>Loading your catalog...</p>
+            <p>Loading products...</p>
           </div>
         } @else {
           <div class="empty">
             <span><i class="fa-solid fa-gem"></i></span>
-            <h3>This catalog is empty</h3>
-            <p>Ask the jeweller to share pieces again.</p>
+            <h3>No products found</h3>
+            <p>Try another category or search.</p>
           </div>
         }
-      </section>
-    } @else {
-    <div class="page-shell">
-      <header class="page-head">
-        <div class="head-copy">
-          <nav class="crumbs" aria-label="Breadcrumb">
-            <a [routerLink]="['/', ctx.storeCode, 'home']">Home</a>
-            <span>/</span>
-            <span>Products</span>
-          </nav>
-            <h1>All Products</h1>
-            <p>Browse jewellery from {{ ctx.vendor.name }}</p>
-        </div>
-          <button type="button" class="mobile-filter-btn" (click)="toggleFilters()">Filters</button>
-      </header>
-
-      @if (!ctx.isAvailable) {
-        <p class="unavailable-notice">This store is currently inactive. Products are shown for reference only.</p>
-      }
-
-      <div class="catalog-layout">
-          @if (filtersOpen()) {
-            <button type="button" class="filter-scrim" (click)="closeFilters()" aria-label="Close filters"></button>
-          }
-
-          <aside class="filters-card" [class.open]="filtersOpen()">
-            <div class="filters-head">
-              <h2>Filters</h2>
-              <button type="button" class="clear-link" (click)="clearAllFilters()">Clear All</button>
-              <button type="button" class="drawer-close" (click)="closeFilters()" aria-label="Close">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-
-            <label class="side-search">
-              <span class="sr-only">Search products</span>
-              <input type="search" [(ngModel)]="draftSearch" placeholder="Search products" />
-            </label>
-
-            <div class="filter-block">
-              <h3>Category</h3>
-              <label class="check-row">
-                <input type="checkbox" [checked]="draftCategory === 'all'" (change)="setSidebarCategory('all')" />
-                <span>All Products</span>
-              </label>
-              @for (cat of categories; track cat) {
-                <label class="check-row">
-                  <input
-                    type="checkbox"
-                    [checked]="draftCategory === cat"
-                    (change)="setSidebarCategory(cat)"
-                  />
-                  <span>{{ cat }}</span>
-                </label>
-              }
-            </div>
-
-            <div class="filter-block">
-              <h3>Metal Type</h3>
-              <label class="check-row">
-                <input type="checkbox" [checked]="draftMetal === 'all'" (change)="setDraftMetal('all')" />
-                <span>All Metals</span>
-              </label>
-              @for (metal of metalTypes; track metal) {
-                <label class="check-row">
-                  <input
-                    type="checkbox"
-                    [checked]="draftMetal === metal"
-                    (change)="setDraftMetal(metal)"
-                  />
-                  <span>{{ metal }}</span>
-                </label>
-              }
-            </div>
-
-            <div class="filter-block">
-              <h3>Purity</h3>
-              <label class="check-row">
-                <input type="checkbox" [checked]="draftPurity === 'all'" (change)="setDraftPurity('all')" />
-                <span>All</span>
-              </label>
-              @for (p of purityOptions; track p) {
-                <label class="check-row">
-                  <input
-                    type="checkbox"
-                    [checked]="draftPurity === p"
-                    (change)="setDraftPurity(p)"
-                  />
-                  <span>{{ p }}</span>
-                </label>
-              }
-            </div>
-
-            <div class="filter-block">
-              <h3>Price Range</h3>
-              @if (isSignedIn()) {
-                <div class="price-row">
-                  <input type="number" [(ngModel)]="draftMin" min="0" placeholder="Min Rs" />
-                  <span>-</span>
-                  <input type="number" [(ngModel)]="draftMax" min="0" placeholder="Max Rs" />
-                </div>
-                <div class="price-hint">
-                  <span>Rs 5,000</span>
-                  <span>Rs 5,00,000+</span>
-                </div>
-              } @else {
-                <p class="locked-price">Verify mobile to filter by price</p>
-              }
-            </div>
-
-            <button type="button" class="apply-btn" (click)="applyFilters()">Apply Filters</button>
-          </aside>
-
-        <main class="catalog-main">
-            <div class="quick-tabs-wrap">
-              <div class="quick-tabs">
-                <button type="button" class="tab" [class.on]="category === 'all'" (click)="setCategory('all')">
-                  <span class="tab-ico" aria-hidden="true"><i class="fa-solid fa-border-all"></i></span>
-                  All Products
-                </button>
-                @for (tab of quickTabs; track tab) {
-                  <button type="button" class="tab" [class.on]="category === tab" (click)="setCategory(tab)">
-                    <span class="tab-ico" aria-hidden="true"><i [class]="tabIcon(tab)"></i></span>
-                    {{ tab }}
-                  </button>
-                }
-              </div>
-            </div>
-
-            <div class="result-bar">
-              <p class="showing">
-                Showing {{ products().length }} of {{ totalCount() }} products
-              </p>
-              <label class="sort-field">
-                <span>Sort by:</span>
-                <select [(ngModel)]="sort" (ngModelChange)="onSortChange()">
-                  <option value="newest">Newest First</option>
-                  @if (isSignedIn()) {
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
-                  }
-                </select>
-              </label>
-            </div>
-
-          @if (products().length) {
-            <div class="product-grid">
-              @for (product of products(); track product.id) {
-                <article class="product-card" (click)="openProduct(product)">
-                  <div class="card-visual store-media">
-                    <span class="sku">{{ skuLabel(product) }}</span>
-                    @if (isSignedIn()) {
-                      <a
-                        class="wish"
-                        [routerLink]="['/', ctx.storeCode, 'cart']"
-                        (click)="$event.stopPropagation()"
-                        aria-label="Cart"
-                      ><i class="fa-regular fa-heart"></i></a>
-                    }
-                    @if (product.imageUrl) {
-                      <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
-                    } @else {
-                      <div class="ph"><i class="fa-solid fa-gem"></i></div>
-                    }
-                  </div>
-                  <div class="card-body">
-                    <h3>{{ product.name }}</h3>
-                    @if (isSignedIn() && productMeta(product)) {
-                      <p class="meta">{{ productMeta(product) }}</p>
-                    }
-                    <div class="card-foot">
-                      @if (isSignedIn() && hasPrice(product)) {
-                        <strong>
-                          {{ priceLabel(product) }}
-                          @if (product.isSpecialPrice) {
-                            <span class="special-tag">Special</span>
-                          }
-                        </strong>
-                        <span class="stock in">In Stock</span>
-                      } @else if (isSignedIn()) {
-                        <strong class="locked-price">Rs -</strong>
-                        <span class="stock in">In Stock</span>
-                      } @else {
-                        <span class="locked-price">Verify to view price</span>
-                      }
-                    </div>
-                  </div>
-                </article>
-              }
-            </div>
-
-              <div #loadMoreSentinel class="sentinel" aria-hidden="true"></div>
-              @if (isLoadingMore()) {
-                <div class="more-status">
-                  <div class="loader-ring small"></div>
-                  <span>Loading more products...</span>
-                </div>
-              } @else if (!hasMore() && products().length) {
-                <p class="end">You've seen all {{ totalCount() }} products</p>
-              }
-              <div class="list-end-spacer" aria-hidden="true"></div>
-          } @else if (isLoading()) {
-            <div class="empty">
-              <div class="loader-ring"></div>
-              <p>Loading products...</p>
-            </div>
-          } @else {
-            <div class="empty">
-              <span><i class="fa-solid fa-gem"></i></span>
-              <h3>No products found</h3>
-              <p>Try adjusting your filters.</p>
-            </div>
-          }
-        </main>
-      </div>
+      </main>
     </div>
-    }
 
     <app-product-viewer-modal
       [open]="viewerOpen()"

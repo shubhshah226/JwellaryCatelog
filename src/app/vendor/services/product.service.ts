@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map, throwError } from 'rxjs';
+import { ApiClientError } from '../../core/api/api.types';
 import { ApiHttpService } from '../../core/api/api-http.service';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
-import { Product, ProductFormData } from '../../dashboard/models/dashboard.model';
+import { Product, ProductFormData, ProductStatus } from '../../dashboard/models/dashboard.model';
 
 interface ApiProductImage {
   id?: number;
@@ -28,15 +29,27 @@ export class ProductService {
   }
 
   createProduct(form: ProductFormData, _existing: Product[]): Observable<Product> {
-    return this.api
-      .post<ApiProduct>('/vendor/products', this.buildPayload(form))
-      .pipe(map((p) => this.normalize(p)));
+    return this.api.post<ApiProduct>('/vendor/products', this.buildPayload(form)).pipe(
+      map((p) => this.normalize(p)),
+      catchError((err: unknown) => {
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Failed to add product.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
   }
 
   updateProduct(product: Product, form: ProductFormData): Observable<Product> {
-    return this.api
-      .put<ApiProduct>(`/vendor/products/${product.id}`, this.buildPayload(form))
-      .pipe(map((p) => this.normalize(p)));
+    return this.api.put<ApiProduct>(`/vendor/products/${product.id}`, this.buildPayload(form)).pipe(
+      map((p) => this.normalize(p)),
+      catchError((err: unknown) => {
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Failed to update product.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
   }
 
   deleteProduct(productId: number): Observable<void> {
@@ -58,15 +71,16 @@ export class ProductService {
       category: product.category,
       catalogId: product.catalogId,
       description: product.description ?? '',
-      price: product.price,
+      price: product.price ?? null,
       imageUrl: cover,
       galleryImages: gallery,
       images: all,
-      metalType: product.metalType ?? 'Gold',
+      metalType: product.metalType ?? '',
       weight: product.weight ?? '',
       purity: product.purity ?? '',
       sku: product.sku ?? '',
-      status: product.status ?? 'active',
+      color: product.color ?? '',
+      status: this.normalizeStatus(product.status),
     };
   }
 
@@ -78,7 +92,9 @@ export class ProductService {
     status = 'all',
     metalType = 'all',
     minPrice?: number | null,
-    maxPrice?: number | null
+    maxPrice?: number | null,
+    minWeight?: number | null,
+    maxWeight?: number | null
   ): Product[] {
     const term = search.trim().toLowerCase();
     return products.filter((item) => {
@@ -89,25 +105,56 @@ export class ProductService {
         (item.sku ?? '').toLowerCase().includes(term);
       const matchesCategory = category === 'all' || item.category === category;
       const matchesCatalog = catalogId === 'all' || item.catalogId === Number(catalogId);
-      const matchesStatus = status === 'all' || (item.status ?? 'active') === status;
+      const itemStatus = this.normalizeStatus(item.status);
+      const matchesStatus = status === 'all' || itemStatus === status;
       const matchesMetal = metalType === 'all' || item.metalType === metalType;
-      const matchesMin = minPrice == null || item.price >= minPrice;
-      const matchesMax = maxPrice == null || item.price <= maxPrice;
+      const price = item.price ?? null;
+      const matchesMinPrice = minPrice == null || (price != null && price >= minPrice);
+      const matchesMaxPrice = maxPrice == null || (price != null && price <= maxPrice);
+      const weight = this.parseWeight(item.weight);
+      const matchesMinWeight = minWeight == null || (weight != null && weight >= minWeight);
+      const matchesMaxWeight = maxWeight == null || (weight != null && weight <= maxWeight);
       return (
         matchesSearch &&
         matchesCategory &&
         matchesCatalog &&
         matchesStatus &&
         matchesMetal &&
-        matchesMin &&
-        matchesMax
+        matchesMinPrice &&
+        matchesMaxPrice &&
+        matchesMinWeight &&
+        matchesMaxWeight
       );
     });
+  }
+
+  stockLabel(status?: string | null): string {
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'out_of_stock') {
+      return 'Out Of Stock';
+    }
+    if (normalized === 'make_to_order') {
+      return 'Make to Order';
+    }
+    return 'In Stock';
+  }
+
+  private parseWeight(weight?: string | null): number | null {
+    if (!weight) {
+      return null;
+    }
+    const match = String(weight).replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+    if (!match) {
+      return null;
+    }
+    const value = Number(match[0]);
+    return Number.isFinite(value) ? value : null;
   }
 
   /**
    * Sends base64 data URLs (or existing /uploads paths) in JSON.
    * API saves cover as public image; gallery images are post-OTP only.
+   * catalogId omitted so API assigns Default catalog.
    */
   private buildPayload(form: ProductFormData) {
     const cover = this.toStoredUrl(form.imageUrl);
@@ -116,14 +163,16 @@ export class ProductService {
     return {
       name: form.name.trim(),
       category: form.category,
-      catalogId: form.catalogId,
-      description: form.description.trim(),
-      price: Number(form.price ?? 0),
-      metalType: form.metalType,
-      weight: form.weight.trim(),
-      purity: form.purity.trim(),
-      sku: form.sku.trim(),
-      status: form.status,
+      description: form.description.trim() || null,
+      price: form.price === null || form.price === undefined || form.price === ('' as unknown)
+        ? null
+        : Number(form.price),
+      metalType: form.metalType || null,
+      weight: form.weight.trim() || null,
+      purity: form.purity.trim() || null,
+      sku: form.sku.trim() || null,
+      color: form.color.trim() || null,
+      status: this.normalizeStatus(form.status),
       coverImage: cover || null,
       galleryImages: gallery,
     };
@@ -155,11 +204,26 @@ export class ProductService {
       id: Number(product.id),
       vendorId: Number(product.vendorId),
       catalogId: Number(product.catalogId),
-      price: Number(product.price ?? 0),
-      status: product.status ?? 'active',
+      price: product.price == null || product.price === ('' as unknown) ? null : Number(product.price),
+      color: product.color ?? '',
+      status: this.normalizeStatus(product.status),
       images: imageUrls,
       imageUrl: imageUrls[0] ?? resolveMediaUrl(product.imageUrl),
     };
+  }
+
+  private normalizeStatus(status?: string | null): ProductStatus {
+    const value = (status || 'in_stock').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+    if (value === 'active') {
+      return 'in_stock';
+    }
+    if (value === 'inactive') {
+      return 'out_of_stock';
+    }
+    if (value === 'out_of_stock' || value === 'make_to_order' || value === 'in_stock') {
+      return value;
+    }
+    return 'in_stock';
   }
 
   private extractImageUrls(product: ApiProduct): string[] {

@@ -55,20 +55,45 @@ export const routes: Routes = [
           import('./vendor/catalogs/catalogs').then((m) => m.VendorCatalogs),
       },
       {
+        path: 'products/new',
+        loadComponent: () =>
+          import('./vendor/products/product-form').then((m) => m.VendorProductForm),
+      },
+      {
+        path: 'products/:id/edit',
+        loadComponent: () =>
+          import('./vendor/products/product-form').then((m) => m.VendorProductForm),
+      },
+      {
         path: 'products',
         loadComponent: () =>
           import('./vendor/products/products').then((m) => m.VendorProducts),
+      },
+      {
+        path: 'master-data/new',
+        loadComponent: () =>
+          import('./vendor/master-data/master-data-form').then((m) => m.VendorMasterDataForm),
+      },
+      {
+        path: 'master-data/:id/edit',
+        loadComponent: () =>
+          import('./vendor/master-data/master-data-form').then((m) => m.VendorMasterDataForm),
+      },
+      {
+        path: 'master-data',
+        loadComponent: () =>
+          import('./vendor/master-data/master-data').then((m) => m.VendorMasterData),
       },
       {
         path: 'leads',
         loadComponent: () =>
           import('./vendor/leads/leads').then((m) => m.VendorLeads),
       },
-      {
-        path: 'storefront',
-        loadComponent: () =>
-          import('./vendor/storefront/storefront').then((m) => m.VendorStorefront),
-      },
+      // {
+      //   path: 'storefront',
+      //   loadComponent: () =>
+      //     import('./vendor/storefront/storefront').then((m) => m.VendorStorefront),
+      // },
       {
         path: 'profile',
         loadComponent: () =>
@@ -88,8 +113,8 @@ export const routes: Routes = [
     children: [
       {
         path: 'home',
-        loadComponent: () =>
-          import('./storefront/pages/public-home/public-home').then((m) => m.PublicHome),
+        redirectTo: 'products',
+        pathMatch: 'full',
       },
       {
         path: 'products',
@@ -112,7 +137,7 @@ export const routes: Routes = [
             (m) => m.PublicInterestCart
           ),
       },
-      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: '', redirectTo: 'products', pathMatch: 'full' },
     ],
   },
 

@@ -296,7 +296,7 @@ export class VendorLeads implements OnInit {
       next: (record) => {
         this.shareLink.set(
           record.url ||
-            `${buildPublicStoreUrl(storeCode).replace('/home', '')}/c/${record.shortCode}`
+            `${buildPublicStoreUrl(storeCode).replace(/\/(home|products)$/, '')}/c/${record.shortCode}`
         );
         this.shareGenerating.set(false);
         this.allLeads.update((list) =>

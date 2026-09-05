@@ -18,8 +18,15 @@ export interface Catalog {
   status: CatalogStatus;
 }
 
-export type ProductStatus = 'active' | 'inactive';
+export type ProductStatus = 'in_stock' | 'out_of_stock' | 'make_to_order' | 'active' | 'inactive';
 
+export const PRODUCT_STOCK_STATUSES = [
+  { value: 'in_stock', label: 'In Stock' },
+  { value: 'out_of_stock', label: 'Out Of Stock' },
+  { value: 'make_to_order', label: 'Make to Order' },
+] as const;
+
+/** @deprecated Prefer master-data API categories */
 export const PRODUCT_CATEGORIES = [
   'Necklaces',
   'Rings',
@@ -31,6 +38,7 @@ export const PRODUCT_CATEGORIES = [
   'Bracelets',
 ] as const;
 
+/** @deprecated Prefer master-data API metal types */
 export const METAL_TYPES = ['Gold', 'Silver', 'Diamond', 'Platinum', 'Gemstone', 'Mixed'] as const;
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
@@ -43,13 +51,14 @@ export interface Product {
   name: string;
   category: string;
   description?: string;
-  price: number;
+  price?: number | null;
   imageUrl?: string;
   images?: string[];
   metalType?: string;
   weight?: string;
   purity?: string;
   sku?: string;
+  color?: string;
   status?: ProductStatus;
 }
 
@@ -69,24 +78,26 @@ export interface ProductFormData {
   weight: string;
   purity: string;
   sku: string;
+  color: string;
   status: ProductStatus;
 }
 
 export function createEmptyProductForm(): ProductFormData {
   return {
     name: '',
-    category: PRODUCT_CATEGORIES[0],
+    category: '',
     catalogId: null,
     description: '',
     price: null,
     imageUrl: '',
     galleryImages: [],
     images: [],
-    metalType: METAL_TYPES[0],
+    metalType: '',
     weight: '',
     purity: '',
     sku: '',
-    status: 'active',
+    color: '',
+    status: 'in_stock',
   };
 }
 

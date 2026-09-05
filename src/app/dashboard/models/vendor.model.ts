@@ -25,6 +25,7 @@ export interface VendorAccount {
   city?: string;
   state?: string;
   pincode?: string;
+  logoUrl?: string;
   catalogsCount: number;
   totalSales: number;
   rank: number;

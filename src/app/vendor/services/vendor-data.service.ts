@@ -23,11 +23,14 @@ export class VendorDataService {
   getCatalogs(): Observable<Catalog[]> {
     return this.api.get<Catalog[]>('/vendor/catalogs').pipe(
       map((items) =>
-        items.map((c) => ({
-          ...c,
-          id: Number(c.id),
-          vendorId: Number(c.vendorId),
-        }))
+        items
+          .map((c) => ({
+            ...c,
+            id: Number(c.id),
+            vendorId: Number(c.vendorId),
+          }))
+          // Hide system Default catalog used for product FK / auto-assign
+          .filter((c) => c.name !== 'Default')
       )
     );
   }
@@ -100,7 +103,7 @@ export class VendorDataService {
   }
 
   getProfile(): Observable<VendorAccount | null> {
-    return this.api.get<ApiVendor>('/vendor/profile').pipe(
+    return this.api.get<ApiVendor & { logoUrl?: string }>('/vendor/profile').pipe(
       map((vendor) => ({
         ...vendor,
         id: Number(vendor.id),
@@ -108,23 +111,50 @@ export class VendorDataService {
         catalogsCount: Number(vendor.catalogsCount ?? 0),
         totalSales: Number(vendor.totalSales ?? 0),
         rank: Number(vendor.rank ?? 0),
+        logoUrl: vendor.logoUrl || '',
       }))
     );
   }
 
-  updateContact(vendorId: number, email: string, phone: string): Observable<VendorAccount> {
+  updateProfile(
+    payload: {
+      email: string;
+      phone: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      logoUrl?: string | null;
+    }
+  ): Observable<VendorAccount> {
     return this.api
-      .patch<{ email: string; phone: string }>('/vendor/profile/contact', { email, phone })
+      .patch<ApiVendor & { logoUrl?: string }>('/vendor/profile/contact', {
+        email: payload.email,
+        phone: payload.phone,
+        address: payload.address ?? '',
+        city: payload.city ?? '',
+        state: payload.state ?? '',
+        pincode: payload.pincode ?? '',
+        logoUrl: payload.logoUrl ?? '',
+      })
       .pipe(
-        map((contact) => {
-          // Caller should merge into current profile; return contact fields with id
-          return {
-            id: vendorId,
-            email: contact.email,
-            phone: contact.phone,
-          } as VendorAccount;
-        })
+        map((vendor) => ({
+          ...vendor,
+          id: Number(vendor.id),
+          subscription: vendor.subscriptionLabel || vendor.subscription || '',
+          catalogsCount: Number(vendor.catalogsCount ?? 0),
+          totalSales: Number(vendor.totalSales ?? 0),
+          rank: Number(vendor.rank ?? 0),
+          logoUrl: vendor.logoUrl || '',
+        }))
       );
+  }
+
+  /** @deprecated use updateProfile */
+  updateContact(vendorId: number, email: string, phone: string): Observable<VendorAccount> {
+    return this.updateProfile({ email, phone }).pipe(
+      map((v) => ({ ...v, id: vendorId }))
+    );
   }
 
   getVendorUsers(): Observable<AppUser[]> {

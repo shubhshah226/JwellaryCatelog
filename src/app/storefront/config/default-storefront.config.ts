@@ -3,8 +3,8 @@ import { createDefaultHomepage, DEFAULT_BANNER_URLS, mergeHomepage } from './hom
 
 export const DEFAULT_STOREFRONT_THEME = {
   primaryColor: '#c9a227',
-  accentColor: '#1a1a2e',
-  headerColor: '#1a1a2e',
+  accentColor: '#141414',
+  headerColor: '#141414',
   headerTextColor: '#ffffff',
   fontColor: '#1c1917',
 };

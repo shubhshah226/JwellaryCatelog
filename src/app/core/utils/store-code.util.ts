@@ -27,7 +27,7 @@ export function generateStoreCode(vendorId: number, vendorName: string): string 
 
 export function buildPublicStoreUrl(storeCode: string): string {
   if (typeof window === 'undefined') {
-    return `/${storeCode}/home`;
+    return `/${storeCode}/products`;
   }
-  return `${window.location.origin}/${storeCode}/home`;
+  return `${window.location.origin}/${storeCode}/products`;
 }

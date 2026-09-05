@@ -201,6 +201,16 @@ export class StorefrontService {
       );
   }
 
+  getPublicCategories(storeCode: string): Observable<string[]> {
+    return this.api
+      .get<{ categories: string[] }>(
+        `/public/stores/${storeCode}/categories`,
+        undefined,
+        new HttpHeaders({ 'X-Skip-Loader': 'true' })
+      )
+      .pipe(map((res) => res?.categories ?? []));
+  }
+
   filterPublicProducts(
     products: PublicProduct[],
     filters: {

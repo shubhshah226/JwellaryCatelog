@@ -176,6 +176,10 @@ export interface PublicVendor {
   phone?: string;
   email?: string;
   website?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
 }
 
 export interface PublicStoreContext {

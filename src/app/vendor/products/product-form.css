@@ -1,0 +1,399 @@
+.state-message {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--app-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.state-message.error {
+  color: #f87171;
+}
+
+.product-form-page.in-layout {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  margin: 0;
+}
+
+.pfp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.pfp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.pfp-form {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pfp-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pfp-section {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pfp-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pfp-section-head h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--app-text);
+}
+
+.pfp-section-head h4 em {
+  color: #ef4444;
+  font-style: normal;
+}
+
+.pfp-section-head span {
+  font-size: 0.72rem;
+  color: var(--app-text-muted);
+}
+
+.pfp-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pfp-photo-strip {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pfp-photo {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(34vw, 112px);
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--app-border);
+  background: var(--app-surface-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.pfp-photo.cover {
+  border-color: #7c3aed;
+}
+
+.pfp-photo.dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.pfp-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.photo-order {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.pfp-photo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 110px;
+  border: 1.5px dashed var(--app-border-strong);
+  border-radius: 12px;
+  color: var(--app-text-muted);
+  background: var(--app-surface-muted);
+}
+
+.pfp-photo-empty i {
+  font-size: 1.35rem;
+  opacity: 0.7;
+}
+
+.pfp-photo-empty p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.pfp-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-btn-bg);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.form-field span {
+  font-size: 0.78rem;
+  color: var(--app-text-muted);
+}
+
+.form-field span em {
+  color: #ef4444;
+  font-style: normal;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  min-height: 2.55rem;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+  font: inherit;
+  width: 100%;
+}
+
+.form-field textarea {
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem 0.75rem;
+}
+
+.form-field-span2 {
+  grid-column: 1 / -1;
+}
+
+.field-hint {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--app-warning, #fbbf24);
+}
+
+.primary-badge,
+.backup-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.15rem;
+  font-size: 0.6rem;
+  text-align: center;
+  color: #fff;
+}
+
+.primary-badge {
+  background: rgba(96, 165, 250, 0.92);
+}
+
+.backup-badge {
+  background: rgba(148, 163, 184, 0.92);
+}
+
+.remove-img {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1;
+  z-index: 2;
+}
+
+.move-img {
+  position: absolute;
+  bottom: 1.35rem;
+  left: 0.3rem;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.6rem;
+  line-height: 1;
+  z-index: 2;
+}
+
+.move-img.right {
+  left: auto;
+  right: 0.3rem;
+}
+
+.form-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.pfp-error {
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.pfp-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--app-surface);
+  border-top: 1px solid var(--app-border);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.pfp-footer .btn {
+  flex: 1;
+  min-height: 2.7rem;
+  font-size: 0.92rem;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--app-border-strong);
+  color: var(--app-text);
+}
+
+/* Very small phones: stack fields */
+@media (max-width: 420px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet / laptop: photos left, fields right */
+@media (min-width: 900px) {
+  .pfp-form {
+    padding-bottom: 0.5rem;
+  }
+
+  .pfp-layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .pfp-photos-card {
+    position: sticky;
+    top: 0.5rem;
+  }
+
+  .pfp-photo {
+    width: 96px;
+  }
+
+  .pfp-photo-strip {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .pfp-upload-btn {
+    width: 100%;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pfp-footer {
+    position: static;
+    margin-top: 0.25rem;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    justify-content: flex-end;
+  }
+
+  .pfp-footer .btn {
+    flex: 0 0 auto;
+    min-width: 130px;
+  }
+}

@@ -3,61 +3,91 @@
 } @else if (errorMessage()) {
   <div class="state-message error">{{ errorMessage() }}</div>
 } @else {
-  <section class="vendor-page" [class.page-blurred]="isDrawerOpen() || isShareOpen()">
+  <section
+    class="vendor-page products-page"
+    [class.page-blurred]="isShareOpen()"
+    [class.has-selection-bar]="selectedCount() > 0"
+  >
     <div class="page-header">
       <div>
         <h2>Manage Products</h2>
-        <p>Upload product images, set prices, and share curated catalogs with customers.</p>
+        <p>Select products to share as a catalog. Add or edit anytime.</p>
       </div>
       <div class="header-actions">
-        <button type="button" class="btn btn-outline" (click)="openShareModal()">Share Catalog</button>
-        <button type="button" class="btn btn-primary" (click)="openAddDrawer()">+ Add Product</button>
+        <button type="button" class="btn btn-primary" (click)="openAddPage()">+ Add Product</button>
       </div>
-    </div>
-
-    <div class="stats-row">
-      <article class="stat-card">
-        <p class="stat-label">Total Products</p>
-        <h3>{{ allProducts().length }}</h3>
-      </article>
-      <article class="stat-card">
-        <p class="stat-label">Showing</p>
-        <h3>{{ filteredProducts().length }}</h3>
-      </article>
-      <article class="stat-card">
-        <p class="stat-label">Categories</p>
-        <h3>{{ categoryOptions().length }}</h3>
-      </article>
     </div>
 
     <div class="filters-card">
-      <div class="filters-grid">
+      <div class="filters-grid mobile-filters">
         <div class="filter-search">
           <span class="filter-icon" aria-hidden="true">
             <i class="fa-solid fa-magnifying-glass"></i>
           </span>
-          <input type="text" placeholder="Search products..." [(ngModel)]="search" />
+          <input
+            type="text"
+            placeholder="Search products..."
+            [ngModel]="search()"
+            (ngModelChange)="onSearchChange($event)"
+          />
         </div>
 
-        <select [(ngModel)]="category" class="filter-select">
+        <select
+          class="filter-select"
+          [ngModel]="category()"
+          (ngModelChange)="onCategoryChange($event)"
+        >
           <option value="all">All Categories</option>
-          @for (cat of categoryOptions(); track cat) {
+          @for (cat of categoryFilterOptions(); track cat) {
             <option [value]="cat">{{ cat }}</option>
           }
         </select>
 
-        <select [(ngModel)]="catalogId" class="filter-select">
-          <option value="all">All Catalogs</option>
-          @for (catalog of catalogs(); track catalog.id) {
-            <option [value]="catalog.id">{{ catalog.name }}</option>
+        <select
+          class="filter-select"
+          [ngModel]="status()"
+          (ngModelChange)="onStatusChange($event)"
+        >
+          <option value="all">All Stock</option>
+          @for (s of stockStatuses; track s.value) {
+            <option [value]="s.value">{{ s.label }}</option>
           }
         </select>
 
-        <select [(ngModel)]="status" class="filter-select">
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
+        <input
+          type="number"
+          class="filter-select"
+          placeholder="Min price"
+          min="0"
+          [ngModel]="minPrice()"
+          (ngModelChange)="onMinPriceChange($event)"
+        />
+        <input
+          type="number"
+          class="filter-select"
+          placeholder="Max price"
+          min="0"
+          [ngModel]="maxPrice()"
+          (ngModelChange)="onMaxPriceChange($event)"
+        />
+        <input
+          type="number"
+          class="filter-select"
+          placeholder="Min weight (Gm)"
+          min="0"
+          step="0.01"
+          [ngModel]="minWeight()"
+          (ngModelChange)="onMinWeightChange($event)"
+        />
+        <input
+          type="number"
+          class="filter-select"
+          placeholder="Max weight (Gm)"
+          min="0"
+          step="0.01"
+          [ngModel]="maxWeight()"
+          (ngModelChange)="onMaxWeightChange($event)"
+        />
 
         <div class="filter-actions">
           <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
@@ -69,26 +99,67 @@
 
     <div class="products-grid">
       @for (product of filteredProducts(); track product.id) {
-        <article class="vendor-product-card">
-          <div class="vpc-image">
-            @if (product.imageUrl) {
-              <img [src]="product.imageUrl" [alt]="product.name" />
-            } @else {
-              <div class="vpc-placeholder"><i class="fa-solid fa-gem"></i></div>
+        <article
+          class="vendor-product-card"
+          [class.selected]="isSelected(product.id)"
+          (click)="toggleSelect(product)"
+        >
+          <button
+            type="button"
+            class="vpc-check"
+            [class.checked]="isSelected(product.id)"
+            (click)="toggleSelect(product, $event)"
+            [attr.aria-label]="isSelected(product.id) ? 'Deselect product' : 'Select product'"
+          >
+            @if (isSelected(product.id)) {
+              <i class="fa-solid fa-check"></i>
             }
-            <span class="vpc-status" [class.inactive]="product.status === 'inactive'">
-              {{ product.status === 'inactive' ? 'Inactive' : 'Active' }}
+          </button>
+
+          <div class="vpc-image">
+            @if (hasImage(product)) {
+              <img
+                [src]="product.imageUrl"
+                alt=""
+                loading="lazy"
+                (error)="onImageError(product.id)"
+              />
+            } @else {
+              <div class="vpc-placeholder" aria-hidden="true">
+                <i class="fa-solid fa-gem"></i>
+              </div>
+            }
+            <span
+              class="vpc-status"
+              [class.out]="product.status === 'out_of_stock'"
+              [class.mto]="product.status === 'make_to_order'"
+            >
+              {{ stockLabel(product.status) }}
             </span>
           </div>
           <div class="vpc-body">
             <span class="vpc-category">{{ product.category }}</span>
             <h3>{{ product.name }}</h3>
-            <p class="vpc-meta">{{ product.metalType }} · {{ product.purity }} · {{ product.weight }}</p>
+            <p class="vpc-meta">
+              {{ product.metalType || '—' }}
+              @if (product.purity) { · {{ product.purity }} }
+              @if (product.weight) { · {{ product.weight }}{{ weightHasUnit(product.weight) ? '' : ' Gm' }} }
+            </p>
             <div class="vpc-footer">
-              <strong>{{ product.price | currency:'INR':'symbol':'1.0-0' }}</strong>
+              <strong>
+                @if (product.price != null) {
+                  {{ product.price | currency:'INR':'symbol':'1.0-0' }}
+                } @else {
+                  —
+                }
+              </strong>
               <div class="vpc-actions">
-                <button type="button" class="btn-text" (click)="openEditDrawer(product)">Edit</button>
-                <button type="button" class="btn-text danger" (click)="deleteProduct(product)">Delete</button>
+                <button type="button" class="vpc-action" (click)="openEditPage(product, $event)" aria-label="Edit">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button type="button" class="vpc-action danger" (click)="deleteProduct(product, $event)" aria-label="Delete">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -101,226 +172,48 @@
     </div>
   </section>
 
-  @if (isDrawerOpen()) {
-    <div class="drawer-backdrop" (click)="closeDrawer()"></div>
-    <aside class="product-drawer">
-      <div class="drawer-header">
-        <div>
-          <h3>{{ drawerMode() === 'edit' ? 'Edit Product' : 'Add Product' }}</h3>
-          <p>Upload image and fill in product details.</p>
-        </div>
-        <button type="button" class="drawer-close" (click)="closeDrawer()">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+  @if (selectedCount() > 0 && !isShareOpen()) {
+    <div class="share-sticky-bar">
+      <div class="share-sticky-info">
+        <strong>{{ selectedCount() }}</strong>
+        <span>selected</span>
+        <button type="button" class="btn-text" (click)="clearSelection()">Clear</button>
       </div>
-
-      <form class="drawer-form" (ngSubmit)="submitProduct()">
-        <div class="image-upload-sections">
-          <div class="image-upload cover-upload">
-            <div class="upload-section-label">
-              <strong>1. Website cover image <em>*</em></strong>
-              <span>Shown publicly on store &amp; listings</span>
-            </div>
-            @if (coverImage()) {
-              <div class="cover-preview">
-                <img [src]="coverImage()" alt="Cover" />
-                <span class="primary-badge">Public cover</span>
-                <button type="button" class="remove-img" (click)="removeCover()">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
-              </div>
-            } @else {
-              <div class="upload-placeholder">
-                <span>Photo</span>
-                <p>Upload the main image customers see before login</p>
-              </div>
-            }
-            <label class="upload-btn">
-              {{ coverImage() ? 'Replace Cover' : 'Upload Cover' }}
-              <input type="file" accept="image/*" (change)="onCoverSelected($event)" hidden />
-            </label>
-          </div>
-
-          <div class="image-upload gallery-upload">
-            <div class="upload-section-label">
-              <strong>2. Gallery images</strong>
-              <span>Visible only after customer OTP verify</span>
-            </div>
-            @if (galleryImages().length) {
-              <div class="images-grid">
-                @for (img of galleryImages(); track $index) {
-                  <div class="img-thumb">
-                    <img [src]="img" alt="Gallery" />
-                    <button type="button" class="remove-img" (click)="removeGalleryImage($index)">
-                      <i class="fa-solid fa-xmark"></i>
-                    </button>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="upload-placeholder compact">
-                <span>Gallery</span>
-                <p>Add extra detail images (optional)</p>
-              </div>
-            }
-            <label class="upload-btn secondary">
-              Add Gallery Images
-              <input type="file" accept="image/*" multiple (change)="onGallerySelected($event)" hidden />
-            </label>
-          </div>
-        </div>
-
-        <label class="form-field">
-          <span>Product Name <em>*</em></span>
-          <input type="text" [(ngModel)]="productForm.name" name="name" required />
-        </label>
-
-        <div class="form-row">
-          <label class="form-field">
-            <span>Category</span>
-            <select [(ngModel)]="productForm.category" name="category">
-              @for (cat of categories; track cat) {
-                <option [value]="cat">{{ cat }}</option>
-              }
-            </select>
-          </label>
-          <label class="form-field">
-            <span>Catalog <em>*</em></span>
-            <select [(ngModel)]="productForm.catalogId" name="catalogId" required>
-              @for (catalog of catalogs(); track catalog.id) {
-                <option [ngValue]="catalog.id">{{ catalog.name }}</option>
-              }
-            </select>
-          </label>
-        </div>
-
-        <div class="form-row">
-          <label class="form-field">
-            <span>Price (Rs) <em>*</em></span>
-            <input type="number" [(ngModel)]="productForm.price" name="price" min="0" required />
-          </label>
-          <label class="form-field">
-            <span>Metal Type</span>
-            <select [(ngModel)]="productForm.metalType" name="metalType">
-              @for (metal of metalTypes; track metal) {
-                <option [value]="metal">{{ metal }}</option>
-              }
-            </select>
-          </label>
-        </div>
-
-        <div class="form-row">
-          <label class="form-field">
-            <span>Purity</span>
-            <input type="text" [(ngModel)]="productForm.purity" name="purity" placeholder="e.g. 22K" />
-          </label>
-          <label class="form-field">
-            <span>Weight</span>
-            <input type="text" [(ngModel)]="productForm.weight" name="weight" placeholder="e.g. 12g" />
-          </label>
-        </div>
-
-        <label class="form-field">
-          <span>SKU</span>
-          <input type="text" [(ngModel)]="productForm.sku" name="sku" placeholder="Product code" />
-        </label>
-
-        <label class="form-field">
-          <span>Description</span>
-          <textarea [(ngModel)]="productForm.description" name="description" rows="3"></textarea>
-        </label>
-
-        <label class="form-field">
-          <span>Status</span>
-          <select [(ngModel)]="productForm.status" name="status">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </label>
-
-        @if (formError()) {
-          <p class="form-error">{{ formError() }}</p>
-        }
-
-        <div class="drawer-footer">
-          <button type="button" class="btn btn-outline" (click)="closeDrawer()" [disabled]="isSubmitting()">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
-            {{ isSubmitting() ? 'Saving...' : (drawerMode() === 'edit' ? 'Update' : 'Add Product') }}
-          </button>
-        </div>
-      </form>
-    </aside>
+      <button type="button" class="btn btn-primary share-sticky-btn" (click)="openShareDrawer()">
+        Share Catalog
+      </button>
+    </div>
   }
 
   @if (isShareOpen()) {
-    <div class="drawer-backdrop" (click)="closeShareModal()"></div>
+    <div class="drawer-backdrop" (click)="closeShareDrawer()"></div>
     <aside class="share-modal">
       <div class="drawer-header">
         <div>
-          <h3>Share Catalog Link</h3>
-          <p>Filter products and generate a short shareable link.</p>
+          <h3>Share Catalog</h3>
+          <p>{{ selectedCount() }} product(s) selected — creates a Catalogs entry.</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeShareModal()">
+        <button type="button" class="drawer-close" (click)="closeShareDrawer()">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
       <div class="share-body">
-        <div class="share-filters">
-          <label class="form-field">
-            <span>Search</span>
-            <input type="search" [(ngModel)]="shareSearch" (ngModelChange)="onShareFilterChange()" placeholder="Name, SKU..." />
-          </label>
-          <div class="form-row">
-            <label class="form-field">
-              <span>Category</span>
-              <select [(ngModel)]="shareCategory" (ngModelChange)="onShareFilterChange()">
-                <option value="all">All Categories</option>
-                @for (cat of categories; track cat) {
-                  <option [value]="cat">{{ cat }}</option>
-                }
-              </select>
-            </label>
-            <label class="form-field">
-              <span>Metal Type</span>
-              <select [(ngModel)]="shareMetalType" (ngModelChange)="onShareFilterChange()">
-                <option value="all">All Metals</option>
-                @for (metal of metalTypes; track metal) {
-                  <option [value]="metal">{{ metal }}</option>
-                }
-              </select>
-            </label>
-          </div>
-          <div class="form-row">
-            <label class="form-field">
-              <span>Min Price (Rs)</span>
-              <input type="number" [(ngModel)]="shareMinPrice" (ngModelChange)="onShareFilterChange()" min="0" />
-            </label>
-            <label class="form-field">
-              <span>Max Price (Rs)</span>
-              <input type="number" [(ngModel)]="shareMaxPrice" (ngModelChange)="onShareFilterChange()" min="0" />
-            </label>
-          </div>
-        </div>
+        <label class="form-field">
+          <span>Catalog Name <em>*</em></span>
+          <input
+            type="text"
+            [(ngModel)]="shareCatalogName"
+            name="shareCatalogName"
+            placeholder="Catalog for Shubh"
+          />
+        </label>
 
         <div class="share-products">
-          <div class="share-products-head">
-            <p class="share-label">
-              {{ shareFilteredProducts().length }} products · {{ shareSelectedIds().size }} selected
-            </p>
-            <div class="share-bulk-actions">
-              <button type="button" class="btn-text" (click)="selectAllShareFiltered()">Select all</button>
-              <button type="button" class="btn-text" (click)="clearShareSelection()">Clear</button>
-            </div>
-          </div>
-          <div class="share-product-grid">
-            @for (product of shareFilteredProducts(); track product.id) {
-              <label class="share-product-card" [class.selected]="isShareSelected(product.id)">
-                <input
-                  type="checkbox"
-                  [checked]="isShareSelected(product.id)"
-                  (change)="toggleShareProduct(product.id, $any($event.target).checked)"
-                />
+          <p class="share-label">Selected products</p>
+          <div class="share-selected-list">
+            @for (product of selectedProducts(); track product.id) {
+              <div class="share-selected-row">
                 <div class="spc-thumb">
                   @if (product.imageUrl) {
                     <img [src]="product.imageUrl" [alt]="product.name" />
@@ -330,33 +223,42 @@
                 </div>
                 <div class="spc-info">
                   <strong>{{ product.name }}</strong>
-                  <span>{{ product.category }} · {{ product.metalType }}</span>
-                  <em>{{ product.price | currency:'INR':'symbol':'1.0-0' }}</em>
+                  <span>{{ product.category }} · {{ product.metalType || '—' }}</span>
                 </div>
-              </label>
-            } @empty {
-              <p class="share-empty">No active products match these filters.</p>
+                <button
+                  type="button"
+                  class="btn-text danger"
+                  (click)="removeFromShare(product.id)"
+                  aria-label="Remove from selection"
+                >
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
             }
           </div>
         </div>
 
+        @if (shareError()) {
+          <p class="form-error">{{ shareError() }}</p>
+        }
+
         <button
           type="button"
           class="btn btn-primary share-generate"
-          (click)="generateShareLink()"
-          [disabled]="shareGenerating() || !shareFilteredProducts().length"
+          (click)="createAndShareCatalog()"
+          [disabled]="shareGenerating() || !selectedCount()"
         >
-          {{ shareGenerating() ? 'Generating...' : 'Generate Short Link' }}
+          {{ shareGenerating() ? 'Creating...' : 'Create & Share Catalog' }}
         </button>
 
         @if (shareLink()) {
           <div class="share-result">
-            <p class="share-label">Catalog URL</p>
+            <p class="share-label">Share link</p>
             <code class="share-url">{{ shareLink() }}</code>
             <button type="button" class="btn btn-outline" (click)="copyShareLink()">
               {{ shareCopied() ? 'Copied!' : 'Copy Link' }}
             </button>
-            <p class="share-hint">Short link — customers see only filtered/selected products.</p>
+            <p class="share-hint">Catalog also saved under Catalogs (e.g. “Catalog for Shubh”).</p>
           </div>
         }
       </div>

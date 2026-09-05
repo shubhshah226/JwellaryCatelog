@@ -4,27 +4,26 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  computed,
   inject,
   signal,
   effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NgStyle } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { CatalogShareService } from '../../../core/services/catalog-share.service';
-import { METAL_TYPES, PRODUCT_CATEGORIES } from '../../../dashboard/models/dashboard.model';
+import { resolveMediaUrl } from '../../../core/utils/media-url.util';
 import { ProductViewerModal } from '../../components/product-viewer-modal/product-viewer-modal';
-import { PublicStoreNav } from '../../components/public-store-nav/public-store-nav';
-import { PublicProduct, PublicStoreContext } from '../../models/storefront.model';
+import { PublicProduct, PublicStoreContext, PublicVendor } from '../../models/storefront.model';
 import { CustomerAuthService } from '../../services/customer-auth.service';
 import { InterestCartService } from '../../services/interest-cart.service';
-import { formatRs, hasDisplayPrice, StorefrontService } from '../../services/storefront.service';
-
-const PURITY_OPTIONS = ['22K', '18K', '14K'] as const;
-const QUICK_TABS = ['Rings', 'Necklaces', 'Earrings', 'Bangles', 'Pendants'] as const;
+import { StorefrontService } from '../../services/storefront.service';
+import { DEFAULT_STOREFRONT_THEME } from '../../config/default-storefront.config';
 
 @Component({
   selector: 'app-public-products',
-  imports: [FormsModule, RouterLink, PublicStoreNav, ProductViewerModal],
+  imports: [FormsModule, NgStyle, ProductViewerModal],
   templateUrl: './public-products.html',
   styleUrl: './public-products.css',
 })
@@ -60,34 +59,30 @@ export class PublicProducts implements OnInit, OnDestroy {
   readonly shareCustomerName = signal('');
   readonly viewerOpen = signal(false);
   readonly selectedProduct = signal<PublicProduct | null>(null);
-  readonly filtersOpen = signal(false);
+  readonly categoriesOpen = signal(false);
+  readonly categoryList = signal<string[]>([]);
+  readonly categorySearch = signal('');
+  readonly productSearch = signal('');
+  readonly selectedCategory = signal('all');
+  readonly logoBroken = signal(false);
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   private storeCode = '';
   private page = 1;
   private readonly pageSize = 12;
-
-  search = '';
-  category = 'all';
-  metalType = 'all';
-  purity = 'all';
-  minPrice: number | null = null;
-  maxPrice: number | null = null;
-  sort = 'newest';
-
-  draftSearch = '';
-  draftCategory = 'all';
-  draftMetal = 'all';
-  draftPurity = 'all';
-  draftMin: number | null = null;
-  draftMax: number | null = null;
-
-  readonly categories = PRODUCT_CATEGORIES;
-  readonly metalTypes = METAL_TYPES;
-  readonly purityOptions = PURITY_OPTIONS;
-  readonly quickTabs = QUICK_TABS;
   private shortCode = '';
   private wasVerified = false;
   private pricingReady = false;
+  private sharedAllProducts: PublicProduct[] = [];
+
+  readonly filteredCategories = computed(() => {
+    const q = this.categorySearch().trim().toLowerCase();
+    const list = this.categoryList();
+    if (!q) {
+      return list;
+    }
+    return list.filter((c) => c.toLowerCase().includes(q));
+  });
 
   constructor() {
     effect(() => {
@@ -125,6 +120,11 @@ export class PublicProducts implements OnInit, OnDestroy {
     this.cart.setStore(this.storeCode);
     this.customerAuth.setActiveStore(this.storeCode);
 
+    const categoryParam = this.route.snapshot.queryParamMap.get('category');
+    if (categoryParam) {
+      this.selectedCategory.set(categoryParam);
+    }
+
     if (shortCode) {
       this.shortCode = shortCode;
       this.pricingReady = true;
@@ -141,6 +141,7 @@ export class PublicProducts implements OnInit, OnDestroy {
             return;
           }
           this.context.set(data.context);
+          this.logoBroken.set(false);
           void this.catalogShareService.decode(shareToken).then((payload) => {
             if (!payload) {
               this.notFound.set(true);
@@ -148,17 +149,7 @@ export class PublicProducts implements OnInit, OnDestroy {
               return;
             }
             const products = this.storefrontService.applySharePayload(data.products, payload);
-            this.products.set(products);
-            this.totalCount.set(products.length);
-            this.hasMore.set(false);
-            this.isSharedView.set(true);
-            this.shareLabel.set(this.buildShareLabel(payload));
-            this.shareCustomerName.set(payload.customerName ?? '');
-            if (payload.category) this.category = payload.category;
-            if (payload.metalType) this.metalType = payload.metalType;
-            if (payload.minPrice !== undefined) this.minPrice = payload.minPrice;
-            if (payload.maxPrice !== undefined) this.maxPrice = payload.maxPrice;
-            this.syncDraftFromApplied();
+            this.applySharedProducts(products, payload);
             this.isLoading.set(false);
           });
         },
@@ -170,16 +161,31 @@ export class PublicProducts implements OnInit, OnDestroy {
       return;
     }
 
-    this.search = this.route.snapshot.queryParamMap.get('q') ?? '';
-    this.category = this.route.snapshot.queryParamMap.get('category') ?? 'all';
-    this.syncDraftFromApplied();
     this.pricingReady = true;
+    this.loadCategories();
     this.reloadFirstPage();
   }
 
   ngOnDestroy(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
     this.observer?.disconnect();
     this.observer = null;
+  }
+
+  onProductSearch(value: string): void {
+    this.productSearch.set(value);
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => {
+      if (this.isSharedView()) {
+        this.applySharedCategoryFilter();
+      } else {
+        this.reloadFirstPage();
+      }
+    }, 300);
   }
 
   isSignedIn(): boolean {
@@ -187,154 +193,92 @@ export class PublicProducts implements OnInit, OnDestroy {
     return this.customerAuth.isVerified(this.storeCode);
   }
 
-  setCategory(category: string): void {
-    if (this.isSharedView() || this.category === category) {
-      return;
+  vendorInitials(vendor: PublicVendor): string {
+    const parts = (vendor.name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) {
+      return 'JC';
     }
-    this.category = category;
-    this.draftCategory = category;
-    this.reloadFirstPage();
-  }
-
-  setSidebarCategory(category: string): void {
-    if (this.isSharedView()) {
-      return;
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
     }
-    this.draftCategory = category;
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
-  setDraftMetal(metal: string): void {
-    this.draftMetal = metal;
+  vendorAddress(vendor: PublicVendor): string {
+    return [vendor.address, vendor.city, vendor.state, vendor.pincode]
+      .map((x) => (x ?? '').trim())
+      .filter(Boolean)
+      .join(', ');
   }
 
-  setDraftPurity(purity: string): void {
-    this.draftPurity = purity;
+  hasContact(vendor: PublicVendor): boolean {
+    return !!(this.vendorAddress(vendor) || vendor.email || vendor.phone);
   }
 
-  onSortChange(): void {
-    if (!this.isSharedView()) {
-      this.reloadFirstPage();
+  logoUrl(ctx: PublicStoreContext): string {
+    if (this.logoBroken()) {
+      return '';
     }
+    return resolveMediaUrl(ctx.config?.logoUrl || '');
   }
 
-  applyFilters(): void {
-    if (this.isSharedView()) {
-      return;
-    }
-    this.search = this.draftSearch.trim();
-    this.category = this.draftCategory;
-    this.metalType = this.draftMetal;
-    this.purity = this.draftPurity;
-    this.minPrice = this.draftMin;
-    this.maxPrice = this.draftMax;
-    this.filtersOpen.set(false);
-    this.reloadFirstPage();
+  onLogoError(): void {
+    this.logoBroken.set(true);
   }
 
-  clearAllFilters(): void {
-    if (this.isSharedView()) {
-      return;
-    }
-    this.search = '';
-    this.category = 'all';
-    this.metalType = 'all';
-    this.purity = 'all';
-    this.minPrice = null;
-    this.maxPrice = null;
-    this.sort = 'newest';
-    this.syncDraftFromApplied();
-    this.filtersOpen.set(false);
-    this.reloadFirstPage();
-  }
-
-  toggleFilters(): void {
-    this.syncDraftFromApplied();
-    this.filtersOpen.update((open) => !open);
-  }
-
-  closeFilters(): void {
-    this.filtersOpen.set(false);
-  }
-
-  primaryColor(): string {
-    return this.context()?.config.theme.primaryColor ?? '#c9a227';
-  }
-
-  accentColor(): string {
-    return this.context()?.config.theme.accentColor ?? '#2A1A1A';
-  }
-
-  tabIcon(tab: string): string {
-    const icons: Record<string, string> = {
-      Rings: 'fa-solid fa-circle',
-      Necklaces: 'fa-solid fa-gem',
-      Earrings: 'fa-solid fa-star',
-      Bangles: 'fa-solid fa-circle',
-      Pendants: 'fa-solid fa-diamond',
+  headerVars(ctx: PublicStoreContext): Record<string, string> {
+    const theme = ctx.config?.theme ?? {};
+    const header =
+      theme.headerColor || DEFAULT_STOREFRONT_THEME.headerColor || '#141414';
+    const text =
+      theme.headerTextColor || DEFAULT_STOREFRONT_THEME.headerTextColor || '#ffffff';
+    const accent =
+      theme.primaryColor || DEFAULT_STOREFRONT_THEME.primaryColor || '#c9a227';
+    const sidebar =
+      theme.accentColor || DEFAULT_STOREFRONT_THEME.accentColor || '#141414';
+    return {
+      '--header-bg': header,
+      '--header-text': text,
+      '--header-muted': 'rgba(255,255,255,0.7)',
+      '--header-line': 'rgba(255,255,255,0.1)',
+      '--header-accent': accent,
+      '--gold': accent,
+      '--sidebar': sidebar,
+      '--store-primary': accent,
+      '--store-accent': sidebar,
     };
-    return icons[tab] ?? 'fa-solid fa-gem';
+  }
+
+  selectCategory(category: string): void {
+    if (this.selectedCategory() === category) {
+      this.categoriesOpen.set(false);
+      return;
+    }
+    this.selectedCategory.set(category);
+    this.categoriesOpen.set(false);
+
+    if (this.isSharedView()) {
+      this.applySharedCategoryFilter();
+      return;
+    }
+    this.reloadFirstPage();
+  }
+
+  toggleCategories(): void {
+    this.categoriesOpen.update((open) => !open);
+  }
+
+  closeCategories(): void {
+    this.categoriesOpen.set(false);
+  }
+
+  activeCategoryLabel(): string {
+    const cat = this.selectedCategory();
+    return cat === 'all' ? 'All Products' : cat;
   }
 
   skuLabel(product: PublicProduct): string {
-    return product.sku ? `#${product.sku}` : `#P${product.id}`;
-  }
-
-  hasPrice(product: PublicProduct): boolean {
-    return hasDisplayPrice(product.price);
-  }
-
-  priceLabel(product: PublicProduct): string {
-    return formatRs(product.price);
-  }
-
-  listPriceLabel(product: PublicProduct): string {
-    return formatRs(product.listPrice);
-  }
-
-  shareHeadline(): string {
-    const label = this.shareLabel().trim();
-    if (label && !/^shared catalog$/i.test(label)) {
-      return label;
-    }
-    const name = this.shareCustomerName();
-    return name ? `A private selection for ${name}` : 'A private selection';
-  }
-
-  shareSubcopy(vendorName: string): string {
-    const n = this.products().length;
-    const pieces = n === 1 ? 'one piece' : `${n} pieces`;
-    if (this.isSignedIn()) {
-      return `${vendorName} prepared ${pieces} with prices reserved for this link.`;
-    }
-    return `${vendorName} prepared ${pieces} for you. Verify your mobile to see the reserved prices.`;
-  }
-
-  openSharedIntro(): void {
-    const first = this.products()[0];
-    if (first) {
-      this.openProduct(first);
-    }
-  }
-
-  productMeta(product: PublicProduct): string {
-    const bits = [product.purity, product.metalType].filter((x): x is string => !!x);
-    const left = bits.join(' ');
-    const weight = this.formatWeight(product.weight != null ? String(product.weight) : undefined);
-    if (left && weight) {
-      return `${left} / ${weight}`;
-    }
-    return left || weight || product.category || '';
-  }
-
-  private formatWeight(weight?: string): string {
-    if (!weight) {
-      return '';
-    }
-    const trimmed = weight.trim();
-    if (/[a-zA-Z]/.test(trimmed)) {
-      return trimmed;
-    }
-    return `${trimmed}g`;
+    return product.sku || `P${product.id}`;
   }
 
   openProduct(product: PublicProduct): void {
@@ -366,6 +310,11 @@ export class PublicProducts implements OnInit, OnDestroy {
     this.products.update((list) =>
       list.map((item) => (item.id === product.id ? { ...item, ...merged } : item))
     );
+    if (this.isSharedView()) {
+      this.sharedAllProducts = this.sharedAllProducts.map((item) =>
+        item.id === product.id ? { ...item, ...merged } : item
+      );
+    }
   }
 
   closeViewer(): void {
@@ -373,13 +322,63 @@ export class PublicProducts implements OnInit, OnDestroy {
     this.selectedProduct.set(null);
   }
 
-  private syncDraftFromApplied(): void {
-    this.draftSearch = this.search;
-    this.draftCategory = this.category;
-    this.draftMetal = this.metalType;
-    this.draftPurity = this.purity;
-    this.draftMin = this.minPrice;
-    this.draftMax = this.maxPrice;
+  onImgError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    const media = img.parentElement;
+    img.remove();
+    const ph = media?.querySelector('.ph');
+    if (ph instanceof HTMLElement) {
+      ph.classList.add('visible');
+    }
+  }
+
+  private loadCategories(): void {
+    if (!this.storeCode) {
+      return;
+    }
+    this.storefrontService.getPublicCategories(this.storeCode).subscribe({
+      next: (cats) => this.categoryList.set(cats),
+      error: () => this.categoryList.set([]),
+    });
+  }
+
+  private applySharedProducts(
+    products: PublicProduct[],
+    payload?: { category?: string; customerName?: string } | null,
+    shareLabel?: string
+  ): void {
+    this.sharedAllProducts = products;
+    this.isSharedView.set(true);
+    this.shareLabel.set(shareLabel || this.buildShareLabel(payload ?? {}));
+    this.shareCustomerName.set(payload?.customerName ?? '');
+    const fromProducts = [
+      ...new Set(products.map((p) => p.category).filter((c): c is string => !!c?.trim())),
+    ].sort((a, b) => a.localeCompare(b));
+    this.categoryList.set(fromProducts);
+    if (payload?.category) {
+      this.selectedCategory.set(payload.category);
+    }
+    this.applySharedCategoryFilter();
+  }
+
+  private applySharedCategoryFilter(): void {
+    const cat = this.selectedCategory();
+    const q = this.productSearch().trim().toLowerCase();
+    let filtered =
+      cat === 'all'
+        ? this.sharedAllProducts
+        : this.sharedAllProducts.filter((p) => p.category === cat);
+    if (q) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.sku ?? '').toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q)
+      );
+    }
+    this.products.set(filtered);
+    this.totalCount.set(filtered.length);
+    this.hasMore.set(false);
   }
 
   private reloadSharedCatalog(): void {
@@ -395,17 +394,8 @@ export class PublicProducts implements OnInit, OnDestroy {
           return;
         }
         this.context.set(data.context);
-        this.products.set(data.products);
-        this.totalCount.set(data.products.length);
-        this.hasMore.set(false);
-        this.isSharedView.set(true);
-        this.shareLabel.set(data.shareLabel || this.buildShareLabel(data.payload ?? {}));
-        this.shareCustomerName.set(data.payload?.customerName ?? '');
-        if (data.payload?.category) this.category = data.payload.category;
-        if (data.payload?.metalType) this.metalType = data.payload.metalType;
-        if (data.payload?.minPrice !== undefined) this.minPrice = data.payload.minPrice;
-        if (data.payload?.maxPrice !== undefined) this.maxPrice = data.payload.maxPrice;
-        this.syncDraftFromApplied();
+        this.logoBroken.set(false);
+        this.applySharedProducts(data.products, data.payload, data.shareLabel);
         this.isLoading.set(false);
       },
       error: () => {
@@ -436,13 +426,9 @@ export class PublicProducts implements OnInit, OnDestroy {
 
     this.storefrontService
       .getPublicProducts(this.storeCode, {
-        search: this.search,
-        category: this.category,
-        metalType: this.metalType,
-        purity: this.purity,
-        minPrice: this.minPrice,
-        maxPrice: this.maxPrice,
-        sort: this.sort,
+        search: this.productSearch().trim(),
+        category: this.selectedCategory(),
+        sort: 'newest',
         page,
         pageSize: this.pageSize,
         skipLoader: append,
@@ -457,6 +443,7 @@ export class PublicProducts implements OnInit, OnDestroy {
           }
 
           this.context.set(data.context);
+          this.logoBroken.set(false);
           this.totalCount.set(data.total);
           this.hasMore.set(data.hasMore);
           this.page = data.page;
