@@ -1,5 +1,6 @@
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService } from '../../auth/services/auth.service';
 import { resolveMediaUrl } from '../../core/utils/media-url.util';
@@ -38,11 +39,14 @@ const NAV_FA_ICONS: Record<string, string> = {
   templateUrl: './dashboard-layout.html',
   styleUrl: './dashboard-layout.css',
 })
-export class DashboardLayout implements OnInit {
+export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly vendorData = inject(VendorDataService);
+  private readonly host = inject(ElementRef<HTMLElement>);
   readonly themeService = inject(ThemeService);
+  private routerSub?: Subscription;
+  private syncTimer?: ReturnType<typeof setTimeout>;
 
   readonly isSidebarOpen = signal(this.isDesktopViewport());
   readonly vendorLogo = signal('');
@@ -82,6 +86,21 @@ export class DashboardLayout implements OnInit {
     this.themeService.init();
     this.syncSidebarWithViewport();
     this.loadVendorBrand();
+    this.routerSub = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => this.queueMobileScrollSync());
+  }
+
+  ngAfterViewInit(): void {
+    this.queueMobileScrollSync();
+  }
+
+  ngOnDestroy(): void {
+    this.routerSub?.unsubscribe();
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+    }
+    this.clearMobileScrollArea();
   }
 
   onBrandLogoError(): void {
@@ -91,6 +110,12 @@ export class DashboardLayout implements OnInit {
   @HostListener('window:resize')
   onWindowResize(): void {
     this.syncSidebarWithViewport();
+    this.queueMobileScrollSync();
+  }
+
+  @HostListener('window:orientationchange')
+  onOrientationChange(): void {
+    this.queueMobileScrollSync();
   }
 
   toggleTheme(): void {
@@ -170,5 +195,55 @@ export class DashboardLayout implements OnInit {
     if (this.isDesktopViewport()) {
       this.isSidebarOpen.set(true);
     }
+  }
+
+  /** Force a real scrollport on mobile — CSS flex height is unreliable in DevTools device mode. */
+  private queueMobileScrollSync(): void {
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+    }
+    this.syncTimer = setTimeout(() => this.syncMobileScrollArea(), 0);
+  }
+
+  private syncMobileScrollArea(): void {
+    const scrollRoot = this.host.nativeElement.querySelector(
+      '#dashboard-scroll-root'
+    ) as HTMLElement | null;
+    if (!scrollRoot) {
+      return;
+    }
+
+    if (this.isDesktopViewport()) {
+      this.clearMobileScrollArea(scrollRoot);
+      return;
+    }
+
+    const header = this.host.nativeElement.querySelector('.top-header') as HTMLElement | null;
+    const headerH = header?.getBoundingClientRect().height ?? 60;
+    const available = Math.max(160, Math.round(window.innerHeight - headerH));
+
+    scrollRoot.style.setProperty('box-sizing', 'border-box', 'important');
+    scrollRoot.style.setProperty('height', `${available}px`, 'important');
+    scrollRoot.style.setProperty('max-height', `${available}px`, 'important');
+    scrollRoot.style.setProperty('overflow-x', 'hidden', 'important');
+    scrollRoot.style.setProperty('overflow-y', 'auto', 'important');
+    scrollRoot.style.setProperty('-webkit-overflow-scrolling', 'touch');
+    scrollRoot.style.setProperty('touch-action', 'pan-y', 'important');
+  }
+
+  private clearMobileScrollArea(scrollRoot?: HTMLElement | null): void {
+    const el =
+      scrollRoot ??
+      (this.host.nativeElement.querySelector('#dashboard-scroll-root') as HTMLElement | null);
+    if (!el) {
+      return;
+    }
+    el.style.removeProperty('height');
+    el.style.removeProperty('max-height');
+    el.style.removeProperty('overflow-x');
+    el.style.removeProperty('overflow-y');
+    el.style.removeProperty('-webkit-overflow-scrolling');
+    el.style.removeProperty('touch-action');
+    el.style.removeProperty('box-sizing');
   }
 }

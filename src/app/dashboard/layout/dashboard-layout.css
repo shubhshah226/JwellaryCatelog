@@ -473,9 +473,8 @@
   }
 
   .dashboard-content {
-    flex: 1 1 0%;
+    flex: 1 1 auto;
     min-height: 0;
-    height: auto;
     padding: 0.85rem 0.75rem 3rem;
     padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
     overflow-x: hidden;
