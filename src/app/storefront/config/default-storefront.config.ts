@@ -9,7 +9,7 @@ export const DEFAULT_STOREFRONT_THEME = {
   fontColor: '#1c1917',
 };
 
-export function createDefaultStorefront(vendorId: number, vendorName: string): StorefrontConfig {
+export function createDefaultStorefront(vendorId: number | string, vendorName: string): StorefrontConfig {
   return {
     vendorId,
     tagline: `Welcome to ${vendorName}`,
@@ -31,7 +31,7 @@ export function createDefaultStorefront(vendorId: number, vendorName: string): S
 
 export function mergeStorefrontWithDefaults(
   stored: Partial<StorefrontConfig> | null,
-  vendorId: number,
+  vendorId: number | string,
   vendorName: string
 ): StorefrontConfig {
   const defaults = createDefaultStorefront(vendorId, vendorName);

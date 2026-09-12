@@ -2,10 +2,14 @@ import { UserRole } from '../../auth/models/user.model';
 
 export interface JwtPayload {
   role?: string;
+  user_role?: string;
   name?: string;
+  full_name?: string;
   firstName?: string;
   lastName?: string;
   sub?: string;
+  user_id?: string;
+  tenant_id?: string | null;
 }
 
 export function decodeJwtPayload(token: string): JwtPayload | null {
@@ -25,9 +29,20 @@ export function decodeJwtPayload(token: string): JwtPayload | null {
 
 export function getRoleFromToken(token: string): UserRole | null {
   const payload = decodeJwtPayload(token);
-  if (payload?.role === 'admin' || payload?.role === 'vendor') {
-    return payload.role;
-  }
+  return normalizeAppRole(payload?.user_role || payload?.role);
+}
 
+/** Map API roles (superadmin/owner) and legacy names onto app roles. */
+export function normalizeAppRole(raw: string | null | undefined): UserRole | null {
+  const value = (raw || '').trim().toLowerCase();
+  if (value === 'superadmin' || value === 'super_admin' || value === 'admin') {
+    return 'superadmin';
+  }
+  if (value === 'owner' || value === 'vendor' || value === 'jeweller' || value === 'seller') {
+    return 'vendor';
+  }
+  if (value === 'customer') {
+    return 'customer';
+  }
   return null;
 }

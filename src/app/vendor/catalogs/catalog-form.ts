@@ -23,7 +23,7 @@ export class VendorCatalogForm implements OnInit {
   private readonly productService = inject(ProductService);
 
   readonly mode = signal<'add' | 'edit'>('add');
-  readonly catalogId = signal<number | null>(null);
+  readonly catalogId = signal<string | null>(null);
   readonly isLoading = signal(false);
   readonly isSubmitting = signal(false);
   readonly formError = signal('');
@@ -33,7 +33,7 @@ export class VendorCatalogForm implements OnInit {
   readonly shareCopied = signal(false);
 
   readonly allProducts = signal<Product[]>([]);
-  readonly selectedProductIds = signal<Set<number>>(new Set());
+  readonly selectedProductIds = signal<Set<string>>(new Set());
   readonly productSearch = signal('');
   readonly loadingProducts = signal(false);
 
@@ -70,8 +70,8 @@ export class VendorCatalogForm implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.mode.set('edit');
-      this.catalogId.set(Number(idParam));
-      this.loadCatalog(Number(idParam));
+      this.catalogId.set(idParam);
+      this.loadCatalog(idParam);
     }
   }
 
@@ -95,11 +95,11 @@ export class VendorCatalogForm implements OnInit {
     void this.router.navigate(['/vendor/catalogs']);
   }
 
-  isProductSelected(id: number): boolean {
+  isProductSelected(id: string): boolean {
     return this.selectedProductIds().has(id);
   }
 
-  toggleProduct(id: number): void {
+  toggleProduct(id: string): void {
     const next = new Set(this.selectedProductIds());
     if (next.has(id)) {
       next.delete(id);
@@ -183,7 +183,7 @@ export class VendorCatalogForm implements OnInit {
     });
   }
 
-  private loadCatalog(id: number): void {
+  private loadCatalog(id: string): void {
     this.isLoading.set(true);
     this.loadingProducts.set(true);
 
@@ -205,7 +205,7 @@ export class VendorCatalogForm implements OnInit {
 
         this.vendorData.getCatalogProducts(id).subscribe({
           next: (products) => {
-            this.selectedProductIds.set(new Set(products.map((p) => Number(p.id))));
+            this.selectedProductIds.set(new Set(products.map((p) => String(p.id))));
             this.loadingProducts.set(false);
           },
           error: () => {

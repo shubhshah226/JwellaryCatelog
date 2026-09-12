@@ -73,159 +73,11 @@
       </div>
     }
 
-    <div class="filters-card">
-      <div class="filters-grid">
-        <div class="filter-search">
-          <span class="filter-icon" aria-hidden="true">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </span>
-          <input
-            type="text"
-            placeholder="Search vendors..."
-            [(ngModel)]="draftFilters.search"
-            (keyup.enter)="applyFilters()"
-          />
-        </div>
-
-        <select [(ngModel)]="draftFilters.status" class="filter-select">
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-
-        <input
-          type="text"
-          class="filter-date"
-          placeholder="Joined Date"
-          [(ngModel)]="draftFilters.joinedDate"
-        />
-
-        <div class="filter-actions">
-          <button type="button" class="btn btn-primary" (click)="applyFilters()">Filter</button>
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
-            <i class="fa-solid fa-rotate-right"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="col-check">
-                <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
-              </th>
-              <th>Vendor</th>
-              <th>Contact</th>
-              <th>Status</th>
-              <th>Joined On</th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (vendor of paginatedVendors(); track vendor.id) {
-              <tr>
-                <td class="col-check">
-                  <input
-                    type="checkbox"
-                    [checked]="isSelected(vendor.id)"
-                    (change)="toggleSelect(vendor.id, $event)"
-                  />
-                </td>
-                <td>
-                  <div class="vendor-cell">
-                    <div class="vendor-avatar">{{ vendor.initials }}</div>
-                    <div>
-                      <p class="vendor-name">{{ vendor.name }}</p>
-                      <p class="vendor-website">{{ vendor.website }}</p>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <p class="contact-email">{{ vendor.email }}</p>
-                  <p class="contact-phone">{{ vendor.phone }}</p>
-                </td>
-                <td>
-                  <span class="badge status-{{ vendor.status }}">{{ formatStatus(vendor.status) }}</span>
-                </td>
-                <td>{{ vendor.joinedOn }}</td>
-                <td class="col-actions">
-                  <div class="actions-menu-wrap">
-                    <button
-                      type="button"
-                      class="menu-dots"
-                      aria-label="Vendor actions"
-                      (click)="toggleActionsMenu(vendor.id, $event)"
-                    >
-                      <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-
-                    @if (openActionsMenuId() === vendor.id) {
-                      <div class="actions-dropdown" (click)="$event.stopPropagation()">
-                        <button type="button" (click)="openEditVendorDrawer(vendor, $event)">
-                          <span class="action-icon"><i class="fa-solid fa-pen"></i></span>
-                          Edit
-                        </button>
-                      </div>
-                    }
-                  </div>
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="6" class="empty-row">No vendors found matching your filters.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <div class="table-footer">
-        <p>
-          Showing {{ paginationStart() }} to {{ paginationEnd() }} of
-          {{ stats()?.total ?? filteredVendors().length }} vendors
-        </p>
-
-        <div class="pagination">
-          <button type="button" class="page-btn" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">
-            <i class="fa-solid fa-chevron-left"></i>
-          </button>
-          @for (page of pageNumbers(); track page) {
-            <button
-              type="button"
-              class="page-btn"
-              [class.active]="page === currentPage()"
-              (click)="goToPage(page)"
-            >
-              {{ page }}
-            </button>
-          }
-          @if (totalPages() > 5) {
-            <span class="page-ellipsis">...</span>
-            <button type="button" class="page-btn" (click)="goToPage(totalPages())">{{ totalPages() }}</button>
-          }
-          <button
-            type="button"
-            class="page-btn"
-            (click)="goToPage(currentPage() + 1)"
-            [disabled]="currentPage() === totalPages()"
-          >
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-        </div>
-
-        <div class="rows-per-page">
-          <span>Rows per page</span>
-          <select [value]="rowsPerPage()" (change)="onRowsPerPageChange($any($event.target).value)">
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <app-data-grid
+      [rows]="allVendors()"
+      [config]="vendorGridConfig()"
+      (action)="onGridAction($event)"
+    />
   </section>
 
   @if (isDrawerOpen()) {
@@ -244,138 +96,210 @@
 
       <form class="drawer-form" (ngSubmit)="submitVendorForm()">
         <div class="form-section">
-          <h4>Jeweller Account</h4>
+          <h4>Business &amp; Owner</h4>
           <div class="form-grid">
             <label class="form-field span-2">
-              <span>Vendor Name <em>*</em></span>
+              <span>Business Name <em>*</em></span>
               <input
                 type="text"
-                name="name"
-                placeholder="e.g. Shubh Jewellers"
-                [(ngModel)]="vendorForm.name"
-                required
-              />
-            </label>
-
-            <label class="form-field span-2">
-              <span>Website</span>
-              <input
-                type="text"
-                name="website"
-                placeholder="www.example.com (optional)"
-                [(ngModel)]="vendorForm.website"
-              />
-            </label>
-
-            <label class="form-field span-2">
-              <span>Contact Person <em>*</em></span>
-              <input
-                type="text"
-                name="contactPerson"
-                placeholder="Full name"
-                [(ngModel)]="vendorForm.contactPerson"
+                name="businessName"
+                placeholder="e.g. Shree Jewellers"
+                [(ngModel)]="vendorForm.businessName"
                 required
               />
             </label>
 
             <label class="form-field">
-              <span>Email <em>*</em></span>
+              <span>Owner Name</span>
+              <input
+                type="text"
+                name="ownerName"
+                placeholder="e.g. Meena Shah"
+                [(ngModel)]="vendorForm.ownerName"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Owner Email <em>*</em></span>
               <input
                 type="email"
-                name="email"
-                placeholder="vendor@email.com"
-                [(ngModel)]="vendorForm.email"
+                name="ownerEmail"
+                placeholder="owner@business.test"
+                [(ngModel)]="vendorForm.ownerEmail"
                 required
               />
             </label>
 
             <label class="form-field">
-              <span>Phone <em>*</em></span>
+              <span>Contact Phone</span>
               <input
                 type="tel"
-                name="phone"
-                placeholder="+91 98765 43210"
-                [(ngModel)]="vendorForm.phone"
-                required
-              />
-            </label>
-
-            <label class="form-field">
-              <span>Alternative Phone</span>
-              <input
-                type="tel"
-                name="alternativePhone"
-                placeholder="Optional"
-                [(ngModel)]="vendorForm.alternativePhone"
-              />
-            </label>
-
-            <label class="form-field">
-              <span>Status <em>*</em></span>
-              <select name="status" [(ngModel)]="vendorForm.status">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </label>
-
-            <label class="form-field">
-              <span>Vendor ID (DB)</span>
-              <input
-                type="text"
-                name="vendorId"
-                [value]="vendorForm.vendorId ?? 'Auto-generated on save'"
-                disabled
-              />
-            </label>
-
-            @if (vendorForm.storeCode) {
-              <label class="form-field">
-                <span>Store Code</span>
-                <input type="text" name="storeCode" [value]="vendorForm.storeCode" disabled />
-              </label>
-            }
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h4>Address</h4>
-          <div class="form-grid">
-            <label class="form-field span-2">
-              <span>Address</span>
-              <input
-                type="text"
-                name="address"
-                placeholder="Shop no, street, area"
-                [(ngModel)]="vendorForm.address"
+                name="contactPhone"
+                placeholder="9876543210"
+                [(ngModel)]="vendorForm.contactPhone"
               />
             </label>
 
             <label class="form-field">
               <span>City</span>
-              <input type="text" name="city" placeholder="City" [(ngModel)]="vendorForm.city" />
+              <input type="text" name="city" placeholder="Surat" [(ngModel)]="vendorForm.city" />
             </label>
 
             <label class="form-field">
-              <span>State</span>
-              <input type="text" name="state" placeholder="State" [(ngModel)]="vendorForm.state" />
+              <span>Brand Color</span>
+              <div class="color-field">
+                <input
+                  type="color"
+                  name="brandColor"
+                  class="color-swatch-input"
+                  [ngModel]="brandColorPickerValue()"
+                  (ngModelChange)="onBrandColorChange($event)"
+                />
+                <input
+                  type="text"
+                  name="brandColorHex"
+                  class="color-hex-input"
+                  maxlength="7"
+                  placeholder="#8B0000"
+                  [ngModel]="brandColorPickerValue()"
+                  (ngModelChange)="onBrandColorChange($event)"
+                />
+              </div>
             </label>
 
             <label class="form-field">
-              <span>Pincode</span>
+              <span>Currency</span>
+              <select name="currency" [(ngModel)]="vendorForm.currency">
+                <option value="INR">INR</option>
+                <option value="USD">USD</option>
+                <option value="AED">AED</option>
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Catalog Expiry Days</span>
               <input
-                type="text"
-                name="pincode"
-                placeholder="Pincode"
-                [(ngModel)]="vendorForm.pincode"
+                type="number"
+                name="catalogExpiryDays"
+                min="1"
+                [(ngModel)]="vendorForm.catalogExpiryDays"
               />
             </label>
+
+            <label class="form-field checkbox-field">
+              <span>Show Prices by Default</span>
+              <input type="checkbox" name="priceVisibleDefault" [(ngModel)]="vendorForm.priceVisibleDefault" />
+            </label>
+
+            @if (drawerMode() === 'edit') {
+              <label class="form-field">
+                <span>Tenant ID</span>
+                <input type="text" [value]="vendorForm.vendorId ?? ''" disabled />
+              </label>
+            }
           </div>
         </div>
 
         @if (drawerMode() === 'add') {
+          <div class="form-section">
+            <h4>Categories</h4>
+            <p class="section-hint">Product categories this jeweller deals in (sent as <code>categories: ["Ring", ...]</code>).</p>
+            <div class="chip-row">
+              <input
+                type="text"
+                name="categoryDraft"
+                placeholder="e.g. Ring"
+                [(ngModel)]="categoryDraft"
+                (keyup.enter)="$event.preventDefault(); addCategory()"
+              />
+              <button type="button" class="btn btn-outline" (click)="addCategory()">Add</button>
+            </div>
+            <div class="chip-list">
+              @for (item of vendorForm.categories; track item; let i = $index) {
+                <span class="chip">
+                  {{ item }}
+                  <button type="button" (click)="removeCategory(i)" aria-label="Remove">×</button>
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4>Master Data</h4>
+            <p class="section-hint">
+              API only allows 3 types: <code>metal_type</code>, <code>purity</code>, <code>color</code>.
+              Each value becomes <code>{{ '{' }} "masterType": "...", "masterValue": "..." {{ '}' }}</code>.
+            </p>
+
+            <div class="master-block">
+              <label>Metal Types <small>(masterType = metal_type)</small></label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="metalTypeDraft"
+                  placeholder="e.g. Gold"
+                  [(ngModel)]="metalTypeDraft"
+                  (keyup.enter)="$event.preventDefault(); addMetalType()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addMetalType()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.metalTypes; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removeMetalType(i)" aria-label="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="master-block">
+              <label>Purities <small>(masterType = purity)</small></label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="purityDraft"
+                  placeholder="e.g. 22K"
+                  [(ngModel)]="purityDraft"
+                  (keyup.enter)="$event.preventDefault(); addPurity()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addPurity()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.purities; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removePurity(i)" aria-label="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="master-block">
+              <label>Colors <small>(masterType = color)</small></label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="colorDraft"
+                  placeholder="e.g. Yellow"
+                  [(ngModel)]="colorDraft"
+                  (keyup.enter)="$event.preventDefault(); addColor()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addColor()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.colors; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removeColor(i)" aria-label="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
           <p class="form-hint">
-            On save, a vendor login is created automatically (role = vendor) and credentials are
-            emailed to the jeweller.
+            On save, owner login is created automatically. Password is shown once — share it with the jeweller.
           </p>
         }
 
@@ -395,16 +319,58 @@
     </aside>
   }
 
+  @if (resetPasswordVendor(); as resetVendor) {
+    <div class="creds-backdrop" (click)="closeResetPasswordModal()"></div>
+    <div class="creds-modal" role="dialog" aria-labelledby="reset-pwd-title">
+      <h3 id="reset-pwd-title">Reset owner password</h3>
+      <p>
+        Set a new password for <strong>{{ resetVendor.name }}</strong>
+        @if (resetVendor.email) {
+          (<strong>{{ resetVendor.email }}</strong>)
+        }.
+        Share it once — it cannot be shown again.
+      </p>
+      <form class="reset-pwd-form" (ngSubmit)="submitResetPassword()">
+        <label class="form-field">
+          <span>New Password <em>*</em></span>
+          <input
+            type="text"
+            name="newPassword"
+            placeholder="e.g. Owner@5678"
+            [(ngModel)]="resetPasswordForm.newPassword"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+        @if (resetPasswordError()) {
+          <p class="login-error form-inline-error" role="alert">{{ resetPasswordError() }}</p>
+        }
+        <div class="creds-actions">
+          <button type="button" class="btn btn-outline" (click)="closeResetPasswordModal()" [disabled]="isResettingPassword()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isResettingPassword()">
+            {{ isResettingPassword() ? 'Resetting...' : 'Reset Password' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
   @if (createdCredentials(); as creds) {
     <div class="creds-backdrop" (click)="closeCredentialsModal()"></div>
     <div class="creds-modal" role="dialog" aria-labelledby="creds-title">
-      <h3 id="creds-title">Vendor login created</h3>
+      <h3 id="creds-title">{{ credentialsModalTitle() }}</h3>
       <p>
-        Account for <strong>{{ createdVendorName() }}</strong> is ready.
-        @if (creds.emailSent) {
-          Credentials were emailed to the jeweller.
+        @if (credentialsModalMode() === 'reset') {
+          New password for <strong>{{ createdVendorName() }}</strong>. Share it now — it cannot be shown again.
         } @else {
-          Email was not sent (SMTP disabled). Share these credentials manually:
+          Account for <strong>{{ createdVendorName() }}</strong> is ready.
+          @if (creds.emailSent) {
+            Credentials were emailed to the jeweller.
+          } @else {
+            Email was not sent (SMTP disabled). Share these credentials manually:
+          }
         }
       </p>
       <div class="creds-box">

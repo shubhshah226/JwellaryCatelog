@@ -19,7 +19,7 @@ export class VendorMasterDataForm implements OnInit {
 
   readonly mode = signal<'add' | 'edit'>('add');
   readonly type = signal<MasterDataType>('categories');
-  readonly itemId = signal<number | null>(null);
+  readonly itemId = signal<string | null>(null);
   readonly isLoading = signal(false);
   readonly isSubmitting = signal(false);
   readonly formError = signal('');
@@ -35,8 +35,8 @@ export class VendorMasterDataForm implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.mode.set('edit');
-      this.itemId.set(Number(idParam));
-      this.loadItem(Number(idParam));
+      this.itemId.set(idParam);
+      this.loadItem(idParam);
     }
   }
 
@@ -90,7 +90,7 @@ export class VendorMasterDataForm implements OnInit {
     });
   }
 
-  private loadItem(id: number): void {
+  private loadItem(id: string): void {
     this.isLoading.set(true);
     const request =
       this.type() === 'categories'

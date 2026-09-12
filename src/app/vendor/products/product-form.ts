@@ -22,7 +22,7 @@ export class VendorProductForm implements OnInit {
   private readonly masterDataService = inject(MasterDataService);
 
   readonly mode = signal<'add' | 'edit'>('add');
-  readonly productId = signal<number | null>(null);
+  readonly productId = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly isSubmitting = signal(false);
   readonly formError = signal('');
@@ -46,7 +46,7 @@ export class VendorProductForm implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.mode.set('edit');
-      this.productId.set(Number(idParam));
+      this.productId.set(idParam);
     }
 
     this.masterDataService.getCategories().subscribe({
@@ -84,7 +84,7 @@ export class VendorProductForm implements OnInit {
     const active = this.categories().filter((c) => c.status === 'active');
     const current = this.productForm.category;
     if (current && !active.some((c) => c.name === current)) {
-      return [{ id: -1, vendorId: 0, name: current, status: 'active' }, ...active];
+      return [{ id: '__legacy__', vendorId: null, name: current, status: 'active' }, ...active];
     }
     return active;
   }
@@ -93,7 +93,7 @@ export class VendorProductForm implements OnInit {
     const active = this.metalTypes().filter((m) => m.status === 'active');
     const current = this.productForm.metalType;
     if (current && !active.some((m) => m.name === current)) {
-      return [{ id: -1, vendorId: 0, name: current, status: 'active' }, ...active];
+      return [{ id: '__legacy__', vendorId: null, name: current, status: 'active' }, ...active];
     }
     return active;
   }
@@ -257,7 +257,7 @@ export class VendorProductForm implements OnInit {
     this.formError.set('');
   }
 
-  private loadProduct(id: number): void {
+  private loadProduct(id: string): void {
     this.productService.getVendorProducts().subscribe({
       next: (products) => {
         const product = products.find((p) => p.id === id);

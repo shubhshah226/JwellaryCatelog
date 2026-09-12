@@ -133,7 +133,7 @@ export class PublicHome implements OnInit {
   placeholderProducts(): PublicProduct[] {
     return [
       {
-        id: -1,
+        id: '__ph-1',
         name: 'Classic Solitaire Ring',
         category: 'Rings',
         metalType: 'Diamond',
@@ -141,7 +141,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.rings,
       },
       {
-        id: -2,
+        id: '__ph-2',
         name: 'Temple Necklace',
         category: 'Necklaces',
         metalType: 'Gold',
@@ -149,7 +149,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.necklaces,
       },
       {
-        id: -3,
+        id: '__ph-3',
         name: 'Festive Jhumkas',
         category: 'Earrings',
         metalType: 'Gold',
@@ -157,7 +157,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.earrings,
       },
       {
-        id: -4,
+        id: '__ph-4',
         name: 'Kada Bangle Pair',
         category: 'Bangles',
         metalType: 'Gold',
@@ -165,7 +165,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.bangles,
       },
       {
-        id: -5,
+        id: '__ph-5',
         name: 'Diamond Pendant',
         category: 'Pendants',
         metalType: 'Diamond',
@@ -173,7 +173,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.pendants,
       },
       {
-        id: -6,
+        id: '__ph-6',
         name: 'Bridal Necklace Set',
         category: 'Necklaces',
         metalType: 'Gold',
@@ -181,7 +181,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.bridal,
       },
       {
-        id: -7,
+        id: '__ph-7',
         name: 'Halo Engagement Ring',
         category: 'Rings',
         metalType: 'Diamond',
@@ -189,7 +189,7 @@ export class PublicHome implements OnInit {
         imageUrl: HOME_IMAGES.engagement,
       },
       {
-        id: -8,
+        id: '__ph-8',
         name: "Men's Gold Chain",
         category: 'Chains',
         metalType: 'Gold',
@@ -308,7 +308,7 @@ export class PublicHome implements OnInit {
   }
 
   openProduct(product: PublicProduct): void {
-    if (product.id < 0) {
+    if (!product.id || String(product.id).startsWith('__')) {
       return;
     }
     this.selectedProduct.set(product);

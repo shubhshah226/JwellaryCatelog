@@ -2,8 +2,8 @@ export type CatalogStatus = 'active' | 'inactive' | 'pending' | 'expired';
 export type EnquiryStatus = 'new' | 'in_progress' | 'responded' | 'closed';
 
 export interface Vendor {
-  id: number;
-  userId?: number;
+  id: string;
+  userId?: string;
   name: string;
   initials: string;
   catalogsCount: number;
@@ -12,13 +12,17 @@ export interface Vendor {
 }
 
 export interface Catalog {
-  id: number;
-  vendorId: number;
+  id: string;
+  vendorId?: string | null;
   name: string;
   status: CatalogStatus;
   productCount?: number;
   shareUrl?: string | null;
   shortCode?: string | null;
+  token?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  whatsappUrl?: string | null;
 }
 
 export type ProductStatus = 'in_stock' | 'out_of_stock' | 'make_to_order' | 'active' | 'inactive';
@@ -48,27 +52,32 @@ export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 export type MetalType = (typeof METAL_TYPES)[number];
 
 export interface Product {
-  id: number;
-  vendorId: number;
-  catalogId: number;
+  id: string;
+  vendorId?: string | null;
+  catalogId?: string | null;
   name: string;
   category: string;
+  categoryId?: string | null;
   description?: string;
   price?: number | null;
   imageUrl?: string;
   images?: string[];
   metalType?: string;
+  metalTypeId?: string | null;
   weight?: string;
   purity?: string;
+  purityId?: string | null;
   sku?: string;
   color?: string;
+  colorId?: string | null;
   status?: ProductStatus;
+  stockStatus?: string;
 }
 
 export interface ProductFormData {
   name: string;
   category: string;
-  catalogId: number | null;
+  catalogId: string | null;
   description: string;
   price: number | null;
   /** Public cover image (base64 data URL or hosted URL). */
@@ -105,8 +114,8 @@ export function createEmptyProductForm(): ProductFormData {
 }
 
 export interface Enquiry {
-  id: number;
-  vendorId: number;
+  id: string;
+  vendorId?: string | null;
   customerName: string;
   customerPhone?: string;
   initials: string;
@@ -114,22 +123,26 @@ export interface Enquiry {
   status: EnquiryStatus;
   timeAgo: string;
   /** @deprecated Prefer items[] for multi-product leads */
-  productId?: number;
+  productId?: string;
   /** Summary label; for multi-product use items */
   productName?: string;
-  interestType?: 'interested' | 'enquiry';
+  interestType?: 'interested' | 'enquiry' | string;
   createdAt?: string;
   itemCount?: number;
   items?: LeadItem[];
+  catalogId?: string;
+  token?: string;
+  totalPrice?: number;
 }
 
 export interface LeadItem {
-  productId: number;
+  productId: string;
   productName: string;
   category?: string;
   price?: number;
   imageUrl?: string;
   sku?: string;
+  quantity?: number;
 }
 
 export interface SaleRecord {
@@ -188,4 +201,16 @@ export interface DashboardData {
   catalogTotal: number;
   recentEnquiries: Enquiry[];
   vendorSalesTotal: number;
+}
+
+export class DashboardSummary {
+  tenantCount: number = 0;
+  activeTenantCount: number = 0;
+  suspendedTenantCount: number = 0;
+  newTenantCount: number = 0;
+  productCount: number = 0;
+  catalogCount: number = 0;
+  viewedCatalogCount: number = 0;
+  enquiryCount: number = 0;
+  newEnquiryCount: number = 0;
 }

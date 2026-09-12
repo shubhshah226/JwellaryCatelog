@@ -135,7 +135,7 @@ export interface StorefrontTheme {
 
 export interface StorefrontConfig {
   id?: number;
-  vendorId: number;
+  vendorId: number | string;
   vendorName?: string;
   tagline: string;
   showBanner: boolean;
@@ -146,7 +146,7 @@ export interface StorefrontConfig {
   showContact: boolean;
   showAbout: boolean;
   aboutText: string;
-  featuredProductIds: number[];
+  featuredProductIds: string[];
   homeProductLimit: number;
   customSections: CustomSection[];
   theme: StorefrontTheme;
@@ -163,7 +163,7 @@ export interface StorefrontFormData {
   showContact: boolean;
   showAbout: boolean;
   aboutText: string;
-  featuredProductIds: number[];
+  featuredProductIds: string[];
   homeProductLimit: number;
   customSections: CustomSection[];
   theme: StorefrontTheme;
@@ -171,7 +171,7 @@ export interface StorefrontFormData {
 }
 
 export interface PublicVendor {
-  id: number;
+  id: number | string;
   name: string;
   phone?: string;
   email?: string;
@@ -195,7 +195,7 @@ export interface PublicStorefrontPage extends PublicStoreContext {
 }
 
 export interface PublicProduct {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   category?: string;
@@ -213,7 +213,7 @@ export interface PublicProduct {
 
 export interface CatalogShareRecord {
   shortCode: string;
-  vendorId: number;
+  vendorId: number | string;
   storeCode: string;
   payload: CatalogSharePayload;
   createdAt: string;
@@ -222,14 +222,14 @@ export interface CatalogShareRecord {
 
 export interface CatalogSharePayload {
   v?: number;
-  productIds?: number[];
-  catalogId?: number;
+  productIds?: string[];
+  catalogId?: string;
   category?: string;
   metalType?: string;
   minPrice?: number;
   maxPrice?: number;
   specialPrices?: Record<string, number>;
-  leadId?: number;
+  leadId?: string;
   customerName?: string;
   customerPhone?: string;
   shareLabel?: string;

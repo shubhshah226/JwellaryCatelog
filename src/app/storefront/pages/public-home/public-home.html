@@ -21,7 +21,7 @@
       [storeCode]="data.storeCode"
       [vendorName]="data.vendor.name"
       [logoUrl]="data.config.logoUrl"
-      [isAvailable]="data.isAvailable"
+      [isAvailable]="data.isAvailable ?? true"
       [topBarItems]="hp(data).topBar.enabled ? hp(data).topBar.items : []"
     />
 

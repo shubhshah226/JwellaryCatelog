@@ -1,13 +1,7 @@
-export interface ApiErrorBody {
-  code: string;
-  message: string;
-}
-
 export interface ApiResponse<T = unknown> {
-  success: boolean;
+  exceptions: string | null;
   data?: T;
-  meta?: Record<string, unknown>;
-  error?: ApiErrorBody;
+  status: number;
 }
 
 export class ApiClientError extends Error {

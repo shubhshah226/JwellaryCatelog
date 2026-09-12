@@ -44,7 +44,7 @@ export class VendorProfile implements OnInit {
         }
         const next = {
           ...profile,
-          id: Number(profile.id),
+          id: String(profile.id),
           logoUrl: resolveMediaUrl(profile.logoUrl || '') || '',
         };
         this.profile.set(next);
@@ -138,7 +138,7 @@ export class VendorProfile implements OnInit {
           const next = {
             ...p,
             ...updated,
-            id: Number(updated.id || p.id),
+            id: String(updated.id || p.id),
             logoUrl: resolveMediaUrl(updated.logoUrl || '') || '',
           };
           this.profile.set(next);

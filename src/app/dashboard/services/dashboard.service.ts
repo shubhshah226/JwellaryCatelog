@@ -1,27 +1,43 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map, of } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, catchError, map, of } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
-import { relativeTimeFromUtc } from '../../core/utils/date-time.util';
 import { AuthService } from '../../auth/services/auth.service';
-import {
-  ChartPoint,
-  DashboardData,
-  DonutSegment,
-  Enquiry,
-  EnquiryStatus,
-  SaleRecord,
-  StatCard,
-  Vendor,
-} from '../models/dashboard.model';
-import { VendorAccount } from '../models/vendor.model';
+import { DashboardData, DashboardSummary, StatCard } from '../models/dashboard.model';
 
-interface DashboardSummary {
-  vendorsCount: number;
-  catalogsCount: number;
-  productsCount: number;
-  leadsCount: number;
-  sales: SaleRecord[];
-  meta: { dateRange: string };
+/** Response from POST /admin/platformSummary (camel or snake). */
+interface PlatformSummary {
+  tenantCount?: number;
+  activeTenantCount?: number;
+  suspendedTenantCount?: number;
+  newTenantCount?: number;
+  productCount?: number;
+  catalogCount?: number;
+  viewedCatalogCount?: number;
+  enquiryCount?: number;
+  newEnquiryCount?: number;
+  tenant_count?: number;
+  active_tenant_count?: number;
+  suspended_tenant_count?: number;
+  new_tenant_count?: number;
+  product_count?: number;
+  catalog_count?: number;
+  viewed_catalog_count?: number;
+  enquiry_count?: number;
+  new_enquiry_count?: number;
+}
+
+interface OwnerDashboardSummary {
+  summary?: {
+    productCount?: number;
+    activeProductCount?: number;
+    outOfStockCount?: number;
+    catalogCount?: number;
+    liveCatalogCount?: number;
+    enquiryCount?: number;
+    newEnquiryCount?: number;
+    unreadCount?: number;
+  };
 }
 
 @Injectable({
@@ -30,201 +46,142 @@ interface DashboardSummary {
 export class DashboardService {
   private readonly api = inject(ApiHttpService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  /** Raw platform summary from POST /admin/platformSummary */
+  getDashboard(): Observable<DashboardSummary> {
+    return this.api.post<PlatformSummary>('/admin/platformSummary', {}).pipe(
+      map((res) => {
+        const n = this.normalizePlatformSummary(res);
+        const summary = new DashboardSummary();
+        summary.tenantCount = n.tenantCount;
+        summary.activeTenantCount = n.activeTenantCount;
+        summary.suspendedTenantCount = n.suspendedTenantCount;
+        summary.newTenantCount = n.newTenantCount;
+        summary.productCount = n.productCount;
+        summary.catalogCount = n.catalogCount;
+        summary.viewedCatalogCount = n.viewedCatalogCount;
+        summary.enquiryCount = n.enquiryCount;
+        summary.newEnquiryCount = n.newEnquiryCount;
+        return summary;
+      })
+    );
+  }
 
   getDashboardData(): Observable<DashboardData> {
     const session = this.authService.getSession();
-    const isAdmin = session?.user.role === 'admin';
+    const userName = session?.user?.name || 'User';
+    const isAdmin =
+      this.authService.getRole() === 'superadmin' ||
+      this.router.url.toLowerCase().includes('/superadmin');
 
-    return forkJoin({
-      summary: this.api.get<DashboardSummary>('/dashboard/summary'),
-      vendors: isAdmin
-        ? this.api.get<VendorAccount[]>('/admin/vendors')
-        : of([] as VendorAccount[]),
-      leads: !isAdmin
-        ? this.api.get<Enquiry[]>('/vendor/leads', { page: 1, pageSize: 10 })
-        : of([] as Enquiry[]),
-    }).pipe(map((data) => this.buildDashboard(data.summary, data.vendors, data.leads, isAdmin)));
+    if (isAdmin) {
+      return this.getDashboard().pipe(
+        map((summary) => this.buildAdminDashboard(summary, userName))
+      );
+    }
+
+    return this.api.post<OwnerDashboardSummary>('/dashboard/dashboardSummary', {}).pipe(
+      map((summary) => this.buildOwnerDashboard(summary, userName)),
+      catchError(() =>
+        of(
+          this.emptyDashboard(false, userName, 'Owner', 'Last 30 days', [
+            this.stat('Products', 0, 'products', '#3b82f6'),
+            this.stat('Catalogs', 0, 'catalogs', '#10b981'),
+            this.stat('Enquiries', 0, 'enquiries', '#a855f7'),
+            this.stat('Active Products', 0, 'vendors', '#f59e0b'),
+          ])
+        )
+      )
+    );
   }
 
-  private buildDashboard(
-    summary: DashboardSummary,
-    vendors: VendorAccount[],
-    leads: Enquiry[],
-    isAdmin: boolean
-  ): DashboardData {
-    const session = this.authService.getSession();
-    const salesChart = this.buildSalesChart(summary.sales ?? []);
-    const salesMax = Math.max(...salesChart.map((point) => point.amount), 1);
-    const topVendors: Vendor[] = isAdmin
-      ? [...vendors]
-          .sort((a, b) => Number(a.rank) - Number(b.rank))
-          .slice(0, 5)
-          .map((v) => ({
-            id: Number(v.id),
-            userId: v.userId,
-            name: v.name,
-            initials: v.initials,
-            catalogsCount: Number(v.catalogsCount ?? 0),
-            totalSales: Number(v.totalSales ?? 0),
-            rank: Number(v.rank ?? 0),
-          }))
-      : [];
-
-    const recentEnquiries = leads.slice(0, 4).map((l) => ({
-      ...l,
-      id: Number(l.id),
-      timeAgo: l.timeAgo || this.relativeTime(l.createdAt),
-      initials: l.initials || this.initials(l.customerName),
-    }));
+  private normalizePlatformSummary(raw: PlatformSummary | null | undefined) {
+    const s = raw ?? {};
+    const n = (...vals: unknown[]) => {
+      for (const v of vals) {
+        if (v != null && v !== '') {
+          const num = Number(v);
+          if (Number.isFinite(num)) {
+            return num;
+          }
+        }
+      }
+      return 0;
+    };
 
     return {
-      isAdmin,
-      userName: session?.user.name ?? 'User',
-      roleLabel: isAdmin ? 'Super Admin' : 'Vendor',
-      dateRange: summary.meta?.dateRange ?? 'Last 30 days',
-      stats: this.buildStats(summary, isAdmin),
-      salesChart: salesChart.map((point) => ({
-        ...point,
-        y: 100 - (point.amount / salesMax) * 100,
-      })),
-      salesMax,
-      topVendors,
-      enquirySegments: this.buildEnquirySegments(leads, summary.leadsCount),
-      enquiryTotal: summary.leadsCount,
-      catalogSegments: this.buildSimpleCatalogSegments(summary.catalogsCount),
-      catalogTotal: summary.catalogsCount,
-      recentEnquiries,
-      vendorSalesTotal: (summary.sales ?? []).reduce((sum, sale) => sum + Number(sale.amount), 0),
+      tenantCount: n(s.tenantCount, s.tenant_count),
+      activeTenantCount: n(s.activeTenantCount, s.active_tenant_count),
+      suspendedTenantCount: n(s.suspendedTenantCount, s.suspended_tenant_count),
+      newTenantCount: n(s.newTenantCount, s.new_tenant_count),
+      productCount: n(s.productCount, s.product_count),
+      catalogCount: n(s.catalogCount, s.catalog_count),
+      viewedCatalogCount: n(s.viewedCatalogCount, s.viewed_catalog_count),
+      enquiryCount: n(s.enquiryCount, s.enquiry_count),
+      newEnquiryCount: n(s.newEnquiryCount, s.new_enquiry_count),
     };
   }
 
-  private buildStats(summary: DashboardSummary, isAdmin: boolean): StatCard[] {
-    return [
-      {
-        label: 'Total Vendors',
-        value: summary.vendorsCount,
-        change: 0,
-        icon: 'vendors' as const,
-        color: '#a855f7',
-        hidden: !isAdmin,
-      },
-      {
-        label: 'Total Catalogs',
-        value: summary.catalogsCount,
-        change: 0,
-        icon: 'catalogs' as const,
-        color: '#3b82f6',
-      },
-      {
-        label: 'Total Products',
-        value: summary.productsCount,
-        change: 0,
-        icon: 'products' as const,
-        color: '#f59e0b',
-      },
-      {
-        label: 'Total Enquiries',
-        value: summary.leadsCount,
-        change: 0,
-        icon: 'enquiries' as const,
-        color: '#10b981',
-      },
-    ].filter((stat) => !stat.hidden);
+  private buildAdminDashboard(summary: DashboardSummary, userName: string): DashboardData {
+    return this.emptyDashboard(true, userName, 'Super Admin', 'Platform', [
+      this.stat('Vendors', summary.tenantCount, 'vendors', '#3b82f6'),
+      this.stat('Active', summary.activeTenantCount, 'products', '#10b981'),
+      this.stat('Suspended', summary.suspendedTenantCount, 'enquiries', '#f59e0b'),
+      this.stat('New Vendors', summary.newTenantCount, 'vendors', '#6366f1'),
+      this.stat('Products', summary.productCount, 'products', '#a855f7'),
+      this.stat('Catalogs', summary.catalogCount, 'catalogs', '#14b8a6'),
+      this.stat('Viewed Catalogs', summary.viewedCatalogCount, 'catalogs', '#0ea5e9'),
+      this.stat('Enquiries', summary.enquiryCount, 'enquiries', '#ec4899'),
+      this.stat('New Enquiries', summary.newEnquiryCount, 'enquiries', '#f43f5e'),
+    ]);
   }
 
-  private buildSalesChart(sales: SaleRecord[]): ChartPoint[] {
-    const grouped = new Map<string, number>();
-    sales.forEach((sale) => {
-      grouped.set(sale.date, (grouped.get(sale.date) ?? 0) + Number(sale.amount));
-    });
-    const sortedDates = [...grouped.keys()].sort();
-    const maxIndex = Math.max(sortedDates.length - 1, 1);
-    return sortedDates.map((date, index) => ({
-      date,
-      label: this.formatDateLabel(date),
-      amount: grouped.get(date) ?? 0,
-      x: (index / maxIndex) * 100,
-      y: 0,
-    }));
+  private buildOwnerDashboard(summary: OwnerDashboardSummary, userName: string): DashboardData {
+    const s = summary?.summary ?? {};
+    return this.emptyDashboard(false, userName, 'Owner', 'Last 30 days', [
+      this.stat('Products', Number(s.productCount ?? 0), 'products', '#3b82f6'),
+      this.stat('Active Products', Number(s.activeProductCount ?? 0), 'vendors', '#10b981'),
+      this.stat('Out of Stock', Number(s.outOfStockCount ?? 0), 'enquiries', '#f59e0b'),
+      this.stat('Catalogs', Number(s.catalogCount ?? 0), 'catalogs', '#14b8a6'),
+      this.stat('Live Catalogs', Number(s.liveCatalogCount ?? 0), 'catalogs', '#0ea5e9'),
+      this.stat('Enquiries', Number(s.enquiryCount ?? 0), 'enquiries', '#a855f7'),
+      this.stat('New Enquiries', Number(s.newEnquiryCount ?? 0), 'enquiries', '#ec4899'),
+      this.stat('Unread', Number(s.unreadCount ?? 0), 'enquiries', '#f43f5e'),
+    ]);
   }
 
-  private buildEnquirySegments(leads: Enquiry[], totalCount: number): DonutSegment[] {
-    const statuses: { key: EnquiryStatus; label: string; color: string }[] = [
-      { key: 'new', label: 'New', color: '#a855f7' },
-      { key: 'in_progress', label: 'In Progress', color: '#3b82f6' },
-      { key: 'responded', label: 'Responded', color: '#f59e0b' },
-      { key: 'closed', label: 'Closed', color: '#10b981' },
-    ];
-    const total = totalCount || leads.length || 1;
-    let offset = 0;
-
-    if (!leads.length) {
-      return [
-        {
-          label: 'Leads',
-          value: totalCount,
-          percentage: 100,
-          color: '#a855f7',
-          offset: 0,
-        },
-      ];
-    }
-
-    return statuses.map((status) => {
-      const value = leads.filter((enquiry) => enquiry.status === status.key).length;
-      const segment: DonutSegment = {
-        label: status.label,
-        value,
-        percentage: Math.round((value / total) * 100),
-        color: status.color,
-        offset,
-      };
-      offset += (value / total) * 100;
-      return segment;
-    });
+  private emptyDashboard(
+    isAdmin: boolean,
+    userName: string,
+    roleLabel: string,
+    dateRange: string,
+    stats: StatCard[]
+  ): DashboardData {
+    return {
+      isAdmin,
+      userName,
+      roleLabel,
+      dateRange,
+      stats,
+      salesChart: [],
+      salesMax: 1,
+      topVendors: [],
+      enquirySegments: [],
+      enquiryTotal: 0,
+      catalogSegments: [],
+      catalogTotal: 0,
+      recentEnquiries: [],
+      vendorSalesTotal: 0,
+    };
   }
 
-  private buildSimpleCatalogSegments(count: number): DonutSegment[] {
-    return [
-      {
-        label: 'Active',
-        value: count,
-        percentage: 100,
-        color: '#10b981',
-        offset: 0,
-      },
-    ];
-  }
-
-  private formatDateLabel(date: string): string {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }
-
-  private relativeTime(iso?: string): string {
-    return relativeTimeFromUtc(iso);
-  }
-
-  private initials(name: string): string {
-    return name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join('')
-      .toUpperCase();
-  }
-
-  formatCurrency(amount: number): string {
-    return `Rs ${amount.toLocaleString('en-IN')}`;
-  }
-
-  formatCompactCurrency(amount: number): string {
-    if (amount >= 100000) {
-      return `Rs ${(amount / 100000).toFixed(1)}L`;
-    }
-    if (amount >= 1000) {
-      return `Rs ${(amount / 1000).toFixed(1)}K`;
-    }
-    return this.formatCurrency(amount);
+  private stat(
+    label: string,
+    value: number,
+    icon: StatCard['icon'],
+    color: string
+  ): StatCard {
+    return { label, value, change: 0, icon, color };
   }
 }

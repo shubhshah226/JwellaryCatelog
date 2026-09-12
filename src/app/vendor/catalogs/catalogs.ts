@@ -23,7 +23,7 @@ export class VendorCatalogs implements OnInit {
   readonly allCatalogs = signal<Catalog[]>([]);
   readonly filteredCatalogs = signal<Catalog[]>([]);
   readonly storeCode = signal('');
-  readonly openMenuId = signal<number | null>(null);
+  readonly openMenuId = signal<string | null>(null);
   readonly shareCopied = signal(false);
   readonly sortBy = signal<SortKey>('name');
   readonly sortDir = signal<'asc' | 'desc'>('asc');
@@ -152,7 +152,7 @@ export class VendorCatalogs implements OnInit {
     void this.router.navigate([`/vendor/catalogs/${catalog.id}/edit`]);
   }
 
-  toggleMenu(event: MouseEvent, catalogId: number): void {
+  toggleMenu(event: MouseEvent, catalogId: string): void {
     event.preventDefault();
     event.stopPropagation();
     this.openMenuId.update((id) => (id === catalogId ? null : catalogId));

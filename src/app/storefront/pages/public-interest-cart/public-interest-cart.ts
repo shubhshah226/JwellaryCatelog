@@ -83,7 +83,7 @@ export class PublicInterestCart implements OnInit {
     return hasDisplayPrice(price) ? formatRs(price) : '';
   }
 
-  removeItem(productId: number): void {
+  removeItem(productId: string): void {
     this.cart.remove(productId);
   }
 

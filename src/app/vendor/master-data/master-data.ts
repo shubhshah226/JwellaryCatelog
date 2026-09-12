@@ -23,7 +23,7 @@ export class VendorMasterData implements OnInit {
   readonly errorMessage = signal('');
   readonly categories = signal<MasterDataItem[]>([]);
   readonly metalTypes = signal<MasterDataItem[]>([]);
-  readonly openMenuId = signal<number | null>(null);
+  readonly openMenuId = signal<string | null>(null);
 
   readonly search = signal('');
   readonly status = signal('all');
@@ -151,7 +151,7 @@ export class VendorMasterData implements OnInit {
     });
   }
 
-  toggleMenu(event: MouseEvent, id: number): void {
+  toggleMenu(event: MouseEvent, id: string): void {
     event.preventDefault();
     event.stopPropagation();
     this.openMenuId.update((current) => (current === id ? null : id));

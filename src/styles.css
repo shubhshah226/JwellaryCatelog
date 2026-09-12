@@ -250,3 +250,42 @@ a {
 .filter-search input {
   padding-left: 2.4rem;
 }
+
+/* ngx-toastr — match library success banner (green + white title/message) */
+.toast-container .ngx-toastr {
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  padding: 14px 16px 14px 50px;
+  background-position: 15px center;
+  width: 320px;
+}
+
+.toast-container .toast-success {
+  background-color: #51a351 !important;
+  color: #fff !important;
+}
+
+.toast-container .toast-error {
+  background-color: #bd362f !important;
+  color: #fff !important;
+}
+
+.toast-container .toast-info {
+  background-color: #2f96b4 !important;
+  color: #fff !important;
+}
+
+.toast-container .toast-warning {
+  background-color: #f89406 !important;
+  color: #fff !important;
+}
+
+.toast-container .toast-title {
+  font-weight: 700;
+  color: #fff;
+}
+
+.toast-container .toast-message {
+  color: #fff;
+  opacity: 0.95;
+}

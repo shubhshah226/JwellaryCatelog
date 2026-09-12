@@ -18,7 +18,7 @@
       [storeCode]="ctx.storeCode"
       [vendorName]="ctx.vendor.name"
       [logoUrl]="ctx.config.logoUrl"
-      [isAvailable]="ctx.isAvailable"
+      [isAvailable]="ctx.isAvailable ?? true"
       [topBarItems]="topBarItems(ctx)"
     />
 

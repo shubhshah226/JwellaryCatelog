@@ -1,0 +1,255 @@
+﻿@if (showFilters()) {
+  <div class="dg-filters-card">
+    <div class="dg-filters-grid">
+      @for (field of filterFields(); track field.key) {
+        @switch (field.type) {
+          @case ('search') {
+            <div class="dg-filter-search">
+              <span class="dg-filter-icon" aria-hidden="true">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </span>
+              <input
+                type="text"
+                [name]="'dg-filter-' + field.key"
+                [ngModelOptions]="{ standalone: true }"
+                [placeholder]="field.placeholder || 'Search...'"
+                [ngModel]="draftValue(field.key)"
+                (ngModelChange)="setDraftFilter(field.key, $event)"
+                (keyup.enter)="applyFilters()"
+              />
+            </div>
+          }
+          @case ('select') {
+            <select
+              class="dg-filter-select"
+              [name]="'dg-filter-' + field.key"
+              [ngModelOptions]="{ standalone: true }"
+              [ngModel]="draftValue(field.key) || field.defaultValue || 'all'"
+              (ngModelChange)="setDraftFilter(field.key, $event); applyFilters()"
+            >
+              @for (option of field.options || []; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          }
+          @case ('date') {
+            <input
+              type="date"
+              class="dg-filter-text"
+              [name]="'dg-filter-' + field.key"
+              [ngModelOptions]="{ standalone: true }"
+              [placeholder]="field.placeholder || ''"
+              [ngModel]="draftValue(field.key)"
+              (ngModelChange)="setDraftFilter(field.key, $event); applyFilters()"
+            />
+          }
+          @default {
+            <input
+              type="text"
+              class="dg-filter-text"
+              [name]="'dg-filter-' + field.key"
+              [ngModelOptions]="{ standalone: true }"
+              [placeholder]="field.placeholder || ''"
+              [ngModel]="draftValue(field.key)"
+              (ngModelChange)="setDraftFilter(field.key, $event)"
+              (keyup.enter)="applyFilters()"
+            />
+          }
+        }
+      }
+
+      <div class="dg-filter-actions">
+        <button type="button" class="dg-btn dg-btn-primary" (click)="applyFilters()">Filter</button>
+        <button type="button" class="dg-btn dg-btn-icon" (click)="resetFilters()" aria-label="Reset filters">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<div class="dg-table-card">
+  <div class="dg-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          @if (config().selectable) {
+            <th class="dg-col-check">
+              <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
+            </th>
+          }
+          @for (column of config().columns; track column.key) {
+            <th [class]="column.className || ''">
+              @if (column.sortable) {
+                <button type="button" class="dg-sort-btn" (click)="toggleSort(column)">
+                  {{ column.header }}
+                  <span class="dg-sort-icon">
+                    @switch (sortIndicator(column.key)) {
+                      @case ('asc') {
+                        <i class="fa-solid fa-sort-up"></i>
+                      }
+                      @case ('desc') {
+                        <i class="fa-solid fa-sort-down"></i>
+                      }
+                      @default {
+                        <i class="fa-solid fa-sort"></i>
+                      }
+                    }
+                  </span>
+                </button>
+              } @else {
+                {{ column.header }}
+              }
+            </th>
+          }
+          @if (hasActions()) {
+            <th class="dg-col-actions">Actions</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of paginatedRows(); track trackRow($index, row)) {
+          <tr>
+            @if (config().selectable) {
+              <td class="dg-col-check">
+                <input
+                  type="checkbox"
+                  [checked]="isSelected(row)"
+                  (change)="toggleSelect(row, $event)"
+                />
+              </td>
+            }
+            @for (column of config().columns; track column.key) {
+              <td [class]="column.className || ''">
+                @if ((column.cellType || 'text') === 'avatar') {
+                  <div class="dg-avatar-cell">
+                    <div class="dg-avatar">{{ displayAvatar(row, column) }}</div>
+                    <div>
+                      <p class="dg-primary">{{ displayValue(row, column) }}</p>
+                      @if (displaySubtitle(row, column)) {
+                        <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
+                      }
+                    </div>
+                  </div>
+                } @else if ((column.cellType || 'text') === 'stack') {
+                  <div>
+                    <p class="dg-primary">{{ displayValue(row, column) }}</p>
+                    @if (displaySubtitle(row, column)) {
+                      <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
+                    }
+                  </div>
+                } @else if ((column.cellType || 'text') === 'badge') {
+                  <span class="dg-badge" [class]="badgeClass(row, column)">
+                    {{ displayValue(row, column) }}
+                  </span>
+                } @else if ((column.cellType || 'text') === 'date') {
+                  {{ dateRawValue(row, column) | appDate }}
+                } @else if ((column.cellType || 'text') === 'template') {
+                  @if (cellTemplate(column); as tpl) {
+                    <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, row: row }"></ng-container>
+                  }
+                } @else {
+                  {{ displayValue(row, column) }}
+                }
+              </td>
+            }
+            @if (hasActions()) {
+              <td class="dg-col-actions">
+                <div class="dg-actions-wrap">
+                  <button
+                    type="button"
+                    class="dg-menu-dots"
+                    aria-label="Row actions"
+                    (click)="toggleActionsMenu(row, $event)"
+                  >
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+
+                  @if (openActionsMenuId() === rowId(row)) {
+                    <div
+                      class="dg-actions-dropdown"
+                      [ngStyle]="actionsMenuStyle()"
+                      (click)="$event.stopPropagation()"
+                    >
+                      @for (item of visibleActions(row); track item.id) {
+                        <button
+                          type="button"
+                          [disabled]="isActionDisabled(item, row)"
+                          (click)="onAction(item, row, $event)"
+                        >
+                          <span class="dg-action-icon">
+                            <i [class]="actionIcon(item, row)"></i>
+                          </span>
+                          {{ actionLabel(item, row) }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </td>
+            }
+          </tr>
+        } @empty {
+          <tr>
+            <td [attr.colspan]="columnCount()" class="dg-empty-row">
+              {{ config().emptyMessage || 'No records found.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (showPagination()) {
+    <div class="dg-table-footer">
+      <p>
+        Showing {{ paginationStart() }} to {{ paginationEnd() }} of
+        {{ displayTotal() }}
+        {{ config().entityLabel || 'items' }}
+      </p>
+
+      <div class="dg-pagination">
+        <button
+          type="button"
+          class="dg-page-btn"
+          (click)="goToPage(currentPage() - 1)"
+          [disabled]="currentPage() === 1"
+        >
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        @for (page of pageNumbers(); track page) {
+          <button
+            type="button"
+            class="dg-page-btn"
+            [class.active]="page === currentPage()"
+            (click)="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+        }
+        @if (totalPages() > 5) {
+          <span class="dg-page-ellipsis">...</span>
+          <button type="button" class="dg-page-btn" (click)="goToPage(totalPages())">
+            {{ totalPages() }}
+          </button>
+        }
+        <button
+          type="button"
+          class="dg-page-btn"
+          (click)="goToPage(currentPage() + 1)"
+          [disabled]="currentPage() === totalPages()"
+        >
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <div class="dg-rows-per-page">
+        <span>Rows per page</span>
+        <select [value]="rowsPerPage()" (change)="onRowsPerPageChange($any($event.target).value)">
+          @for (size of pageSizeOptions(); track size) {
+            <option [value]="size">{{ size }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  }

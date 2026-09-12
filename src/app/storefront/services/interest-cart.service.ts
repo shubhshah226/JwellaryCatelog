@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { PublicProduct } from '../models/storefront.model';
 
 export interface CartProduct {
-  id: number;
+  id: string;
   name: string;
   category: string;
   price?: number;
@@ -51,7 +51,7 @@ export class InterestCartService {
     return { added: true, alreadyInCart: false };
   }
 
-  remove(productId: number): void {
+  remove(productId: string): void {
     this.persist(this.itemsSignal().filter((p) => p.id !== productId));
   }
 
@@ -59,7 +59,7 @@ export class InterestCartService {
     this.persist([]);
   }
 
-  has(productId: number): boolean {
+  has(productId: string): boolean {
     return this.itemsSignal().some((p) => p.id === productId);
   }
 

@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiClientError, ApiErrorBody, ApiResponse } from './api.types';
+import { ApiClientError, ApiResponse } from './api.types';
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
@@ -23,7 +23,7 @@ export class ApiHttpService {
     headers?: HttpHeaders
   ): Observable<{ data: T; meta?: Record<string, unknown> }> {
     return this.rawRequest<T>('GET', path, undefined, params, headers).pipe(
-      map((res) => ({ data: res.data as T, meta: res.meta }))
+      map((res) => ({ data: this.unwrap(res), meta: undefined }))
     );
   }
 
@@ -102,14 +102,50 @@ export class ApiHttpService {
     return httpParams;
   }
 
+  /** New API envelope: { exceptions, data, status } */
   private unwrap<T>(res: ApiResponse<T>): T {
-    if (!res?.success) {
+    if (!res || typeof res !== 'object') {
+      throw new ApiClientError('API_ERROR', 'Empty API response', 500);
+    }
+
+    const status = Number(res.status);
+    if (status === 401) {
       throw new ApiClientError(
-        res?.error?.code ?? 'UNKNOWN',
-        res?.error?.message ?? 'Request failed'
+        'UNAUTHORIZED',
+        this.messageFromData(res.data) || 'Invalid or expired token. Please log in again.',
+        401
       );
     }
+    if (status === 403) {
+      throw new ApiClientError(
+        'FORBIDDEN',
+        this.messageFromData(res.data) || 'Your role is not permitted to perform this action.',
+        403
+      );
+    }
+    if (status !== 200) {
+      const detail =
+        (typeof res.exceptions === 'string' && res.exceptions.trim()
+          ? (res.exceptions.split('File')[0] || res.exceptions).trim().slice(0, 240)
+          : null) ||
+        this.messageFromData(res.data) ||
+        'Request failed';
+      throw new ApiClientError('API_ERROR', detail, status || 500);
+    }
     return res.data as T;
+  }
+
+  private messageFromData(data: unknown): string | null {
+    if (typeof data === 'string' && data.trim()) {
+      return data;
+    }
+    if (data && typeof data === 'object' && 'message' in data) {
+      const message = (data as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+    return null;
   }
 
   private toApiError(err: unknown): ApiClientError {
@@ -117,28 +153,19 @@ export class ApiHttpService {
       return err;
     }
     if (err instanceof HttpErrorResponse) {
-      const payload = err.error as
-        | ApiResponse
-        | { detail?: ApiResponse | string | { success?: boolean; error?: ApiErrorBody } }
-        | undefined;
-
-      const nested =
-        payload && typeof payload === 'object' && 'detail' in payload
-          ? (payload as { detail: unknown }).detail
-          : payload;
-
-      const apiBody =
-        nested && typeof nested === 'object' && !Array.isArray(nested)
-          ? (nested as ApiResponse)
-          : undefined;
-
-      const code = apiBody?.error?.code ?? 'HTTP_ERROR';
-      const message =
-        apiBody?.error?.message ||
-        (typeof nested === 'string' ? nested : null) ||
-        err.message ||
-        'Unable to reach the API server.';
-      return new ApiClientError(code, message, err.status || 0);
+      const payload = err.error as ApiResponse | string | undefined;
+      if (payload && typeof payload === 'object') {
+        return new ApiClientError(
+          'HTTP_ERROR',
+          payload.exceptions || this.messageFromData(payload.data) || err.message || 'Request failed',
+          Number(payload.status) || err.status || 0
+        );
+      }
+      return new ApiClientError(
+        'HTTP_ERROR',
+        (typeof payload === 'string' && payload) || err.message || 'Unable to reach the API server.',
+        err.status || 0
+      );
     }
     return new ApiClientError('UNKNOWN', 'Unexpected error');
   }

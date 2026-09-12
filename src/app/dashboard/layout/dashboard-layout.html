@@ -45,15 +45,17 @@
       }
     </nav>
 
-    <div class="help-card">
-      <div class="help-icon" aria-hidden="true">
-        <i class="fa-solid fa-headset"></i>
+    @if (!isAdmin) {
+      <div class="help-card">
+        <div class="help-icon" aria-hidden="true">
+          <i class="fa-solid fa-headset"></i>
+        </div>
+        <div>
+          <p class="help-title">Need Help?</p>
+          <a href="#" class="help-link" (click)="$event.preventDefault()">Contact Support</a>
+        </div>
       </div>
-      <div>
-        <p class="help-title">Need Help?</p>
-        <a href="#" class="help-link" (click)="$event.preventDefault()">Contact Support</a>
-      </div>
-    </div>
+    }
   </aside>
 
   <div class="main-area">

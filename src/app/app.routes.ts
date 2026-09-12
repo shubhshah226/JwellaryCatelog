@@ -10,12 +10,12 @@ export const routes: Routes = [
     canActivate: [loginGuard],
   },
 
-  // Admin routes
+  // Super Admin routes (same pages as before; role renamed admin → superadmin)
   {
-    path: 'admin',
+    path: 'superAdmin',
     loadComponent: () =>
       import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
-    canActivate: [roleGuard('admin')],
+    canActivate: [roleGuard('superadmin')],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
@@ -27,6 +27,11 @@ export const routes: Routes = [
         path: 'vendors',
         loadComponent: () =>
           import('./admin/vendors/vendors').then((m) => m.Vendors),
+      },
+      {
+        path: 'user-profile',
+        loadComponent: () =>
+          import('./auth/user-profile/user-profile').then((m) => m.UserProfilePage),
       },
       {
         path: 'change-password',
@@ -108,6 +113,11 @@ export const routes: Routes = [
         path: 'profile',
         loadComponent: () =>
           import('./vendor/profile/profile').then((m) => m.VendorProfile),
+      },
+      {
+        path: 'user-profile',
+        loadComponent: () =>
+          import('./auth/user-profile/user-profile').then((m) => m.UserProfilePage),
       },
       {
         path: 'change-password',

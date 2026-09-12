@@ -1,16 +1,17 @@
 <div class="login-page">
   <div class="login-bg">
-    <div class="login-bg-left">
-      <div class="wave-fallback" aria-hidden="true"></div>
+    <div class="login-bg-left" aria-hidden="true">
+      <i class="fa-solid fa-gem bg-icon bg-icon-left-1"></i>
+      <i class="fa-solid fa-diamond bg-icon bg-icon-left-2"></i>
+      <i class="fa-solid fa-gem bg-icon bg-icon-left-3"></i>
     </div>
 
-    <div class="login-bg-right">
-      <div class="shape shape-ring shape-ring-1"></div>
-      <div class="shape shape-ring shape-ring-2"></div>
-      <div class="shape shape-circle shape-circle-purple"></div>
-      <div class="shape shape-circle shape-circle-yellow"></div>
-      <div class="shape shape-dots shape-dots-1"></div>
-      <div class="shape shape-dots shape-dots-2"></div>
+    <div class="login-bg-right" aria-hidden="true">
+      <i class="fa-solid fa-gem bg-icon bg-icon-1"></i>
+      <i class="fa-solid fa-diamond bg-icon bg-icon-2"></i>
+      <i class="fa-solid fa-gem bg-icon bg-icon-3"></i>
+      <i class="fa-solid fa-diamond bg-icon bg-icon-4"></i>
+      <i class="fa-solid fa-gem bg-icon bg-icon-5"></i>
     </div>
   </div>
 
@@ -19,7 +20,7 @@
 
     <header class="card-header">
       <div class="logo">
-        <i class="fa-solid fa-gem" aria-hidden="true"></i>
+        <i class="fa-solid fa-diamond" aria-hidden="true"></i>
       </div>
       <h1 class="brand-title">CATALOG</h1>
       <p class="brand-subtitle">MANAGEMENT SYSTEM</p>
@@ -39,10 +40,10 @@
         </span>
         <input
           type="text"
-          name="username"
-          placeholder="Username"
-          [(ngModel)]="username"
-          autocomplete="username"
+          name="email"
+          placeholder="Email"
+          [(ngModel)]="email"
+          autocomplete="Email"
           required
         />
       </div>

@@ -1,41 +1,36 @@
-import { Injectable, signal } from '@angular/core';
-
-export type ToastType = 'success' | 'error' | 'info';
-
-export interface ToastMessage {
-  id: number;
-  type: ToastType;
-  message: string;
-}
+import { Injectable, inject } from '@angular/core';
+import { IndividualConfig, ToastrService } from 'ngx-toastr';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ToastService {
-  private readonly messagesSignal = signal<ToastMessage[]>([]);
-  private nextId = 1;
+  private readonly toastr = inject(ToastrService);
 
-  readonly messages = this.messagesSignal.asReadonly();
-
-  success(message: string, durationMs = 3500): void {
-    this.show('success', message, durationMs);
+  /** ngx-toastr success — green banner with check icon, title + message */
+  success(message: string, title = 'Success'): void {
+    this.toastr.success(message, title, this.options());
   }
 
-  error(message: string, durationMs = 4000): void {
-    this.show('error', message, durationMs);
+  error(message: string, title = 'Error'): void {
+    this.toastr.error(message, title, this.options());
   }
 
-  info(message: string, durationMs = 3500): void {
-    this.show('info', message, durationMs);
+  info(message: string, title = 'Info'): void {
+    this.toastr.info(message, title, this.options());
   }
 
-  dismiss(id: number): void {
-    this.messagesSignal.update((list) => list.filter((t) => t.id !== id));
+  warning(message: string, title = 'Warning'): void {
+    this.toastr.warning(message, title, this.options());
   }
 
-  private show(type: ToastType, message: string, durationMs: number): void {
-    const id = this.nextId++;
-    this.messagesSignal.update((list) => [...list, { id, type, message }]);
-    window.setTimeout(() => this.dismiss(id), durationMs);
+  private options(): Partial<IndividualConfig> {
+    return {
+      timeOut: 3500,
+      progressBar: false,
+      closeButton: false,
+      tapToDismiss: true,
+      newestOnTop: true,
+    };
   }
 }

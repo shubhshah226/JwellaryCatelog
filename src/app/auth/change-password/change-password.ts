@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../core/services/toast.service';
+import { ChangePasswordParamModel } from '../models/user.model';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -13,59 +14,60 @@ export class ChangePassword {
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  currentPassword = '';
-  newPassword = '';
+  /** API payload model — passed to AuthService.changePassword */
+  changePasswordParamModel = new ChangePasswordParamModel();
+  /** UI-only confirm field (not sent to API) */
   confirmPassword = '';
-  showCurrent = false;
+
+  showOld = false;
   showNew = false;
   showConfirm = false;
 
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal('');
-  readonly successMessage = signal('');
 
   submit(): void {
-    const current = this.currentPassword.trim();
-    const next = this.newPassword.trim();
-    const confirm = this.confirmPassword.trim();
+    const oldPassword = this.changePasswordParamModel.oldPassword.trim();
+    const newPassword = this.changePasswordParamModel.newPassword.trim();
+    const confirmPassword = this.confirmPassword.trim();
 
-    if (!current || !next || !confirm) {
+    this.changePasswordParamModel.oldPassword = oldPassword;
+    this.changePasswordParamModel.newPassword = newPassword;
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
       this.errorMessage.set('Please fill in all password fields.');
-      this.successMessage.set('');
       return;
     }
-    if (next.length < 5) {
-      this.errorMessage.set('New password must be at least 5 characters.');
-      this.successMessage.set('');
+    if (newPassword.length < 8) {
+      this.errorMessage.set('New password must be at least 8 characters.');
       return;
     }
-    if (next !== confirm) {
+    if (newPassword !== confirmPassword) {
       this.errorMessage.set('New password and confirm password do not match.');
-      this.successMessage.set('');
       return;
     }
-    if (current === next) {
+    if (oldPassword === newPassword) {
       this.errorMessage.set('New password must be different from current password.');
-      this.successMessage.set('');
       return;
     }
 
     this.isSubmitting.set(true);
     this.errorMessage.set('');
-    this.successMessage.set('');
 
-    this.authService.changePassword(current, next).subscribe({
+    this.authService.changePassword(this.changePasswordParamModel).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.successMessage.set('Password updated successfully.');
-        this.toast.success('Password updated successfully.');
-        this.currentPassword = '';
-        this.newPassword = '';
+        this.changePasswordParamModel = new ChangePasswordParamModel();
         this.confirmPassword = '';
+        this.toast.success('Password Changed Successfully.', 'Success');
+        this.authService.forceLogout();
       },
-      error: (err: Error) => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
-        const message = err.message || 'Unable to change password. Please try again.';
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Unable to change password. Please try again.';
         this.errorMessage.set(message);
         this.toast.error(message);
       },

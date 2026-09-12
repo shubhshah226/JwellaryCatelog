@@ -1,4 +1,3 @@
-import { HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, throwError } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
@@ -6,11 +5,13 @@ import { Enquiry } from '../../dashboard/models/dashboard.model';
 import { CartProduct } from './interest-cart.service';
 import { CustomerAuthService } from './customer-auth.service';
 
-interface LeadSubmitResponse {
-  leadId: number;
-  itemCount: number;
-  status: string;
-  createdAt: string;
+interface SubmitEnquiryResponse {
+  success?: boolean;
+  enquiryId?: string;
+  itemCount?: number;
+  businessName?: string;
+  contactPhone?: string;
+  message?: string | null;
 }
 
 @Injectable({
@@ -20,70 +21,71 @@ export class LeadService {
   private readonly api = inject(ApiHttpService);
   private readonly customerAuth = inject(CustomerAuthService);
 
+  /**
+   * Public enquiry via POST /public/submitEnquiry.
+   * `storeCode` is treated as the catalog share token in the new API.
+   */
   submitCartInterest(
-    vendorId: number,
-    _customerName: string,
-    _customerPhone: string,
+    vendorId: string | number,
+    customerName: string,
+    customerPhone: string,
     products: CartProduct[],
     note = '',
-    source: 'store_home' | 'products' | 'shared_catalog' | 'cart' = 'cart',
+    _source: 'store_home' | 'products' | 'shared_catalog' | 'cart' = 'cart',
     storeCode = ''
   ): Observable<Enquiry> {
-    const code = storeCode || this.customerAuth.getActiveStoreCode();
-    const session = code ? this.customerAuth.getSession(code) : null;
-    if (!code || !session?.sessionToken) {
-      return throwError(() => new Error('Please verify your mobile number first.'));
+    const token = storeCode || this.customerAuth.getActiveStoreCode();
+    const session = token ? this.customerAuth.getSession(token) : null;
+    if (!token) {
+      return throwError(() => new Error('Catalog link is missing.'));
     }
     if (!products.length) {
       return throwError(() => new Error('Add at least one product to your interest list.'));
     }
 
-    const headers = new HttpHeaders({
-      'X-Customer-Session': session.sessionToken,
-    });
-
-    const apiSource =
-      source === 'cart' || source === 'products'
-        ? 'products'
-        : source === 'store_home'
-          ? 'store_home'
-          : 'shared_catalog';
+    const name = customerName.trim() || session?.name || '';
+    const phone = customerPhone.trim() || session?.phone || '';
 
     return this.api
-      .post<LeadSubmitResponse>(
-        `/public/stores/${code}/leads`,
-        {
-          productIds: products.map((p) => p.id),
-          message: note.trim() || undefined,
-          source: apiSource,
-        },
-        undefined,
-        headers
-      )
+      .post<SubmitEnquiryResponse>('/public/submitEnquiry', {
+        token,
+        customerName: name || null,
+        customerPhone: phone || null,
+        customerNote: note.trim() || null,
+        items: products.map((p) => ({
+          productId: String(p.id),
+          quantity: 1,
+        })),
+      })
       .pipe(
-        map((res) => ({
-          id: res.leadId,
-          vendorId,
-          customerName: session.name,
-          customerPhone: session.phone,
-          initials: this.getInitials(session.name),
-          message: note.trim() || `Interested in ${products.length} products`,
-          status: (res.status as Enquiry['status']) || 'new',
-          timeAgo: 'Just now',
-          interestType: 'interested' as const,
-          createdAt: res.createdAt,
-          itemCount: res.itemCount,
-          productName:
-            products.length === 1 ? products[0].name : `${products.length} products`,
-          items: products.map((p) => ({
-            productId: p.id,
-            productName: p.name,
-            category: p.category,
-            price: p.price,
-            imageUrl: p.imageUrl,
-            sku: p.sku,
-          })),
-        }))
+        map((res) => {
+          if (res && res.success === false) {
+            throw new Error(res.message || 'Unable to submit enquiry.');
+          }
+          return {
+            id: String(res?.enquiryId || ''),
+            vendorId: String(vendorId),
+            customerName: name || 'Customer',
+            customerPhone: phone,
+            initials: this.getInitials(name || 'Customer'),
+            message: note.trim() || `Interested in ${products.length} products`,
+            status: 'new' as const,
+            timeAgo: 'Just now',
+            interestType: 'interested' as const,
+            createdAt: new Date().toISOString(),
+            itemCount: Number(res?.itemCount ?? products.length),
+            productName:
+              products.length === 1 ? products[0].name : `${products.length} products`,
+            items: products.map((p) => ({
+              productId: String(p.id),
+              productName: p.name,
+              category: p.category,
+              price: p.price,
+              imageUrl: p.imageUrl,
+              sku: p.sku,
+            })),
+          };
+        })
       );
   }
 

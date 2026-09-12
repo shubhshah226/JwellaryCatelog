@@ -9,7 +9,7 @@ import { ProductService } from '../services/product.service';
 import { VendorDataService } from '../services/vendor-data.service';
 
 interface ShareLine {
-  productId: number;
+  productId: string;
   name: string;
   category?: string;
   sku?: string;
@@ -34,9 +34,9 @@ export class VendorLeads implements OnInit {
   readonly errorMessage = signal('');
   readonly allLeads = signal<Enquiry[]>([]);
   readonly filteredLeads = signal<Enquiry[]>([]);
-  readonly expandedIds = signal<Set<number>>(new Set());
+  readonly expandedIds = signal<Set<string>>(new Set());
   readonly allProducts = signal<Product[]>([]);
-  readonly vendorId = signal(0);
+  readonly vendorId = signal<string>('');
   readonly storeCode = signal('');
 
   readonly shareOpen = signal(false);
@@ -131,11 +131,11 @@ export class VendorLeads implements OnInit {
     return lead.itemCount ?? lead.items?.length ?? (lead.productName ? 1 : 0);
   }
 
-  isExpanded(id: number): boolean {
+  isExpanded(id: string): boolean {
     return this.expandedIds().has(id);
   }
 
-  toggleExpand(id: number): void {
+  toggleExpand(id: string): void {
     const next = new Set(this.expandedIds());
     if (next.has(id)) {
       next.delete(id);
@@ -233,11 +233,11 @@ export class VendorLeads implements OnInit {
     ]);
   }
 
-  removeShareLine(productId: number): void {
+  removeShareLine(productId: string): void {
     this.shareLines.update((lines) => lines.filter((l) => l.productId !== productId));
   }
 
-  setSpecialPrice(productId: number, value: string | number | null): void {
+  setSpecialPrice(productId: string, value: string | number | null): void {
     const n =
       value === null || value === ''
         ? null

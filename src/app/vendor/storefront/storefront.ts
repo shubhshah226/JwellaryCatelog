@@ -165,7 +165,7 @@ export class VendorStorefront implements OnInit, OnDestroy {
           this.isLoading.set(false);
           return;
         }
-        const normalized = { ...profile, id: Number(profile.id) };
+        const normalized = { ...profile, id: String(profile.id) };
         this.vendor.set(normalized);
         if (normalized.storeCode) {
           const url = buildPublicStoreUrl(normalized.storeCode);
@@ -574,7 +574,7 @@ export class VendorStorefront implements OnInit, OnDestroy {
     });
   }
 
-  toggleFeaturedProduct(productId: number, checked: boolean): void {
+  toggleFeaturedProduct(productId: string, checked: boolean): void {
     const ids = new Set(this.form.featuredProductIds);
     if (checked) {
       ids.add(productId);
@@ -584,7 +584,7 @@ export class VendorStorefront implements OnInit, OnDestroy {
     this.form.featuredProductIds = [...ids];
   }
 
-  isFeatured(productId: number): boolean {
+  isFeatured(productId: string): boolean {
     return this.form.featuredProductIds.includes(productId);
   }
 

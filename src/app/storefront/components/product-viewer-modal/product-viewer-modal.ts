@@ -23,7 +23,7 @@ export class ProductViewerModal implements OnDestroy {
 
   readonly open = input(false);
   readonly product = input<PublicProduct | null>(null);
-  readonly vendorId = input(0);
+  readonly vendorId = input<number | string>(0);
   readonly vendorName = input('');
   readonly storeCode = input('');
 

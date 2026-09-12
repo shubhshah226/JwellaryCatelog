@@ -53,14 +53,15 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   readonly vendorDisplayName = signal('');
 
   readonly user = this.authService.getSession()?.user;
-  readonly isAdmin = this.user?.role === 'admin';
-  readonly baseRoute = this.isAdmin ? '/admin' : '/vendor';
+  readonly isAdmin = this.user?.role === 'superadmin';
+  readonly baseRoute = this.isAdmin ? '/superAdmin' : '/vendor';
   readonly roleLabel = this.isAdmin ? 'Super Admin' : 'Vendor';
 
   readonly adminNavItems: NavItem[] = [
-    { label: 'Dashboard', route: '/admin/dashboard', icon: 'dashboard' },
-    { label: 'Manage Vendors', route: '/admin/vendors', icon: 'vendors' },
-    { label: 'Change Password', route: '/admin/change-password', icon: 'password' },
+    { label: 'Dashboard', route: '/superAdmin/dashboard', icon: 'dashboard' },
+    { label: 'Manage Vendors', route: '/superAdmin/vendors', icon: 'vendors' },
+    { label: 'User Profile', route: '/superAdmin/user-profile', icon: 'profile' },
+    { label: 'Change Password', route: '/superAdmin/change-password', icon: 'password' },
   ];
 
   readonly vendorNavItems: NavItem[] = [
@@ -70,7 +71,8 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     { label: 'Master Data', route: '/vendor/master-data', icon: 'categories' },
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
     // { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
-    { label: 'Profile', route: '/vendor/profile', icon: 'profile' },
+    { label: 'Business Profile', route: '/vendor/profile', icon: 'profile' },
+    { label: 'User Profile', route: '/vendor/user-profile', icon: 'users' },
     { label: 'Change Password', route: '/vendor/change-password', icon: 'password' },
   ];
 

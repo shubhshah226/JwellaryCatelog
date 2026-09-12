@@ -1,17 +1,25 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, from, map, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, map, throwError } from 'rxjs';
 import { ApiClientError } from '../../core/api/api.types';
 import { ApiHttpService } from '../../core/api/api-http.service';
-import { CryptoStorageService } from '../../core/services/crypto-storage.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { getRoleFromToken } from '../../core/utils/jwt.util';
-import { AuthSession, AuthUser, UserRole } from '../models/user.model';
+import { ToastService } from '../../core/services/toast.service';
+import { getRoleFromToken, normalizeAppRole } from '../../core/utils/jwt.util';
+import {
+  AccountActionResponse,
+  AuthSession,
+  AuthUser,
+  ChangePasswordParamModel,
+  LoginParamModel,
+  LoginResponse,
+  UserProfile,
+  UserRole,
+} from '../models/user.model';
+import { environment } from '../../../environments/environment';
 
-interface LoginResponse {
-  token: string;
-  user: AuthUser & { status?: string };
-}
+/** Plain localStorage key used by login (decrypted for now). */
+const USER_STORAGE_KEY = 'user';
 
 @Injectable({
   providedIn: 'root',
@@ -19,54 +27,96 @@ interface LoginResponse {
 export class AuthService {
   private readonly api = inject(ApiHttpService);
   private readonly router = inject(Router);
-  private readonly cryptoStorage = inject(CryptoStorageService);
   private readonly themeService = inject(ThemeService);
+  private readonly toast = inject(ToastService);
 
   private session: AuthSession | null = null;
   private sessionLoaded = false;
   private sessionLoadPromise: Promise<void> | null = null;
 
-  login(username: string, password: string): Observable<AuthSession> {
-    return this.api.post<LoginResponse>('/auth/login', { username, password }).pipe(
+  /** Login API — returns unwrapped `data` (LoginResponse). Login component stays unchanged. */
+  login(loginParamModel: LoginParamModel): Observable<LoginResponse> {
+    return this.api.post<unknown>('/account/login', loginParamModel).pipe(
+      map((res) => {
+        const normalized = this.normalizeLoginPayload(res);
+        if (normalized.accessToken) {
+          this.session = this.createSessionFromLogin(normalized);
+          this.sessionLoaded = true;
+        }
+        return normalized;
+      }),
       catchError((err: unknown) => {
         if (err instanceof ApiClientError) {
-          if (err.code === 'VENDOR_INACTIVE') {
-            return throwError(() => new Error('Your vendor account is inactive. Contact admin.'));
-          }
-          if (err.code === 'PLAN_EXPIRED') {
-            return throwError(() => new Error('Your subscription/plan has expired. Contact admin.'));
-          }
           return throwError(() => new Error(err.message || 'Login failed'));
         }
         return throwError(() => new Error('Unable to connect to the API server.'));
-      }),
-      switchMap((data) => {
-        const session = this.createSession(data.token, data.user);
-        return from(
-          this.cryptoStorage.setItem(session).then(() => {
-            this.session = session;
-            this.sessionLoaded = true;
-          })
-        ).pipe(map(() => session));
       })
     );
   }
 
-  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+  /** POST /account/changePassword — body is ChangePasswordParamModel. */
+  changePassword(paramModel: ChangePasswordParamModel): Observable<AccountActionResponse> {
     return this.api
-      .post<{ message?: string }>('/auth/change-password', {
-        currentPassword,
-        newPassword,
-      })
+      .post<{ success?: boolean; message?: string | null }>('/account/changePassword', paramModel)
       .pipe(
-        map(() => undefined),
+        map((res) => {
+          const response = new AccountActionResponse();
+          response.success = res?.success === true;
+          response.message = res?.message ?? null;
+          if (!response.success) {
+            throw new Error(response.message || 'Unable to change password.');
+          }
+          return response;
+        }),
         catchError((err: unknown) => {
+          if (err instanceof Error && !(err instanceof ApiClientError)) {
+            return throwError(() => err);
+          }
           if (err instanceof ApiClientError) {
             return throwError(() => new Error(err.message || 'Unable to change password.'));
           }
           return throwError(() => new Error('Unable to connect to the API server.'));
         })
       );
+  }
+
+  /** POST /account/userProfile — current logged-in user. */
+  getUserProfile(): Observable<UserProfile> {
+    return this.api.post<Record<string, unknown>>('/account/userProfile', {}).pipe(
+      map((res) => this.normalizeUserProfile(res)),
+      catchError((err: unknown) => {
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Unable to load profile.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
+  }
+
+  private normalizeUserProfile(raw: unknown): UserProfile {
+    const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    const pick = (...keys: string[]): unknown => {
+      for (const key of keys) {
+        if (r[key] != null && r[key] !== '') {
+          return r[key];
+        }
+      }
+      return null;
+    };
+
+    const profile = new UserProfile();
+    profile.userId = String(pick('userId', 'user_id') ?? '');
+    const tenant = pick('tenantId', 'tenant_id');
+    profile.tenantId = tenant == null ? null : String(tenant);
+    profile.fullName = String(pick('fullName', 'full_name') ?? '');
+    profile.email = String(pick('email') ?? '');
+    profile.userRole = String(pick('userRole', 'user_role') ?? '');
+    profile.accountStatus = String(pick('accountStatus', 'account_status') ?? '');
+    const lastLogin = pick('lastLoginAt', 'last_login_at');
+    profile.lastLoginAt = lastLogin == null ? null : String(lastLogin);
+    const business = pick('businessName', 'business_name');
+    profile.businessName = business == null ? null : String(business);
+    return profile;
   }
 
   async ensureSessionLoaded(): Promise<void> {
@@ -80,32 +130,43 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return this.session !== null;
+    this.hydrateFromStorageIfNeeded();
+    return this.session !== null && !!this.session.token;
   }
 
   getSession(): AuthSession | null {
+    this.hydrateFromStorageIfNeeded();
     return this.session;
   }
 
+  getAccessToken(): string | null {
+    return this.getSession()?.token ?? null;
+  }
+
   getRole(): UserRole | null {
-    return this.session?.user.role ?? null;
+    return this.getSession()?.user.role ?? null;
   }
 
   getDashboardRoute(): string {
-    return this.getRole() === 'admin' ? '/admin/dashboard' : '/vendor/dashboard';
+    return this.getRole() === 'superadmin' ? '/superAdmin/dashboard' : '/vendor/dashboard';
   }
 
   redirectToDashboard(): void {
     void this.router.navigateByUrl(this.getDashboardRoute());
   }
 
+  /** POST /account/logout — revoke server session, then clear local auth. */
   logout(): void {
-    const token = this.session?.token;
-    this.clearLocalSession();
-    if (token) {
-      this.api.post('/auth/logout').subscribe({ error: () => undefined });
+    const token = this.getAccessToken();
+    if (!token) {
+      this.finishLogout();
+      return;
     }
-    void this.router.navigate(['/login']);
+
+    this.api.post<AccountActionResponse>('/account/logout', {}).subscribe({
+      next: () => this.finishLogout(),
+      error: () => this.finishLogout(),
+    });
   }
 
   /** Clear session without calling logout API (used on 401). */
@@ -114,45 +175,114 @@ export class AuthService {
     void this.router.navigate(['/login']);
   }
 
+  private finishLogout(): void {
+    this.clearLocalSession();
+    this.toast.success('Logout successfully.', 'Success');
+    void this.router.navigate(['/login']);
+  }
+
   private clearLocalSession(): void {
     this.session = null;
-    this.cryptoStorage.removeItem();
+    this.sessionLoaded = true;
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(environment.storageKey);
     this.themeService.resetToDark();
   }
 
+  private hydrateFromStorageIfNeeded(): void {
+    if (this.session?.token) {
+      return;
+    }
+    const stored = this.readStoredLogin();
+    if (stored?.accessToken) {
+      try {
+        this.session = this.createSessionFromLogin(stored);
+        this.sessionLoaded = true;
+      } catch {
+        this.session = null;
+      }
+    }
+  }
+
   private async loadSession(): Promise<void> {
-    const session = await this.cryptoStorage.getItem<AuthSession>();
-    if (session?.token) {
-      const role = getRoleFromToken(session.token) ?? session.user.role;
-      this.session = {
-        ...session,
-        user: {
-          ...session.user,
-          role,
-          vendorId: session.user.vendorId,
-        },
-      };
+    const stored = this.readStoredLogin();
+    if (stored?.accessToken) {
+      try {
+        this.session = this.createSessionFromLogin(stored);
+      } catch {
+        this.session = null;
+      }
+    } else {
+      this.session = null;
     }
     this.sessionLoaded = true;
   }
 
-  private createSession(token: string, user: AuthUser): AuthSession {
-    const role = (getRoleFromToken(token) ?? user.role) as UserRole;
-    if (role !== 'admin' && role !== 'vendor') {
+  private readStoredLogin(): LoginResponse | null {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      return this.normalizeLoginPayload(JSON.parse(raw));
+    } catch {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      return null;
+    }
+  }
+
+  /** Accept camelCase or snake_case login payloads from API / localStorage. */
+  normalizeLoginPayload(raw: unknown): LoginResponse {
+    const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    const pick = (...keys: string[]): unknown => {
+      for (const key of keys) {
+        if (r[key] != null && r[key] !== '') {
+          return r[key];
+        }
+      }
+      return '';
+    };
+
+    const tenantRaw = pick('tenantId', 'tenant_id');
+    const messageRaw = pick('message');
+
+    return {
+      accessToken: String(pick('accessToken', 'access_token') || ''),
+      expiresAt: String(pick('expiresAt', 'expires_at') || ''),
+      userId: String(pick('userId', 'user_id') || ''),
+      tenantId: tenantRaw === '' || tenantRaw == null ? null : String(tenantRaw),
+      fullName: String(pick('fullName', 'full_name') || ''),
+      userRole: String(pick('userRole', 'user_role') || ''),
+      message: messageRaw === '' || messageRaw == null ? null : String(messageRaw),
+    };
+  }
+
+  private createSessionFromLogin(data: LoginResponse): AuthSession {
+    const token = (data.accessToken || '').trim();
+    const role = getRoleFromToken(token) ?? normalizeAppRole(data.userRole);
+    if (!token || (role !== 'superadmin' && role !== 'vendor')) {
       throw new Error('Invalid user role');
     }
+
+    const fullName = (data.fullName || '').trim();
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+
+    const user: AuthUser = {
+      id: String(data.userId || ''),
+      name: fullName || data.userRole || 'User',
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      email: '',
+      role,
+      tenantId: data.tenantId,
+      vendorId: data.tenantId,
+    };
+
     return {
       token,
-      user: {
-        id: Number(user.id),
-        name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
-        email: user.email,
-        role,
-        vendorId: user.vendorId != null ? Number(user.vendorId) : undefined,
-      },
+      user,
+      expiresAt: data.expiresAt,
+      raw: data,
     };
   }
 }

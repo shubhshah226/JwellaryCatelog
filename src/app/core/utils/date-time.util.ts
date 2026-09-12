@@ -24,6 +24,63 @@ export function parseApiUtc(iso?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function indiaParts(date: Date): Record<string, string> {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: INDIA_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(date);
+
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      map[part.type] = part.value;
+    }
+  }
+  return map;
+}
+
+/** Grid/table datetime: dd/mm/yyyy hh:mm AM|PM (India). */
+export function formatGridDateTime(value?: string | Date | null): string {
+  const date =
+    value instanceof Date
+      ? Number.isNaN(value.getTime())
+        ? null
+        : value
+      : parseApiUtc(value);
+  if (!date) {
+    return '—';
+  }
+
+  const map = indiaParts(date);
+  const day = map['day'] ?? '00';
+  const month = map['month'] ?? '00';
+  const year = map['year'] ?? '0000';
+  const hour = map['hour'] ?? '00';
+  const minute = map['minute'] ?? '00';
+  const dayPeriod = (map['dayPeriod'] ?? 'AM').toUpperCase();
+  return `${day}/${month}/${year} ${hour}:${minute} ${dayPeriod}`;
+}
+
+/** yyyy-mm-dd in India timezone — useful for date input filters. */
+export function formatIndiaDateKey(value?: string | Date | null): string {
+  const date =
+    value instanceof Date
+      ? Number.isNaN(value.getTime())
+        ? null
+        : value
+      : parseApiUtc(value);
+  if (!date) {
+    return '';
+  }
+  const map = indiaParts(date);
+  return `${map['year']}-${map['month']}-${map['day']}`;
+}
+
 /** Absolute date+time in India timezone, e.g. "03 Sep 2026, 10:00 am". */
 export function formatInIndia(iso?: string | null): string {
   const date = parseApiUtc(iso);
@@ -61,3 +118,4 @@ export function relativeTimeFromUtc(iso?: string | null): string {
   }
   return `${Math.floor(hours / 24)}d ago`;
 }
+

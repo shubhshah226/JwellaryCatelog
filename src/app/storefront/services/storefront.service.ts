@@ -1,7 +1,8 @@
 import { HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
+import { environment } from '../../../environments/environment';
 import { resolveMediaUrl, resolveMediaUrls } from '../../core/utils/media-url.util';
 import { CatalogSharePayload } from '../../core/services/catalog-share.service';
 import {
@@ -17,37 +18,48 @@ import {
 } from '../models/storefront.model';
 import { CustomerAuthService } from './customer-auth.service';
 
-interface PublicHomeResponse {
-  context: PublicStoreContext;
-  featuredProducts: PublicProduct[];
-}
-
-interface PublicProductsResponse {
-  context: PublicStoreContext;
-  products: PublicProduct[];
-}
-
-interface PublicShareResponse {
-  context: PublicStoreContext;
-  products: PublicProduct[];
-  shareLabel?: string;
-}
-
-interface PublicProductDetailResponse {
-  id: number;
-  name: string;
-  category: string;
-  description?: string;
-  price?: number;
-  priceVisible?: boolean;
-  imageUrl?: string;
-  images?: Array<string | { url: string; sortOrder?: number; isCover?: boolean }>;
+interface PublicCatalogApiItem {
+  productId?: string;
+  skuCode?: string;
+  name?: string;
+  categoryName?: string;
   metalType?: string;
-  weight?: string;
   purity?: string;
-  sku?: string;
-  verified?: boolean;
-  publicCover?: PublicProduct;
+  color?: string;
+  grossWeight?: number | string;
+  stockStatus?: string;
+  primaryImageId?: string;
+  imageIds?: string[];
+  price?: number;
+}
+
+interface PublicCatalogApiResponse {
+  status?: string;
+  message?: string;
+  business?: {
+    businessName?: string;
+    logoUrl?: string | null;
+    brandColor?: string | null;
+    contactPhone?: string | null;
+    currency?: string | null;
+  } | null;
+  catalog?: {
+    title?: string;
+    itemCount?: number;
+    priceVisible?: boolean;
+    customerDetailsRequired?: boolean;
+    customerName?: string | null;
+    expiresAt?: string | null;
+  } | null;
+  items?: PublicCatalogApiItem[];
+}
+
+interface PublicProductDetailApiResponse {
+  status?: string;
+  product?: PublicCatalogApiItem & {
+    description?: string;
+    imageIds?: string[];
+  } | null;
 }
 
 @Injectable({
@@ -57,42 +69,31 @@ export class StorefrontService {
   private readonly api = inject(ApiHttpService);
   private readonly customerAuth = inject(CustomerAuthService);
 
-  private customerHeaders(storeCode: string, extra?: HttpHeaders): HttpHeaders {
-    let headers = extra ?? new HttpHeaders();
-    const token = this.customerAuth.getSession(storeCode)?.sessionToken;
-    if (token) {
-      headers = headers.set('X-Customer-Session', token);
-    }
-    return headers;
-  }
-
-  getStoreContext(storeCode: string): Observable<PublicStoreContext | null> {
-    return this.api.get<PublicStoreContext>(`/public/stores/${storeCode}`).pipe(
-      map((ctx) => this.normalizeContext(ctx))
+  /** In the new API, the route param is the catalog share token. */
+  getStoreContext(token: string): Observable<PublicStoreContext | null> {
+    return this.fetchCatalog(token).pipe(
+      map((res) => (res ? this.toContext(token, res) : null))
     );
   }
 
-  getPublicPage(storeCode: string): Observable<PublicStorefrontPage | null> {
-    return this.api.get<PublicHomeResponse & Partial<PublicStoreContext>>(
-      `/public/stores/${storeCode}/home`,
-      undefined,
-      this.customerHeaders(storeCode)
-    ).pipe(
+  getPublicPage(token: string): Observable<PublicStorefrontPage | null> {
+    return this.fetchCatalog(token).pipe(
       map((res) => {
-        const ctx = res?.context ?? (res.vendor ? res : null);
-        if (!ctx?.vendor) {
+        if (!res) {
           return null;
         }
+        const context = this.toContext(token, res);
+        const products = (res.items ?? []).map((item) => this.fromApiItem(token, item, res.catalog?.priceVisible));
         return {
-          ...this.normalizeContext(ctx as PublicStoreContext),
-          featuredProducts: (res.featuredProducts ?? []).map((p) => this.toPublicProduct(p)),
+          ...context,
+          featuredProducts: products.slice(0, context.config.homeProductLimit || 8),
         };
       })
     );
   }
 
   getPublicProducts(
-    storeCode: string,
+    token: string,
     filters: {
       page?: number;
       pageSize?: number;
@@ -112,100 +113,93 @@ export class StorefrontService {
     hasMore: boolean;
     page: number;
   } | null> {
-    const category = filters.category && filters.category !== 'all' ? filters.category : undefined;
-    const metalType = filters.metalType && filters.metalType !== 'all' ? filters.metalType : undefined;
-    const purity = filters.purity && filters.purity !== 'all' ? filters.purity : undefined;
-    const headers = this.customerHeaders(
-      storeCode,
-      filters.skipLoader ? new HttpHeaders({ 'X-Skip-Loader': 'true' }) : undefined
-    );
-    const verified = !!this.customerAuth.getSession(storeCode)?.sessionToken;
-    return this.api
-      .getWithMeta<PublicProductsResponse>(`/public/stores/${storeCode}/products`, {
-        page: filters.page ?? 1,
-        pageSize: filters.pageSize ?? 12,
-        search: filters.search?.trim() || undefined,
-        category,
-        metalType,
-        purity,
-        minPrice: verified ? filters.minPrice ?? undefined : undefined,
-        maxPrice: verified ? filters.maxPrice ?? undefined : undefined,
-        sort: verified ? filters.sort || 'newest' : 'newest',
-      }, headers)
-      .pipe(
-        map((res) => {
-          if (!res.data?.context) {
-            return null;
-          }
-          const meta = res.meta ?? {};
-          const products = (res.data.products ?? []).map((p) => this.toPublicProduct(p));
-          const total = Number(meta['total'] ?? products.length);
-          const page = Number(meta['page'] ?? filters.page ?? 1);
-          const hasMore =
-            typeof meta['hasMore'] === 'boolean' ? meta['hasMore'] : products.length >= (filters.pageSize ?? 12);
-          return {
-            context: this.normalizeContext(res.data.context),
-            products,
-            total,
-            hasMore,
-            page,
-          };
-        })
-      );
-  }
-
-  getPublicProductDetail(storeCode: string, productId: number, sessionToken?: string): Observable<PublicProduct | null> {
-    const headers = this.customerHeaders(
-      storeCode,
-      new HttpHeaders({
-        'X-Skip-Loader': 'true',
-        ...(sessionToken ? { 'X-Customer-Session': sessionToken } : {}),
+    return this.fetchCatalog(token).pipe(
+      map((res) => {
+        if (!res) {
+          return null;
+        }
+        const context = this.toContext(token, res);
+        let products = (res.items ?? []).map((item) =>
+          this.fromApiItem(token, item, res.catalog?.priceVisible)
+        );
+        products = this.filterPublicProducts(products, {
+          search: filters.search,
+          category: filters.category,
+          metalType: filters.metalType,
+          minPrice: filters.minPrice ?? undefined,
+          maxPrice: filters.maxPrice ?? undefined,
+        });
+        const page = filters.page ?? 1;
+        const pageSize = filters.pageSize ?? 12;
+        const start = (page - 1) * pageSize;
+        const pageItems = products.slice(start, start + pageSize);
+        return {
+          context,
+          products: pageItems,
+          total: products.length,
+          hasMore: start + pageSize < products.length,
+          page,
+        };
       })
     );
+  }
+
+  getPublicProductDetail(
+    token: string,
+    productId: string | number,
+    _sessionToken?: string
+  ): Observable<PublicProduct | null> {
     return this.api
-      .get<PublicProductDetailResponse>(`/public/stores/${storeCode}/products/${productId}`, undefined, headers)
+      .post<PublicProductDetailApiResponse>('/public/productDetail', {
+        token,
+        productId: String(productId),
+      })
       .pipe(
         map((res) => {
-          if (!res?.id) {
+          if (!res?.product) {
             return null;
           }
-          const cover = res.publicCover;
-          return this.toPublicProduct({
-            ...(cover ?? {}),
-            ...res,
-            images: res.images?.length ? res.images : cover?.images,
-          } as PublicProduct);
+          return this.fromApiItem(token, res.product, true);
         })
       );
   }
 
   getSharedCatalog(
-    storeCode: string,
+    _storeCode: string,
     shortCode: string
   ): Observable<{
     context: PublicStoreContext;
     products: PublicProduct[];
     shareLabel: string;
   } | null> {
-    return this.api
-      .get<PublicShareResponse>(`/public/stores/${storeCode}/c/${shortCode}`, undefined, this.customerHeaders(storeCode))
-      .pipe(
-        map((res) => ({
-          context: this.normalizeContext(res.context),
-          products: (res.products ?? []).map((p) => this.toPublicProduct(p)),
-          shareLabel: res.shareLabel ?? 'Shared Catalog',
-        }))
-      );
+    return this.fetchCatalog(shortCode).pipe(
+      map((res) => {
+        if (!res) {
+          return null;
+        }
+        return {
+          context: this.toContext(shortCode, res),
+          products: (res.items ?? []).map((item) =>
+            this.fromApiItem(shortCode, item, res.catalog?.priceVisible)
+          ),
+          shareLabel: res.catalog?.title || 'Shared Catalog',
+        };
+      })
+    );
   }
 
-  getPublicCategories(storeCode: string): Observable<string[]> {
-    return this.api
-      .get<{ categories: string[] }>(
-        `/public/stores/${storeCode}/categories`,
-        undefined,
-        new HttpHeaders({ 'X-Skip-Loader': 'true' })
-      )
-      .pipe(map((res) => res?.categories ?? []));
+  getPublicCategories(token: string): Observable<string[]> {
+    return this.fetchCatalog(token).pipe(
+      map((res) => {
+        const set = new Set<string>();
+        for (const item of res?.items ?? []) {
+          if (item.categoryName) {
+            set.add(item.categoryName);
+          }
+        }
+        return [...set].sort((a, b) => a.localeCompare(b));
+      })
+    );
   }
 
   filterPublicProducts(
@@ -216,14 +210,14 @@ export class StorefrontService {
       metalType?: string;
       minPrice?: number;
       maxPrice?: number;
-      productIds?: number[];
+      productIds?: string[];
     }
   ): PublicProduct[] {
     const search = filters.search?.trim().toLowerCase() ?? '';
-    const idSet = filters.productIds?.length ? new Set(filters.productIds) : null;
+    const idSet = filters.productIds?.length ? new Set(filters.productIds.map(String)) : null;
 
     return products.filter((p) => {
-      if (idSet && !idSet.has(p.id)) {
+      if (idSet && !idSet.has(String(p.id))) {
         return false;
       }
       if (
@@ -251,7 +245,7 @@ export class StorefrontService {
 
   applySharePayload(products: PublicProduct[], payload: CatalogSharePayload): PublicProduct[] {
     return this.filterPublicProducts(products, {
-      productIds: payload.productIds,
+      productIds: payload.productIds?.map(String),
       category: payload.category,
       metalType: payload.metalType,
       minPrice: payload.minPrice,
@@ -259,38 +253,35 @@ export class StorefrontService {
     });
   }
 
-  getByVendorId(vendorId: number, vendorName: string): Observable<StorefrontConfig> {
-    return this.api.get<Partial<StorefrontConfig>>('/vendor/storefront').pipe(
-      map((cfg) =>
-        mergeStorefrontWithDefaults(this.normalizeStorefront(cfg), vendorId, vendorName)
-      )
-    );
+  /** No dedicated storefront CMS in smart-catalog — return defaults. */
+  getByVendorId(vendorId: number | string, vendorName: string): Observable<StorefrontConfig> {
+    return of(mergeStorefrontWithDefaults(null, vendorId, vendorName));
   }
 
   saveForVendor(
-    vendorId: number,
+    vendorId: number | string,
     vendorName: string,
     form: StorefrontFormData,
     _existingId?: number
   ): Observable<StorefrontConfig> {
-    const payload = {
-      tagline: form.tagline,
-      aboutText: form.aboutText,
-      logoUrl: this.toRelativeMedia(form.logoUrl),
-      showBanner: form.showBanner,
-      showAbout: form.showAbout,
-      showFeatured: form.showFeatured,
-      showContact: form.showContact,
-      homeProductLimit: form.homeProductLimit,
-      bannerUrls: form.bannerUrls.map((u) => this.toRelativeMedia(u)),
-      featuredProductIds: form.featuredProductIds,
-      theme: form.theme,
-      homepage: this.toRelativeHomepage(form.homepage),
-    };
-
-    return this.api.put<Partial<StorefrontConfig>>('/vendor/storefront', payload).pipe(
-      map((cfg) =>
-        mergeStorefrontWithDefaults(this.normalizeStorefront(cfg), vendorId, vendorName)
+    return of(
+      mergeStorefrontWithDefaults(
+        {
+          tagline: form.tagline,
+          aboutText: form.aboutText,
+          logoUrl: form.logoUrl,
+          showBanner: form.showBanner,
+          showAbout: form.showAbout,
+          showFeatured: form.showFeatured,
+          showContact: form.showContact,
+          homeProductLimit: form.homeProductLimit,
+          bannerUrls: form.bannerUrls,
+          featuredProductIds: form.featuredProductIds,
+          theme: form.theme,
+          homepage: form.homepage,
+        },
+        vendorId,
+        vendorName
       )
     );
   }
@@ -314,19 +305,75 @@ export class StorefrontService {
     };
   }
 
-  private normalizeContext(ctx: PublicStoreContext): PublicStoreContext {
-    const vendorId = Number(ctx.vendor.id);
-    return {
-      ...ctx,
-      vendor: {
-        ...ctx.vendor,
-        id: vendorId,
+  private fetchCatalog(token: string): Observable<PublicCatalogApiResponse | null> {
+    return this.api.post<PublicCatalogApiResponse>('/public/fetchCatalog', { token }).pipe(
+      map((res) => res ?? null)
+    );
+  }
+
+  private toContext(token: string, res: PublicCatalogApiResponse): PublicStoreContext {
+    const business = res.business;
+    const name = business?.businessName || 'Catalog';
+    const vendorId = token;
+    const config = mergeStorefrontWithDefaults(
+      {
+        logoUrl: business?.logoUrl
+          ? `${environment.apiBaseUrl}${business.logoUrl}`
+          : '',
+        theme: {
+          primaryColor: business?.brandColor || undefined,
+        },
+        tagline: res.catalog?.title || '',
       },
-      config: mergeStorefrontWithDefaults(
-        this.normalizeStorefront(ctx.config),
-        vendorId,
-        ctx.vendor.name
-      ),
+      vendorId,
+      name
+    );
+
+    return {
+      storeCode: token,
+      vendor: {
+        id: vendorId as unknown as number,
+        name,
+        phone: business?.contactPhone || undefined,
+      },
+      config,
+      isAvailable: res.status === 'active',
+    };
+  }
+
+  private fromApiItem(
+    token: string,
+    item: PublicCatalogApiItem & { description?: string },
+    priceVisible?: boolean
+  ): PublicProduct {
+    const imageIds = item.imageIds?.length
+      ? item.imageIds
+      : item.primaryImageId
+        ? [item.primaryImageId]
+        : [];
+    const images = imageIds.map(
+      (imageId) => `${environment.apiBaseUrl}/public/productImage/${token}/${imageId}/grid`
+    );
+    const price =
+      priceVisible === false
+        ? undefined
+        : item.price != null && Number(item.price) > 0
+          ? Number(item.price)
+          : undefined;
+
+    return {
+      id: String(item.productId || ''),
+      name: item.name || 'Product',
+      description: item.description,
+      category: item.categoryName,
+      metalType: item.metalType,
+      purity: item.purity,
+      weight: item.grossWeight != null ? Number(item.grossWeight) : undefined,
+      sku: item.skuCode,
+      price,
+      priceVisible: price != null,
+      imageUrl: images[0],
+      images,
     };
   }
 
@@ -347,47 +394,6 @@ export class StorefrontService {
       customSections: cfg.customSections ?? [],
       homepage: this.resolveHomepageMedia(cfg.homepage) as StorefrontConfig['homepage'],
     };
-  }
-
-  private toPublicProduct(product: PublicProduct): PublicProduct {
-    const images = this.extractImages(product);
-    const price = parsePublicPrice(product);
-    const listRaw = (product as PublicProduct).listPrice as unknown;
-    const listPrice =
-      listRaw == null || listRaw === ''
-        ? undefined
-        : Number(listRaw);
-    return {
-      ...product,
-      id: Number(product.id),
-      price,
-      listPrice:
-        listPrice != null && Number.isFinite(listPrice) && listPrice > 0
-          ? listPrice
-          : undefined,
-      isSpecialPrice: !!product.isSpecialPrice && price != null,
-      imageUrl: images[0] ?? resolveMediaUrl(product.imageUrl),
-      images,
-    };
-  }
-
-  private extractImages(product: PublicProduct): string[] {
-    const raw = product.images as unknown;
-    if (Array.isArray(raw) && raw.length) {
-      if (typeof raw[0] === 'string') {
-        return resolveMediaUrls(raw as string[]);
-      }
-      const rows = [...(raw as { url: string; isCover?: boolean; sortOrder?: number }[])];
-      rows.sort((a, b) => {
-        const cover = Number(!!b.isCover) - Number(!!a.isCover);
-        if (cover !== 0) {
-          return cover;
-        }
-        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-      });
-      return rows.map((img) => resolveMediaUrl(img.url)).filter(Boolean);
-    }
-    return product.imageUrl ? [resolveMediaUrl(product.imageUrl)] : [];
   }
 
   private toRelativeHomepage(value: unknown): unknown {
@@ -428,15 +434,11 @@ export class StorefrontService {
 
   private toRelativeMedia(url: string): string {
     if (!url) {
-      return '';
-    }
-    if (url.startsWith('data:')) {
       return url;
     }
-    const marker = '/uploads/';
-    const idx = url.indexOf(marker);
-    if (idx >= 0) {
-      return url.slice(idx);
+    const base = environment.apiBaseUrl.replace(/\/$/, '');
+    if (url.startsWith(base)) {
+      return url.slice(base.length) || '/';
     }
     return url;
   }
@@ -446,15 +448,11 @@ export function parsePublicPrice(product: Pick<PublicProduct, 'price' | 'priceVi
   if (product.priceVisible === false) {
     return undefined;
   }
-  const raw = product.price as unknown;
-  if (raw == null || raw === '') {
+  if (product.price == null) {
     return undefined;
   }
-  const n = typeof raw === 'number' ? raw : Number(raw);
-  if (!Number.isFinite(n) || n <= 0) {
-    return undefined;
-  }
-  return n;
+  const n = Number(product.price);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 export function formatRs(amount?: number | null): string {

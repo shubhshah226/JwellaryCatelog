@@ -91,6 +91,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .stat-card {
@@ -304,7 +305,7 @@ tbody tr:hover {
   position: absolute;
   top: calc(100% + 0.35rem);
   right: 0;
-  min-width: 130px;
+  min-width: 160px;
   background: var(--app-surface);
   border: 1px solid var(--app-border-strong);
   border-radius: 10px;
@@ -329,9 +330,14 @@ tbody tr:hover {
   text-align: left;
 }
 
-.actions-dropdown button:hover {
+.actions-dropdown button:hover:not(:disabled) {
   background: var(--app-hover-bg);
   color: #7c3aed;
+}
+
+.actions-dropdown button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .action-icon {
@@ -683,6 +689,27 @@ tbody tr:hover {
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.color-swatch-input {
+  width: 44px !important;
+  min-width: 44px;
+  height: 40px;
+  padding: 0.15rem !important;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.color-hex-input {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
 .form-error {
   margin: 0;
   padding: 0.75rem 0.9rem;
@@ -757,6 +784,95 @@ tbody tr:hover {
   line-height: 1.45;
 }
 
+.section-hint {
+  margin: 0 0 0.75rem;
+  color: var(--app-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.section-hint code {
+  font-size: 0.75rem;
+  color: var(--app-text-secondary);
+}
+
+.chip-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chip-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+  font: inherit;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  min-height: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  color: var(--app-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.chip button {
+  border: none;
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.master-block {
+  margin-bottom: 1rem;
+}
+
+.master-block label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.master-block label small {
+  font-weight: 500;
+  color: var(--app-text-muted);
+  margin-left: 0.35rem;
+}
+
+.checkbox-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.checkbox-field input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 .creds-backdrop {
   position: fixed;
   inset: 0;
@@ -816,4 +932,57 @@ tbody tr:hover {
 .creds-modal .btn {
   width: 100%;
   justify-content: center;
+}
+
+.reset-pwd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.reset-pwd-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.reset-pwd-form .form-field span {
+  font-size: 0.82rem;
+  color: var(--app-text-secondary);
+}
+
+.reset-pwd-form .form-field em {
+  color: #f87171;
+  font-style: normal;
+}
+
+.reset-pwd-form input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+  font: inherit;
+}
+
+.form-inline-error {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+  font-size: 0.85rem;
+}
+
+.creds-actions {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.creds-actions .btn {
+  width: auto;
+  flex: 1;
+  margin-top: 0;
 }

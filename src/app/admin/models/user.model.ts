@@ -1,4 +1,4 @@
-export type AppUserRole = 'admin' | 'vendor';
+export type AppUserRole = 'superadmin' | 'vendor';
 export type UserSortField = 'name' | 'email' | 'username' | 'role';
 export type SortDirection = 'asc' | 'desc';
 
@@ -35,7 +35,7 @@ export function createEmptyUserForm(): UserFormData {
     username: '',
     email: '',
     password: '',
-    role: 'admin',
+    role: 'superadmin',
     vendorId: '',
   };
 }

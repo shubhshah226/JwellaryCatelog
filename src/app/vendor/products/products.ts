@@ -47,8 +47,8 @@ export class VendorProducts implements OnInit, OnDestroy {
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
   readonly allProducts = signal<Product[]>([]);
-  readonly categories = signal<{ id: number; name: string; status: string }[]>([]);
-  readonly metalTypes = signal<{ id: number; name: string }[]>([]);
+  readonly categories = signal<{ id: string; name: string; status: string }[]>([]);
+  readonly metalTypes = signal<{ id: string; name: string }[]>([]);
   readonly vendorProfile = signal<VendorAccount | null>(null);
 
   readonly isShareOpen = signal(false);
@@ -64,11 +64,11 @@ export class VendorProducts implements OnInit, OnDestroy {
   readonly maxPrice = signal<number | null>(null);
   readonly minWeight = signal<number | null>(null);
   readonly maxWeight = signal<number | null>(null);
-  readonly selectedIds = signal<Set<number>>(new Set());
-  readonly brokenImageIds = signal<Set<number>>(new Set());
+  readonly selectedIds = signal<Set<string>>(new Set());
+  readonly brokenImageIds = signal<Set<string>>(new Set());
   readonly sortBy = signal<'latest' | 'name' | 'price_asc' | 'price_desc'>('latest');
   readonly filtersOpen = signal(false);
-  readonly openMenuId = signal<number | null>(null);
+  readonly openMenuId = signal<string | null>(null);
 
   readonly stockStatuses = PRODUCT_STOCK_STATUSES;
   shareCatalogName = '';
@@ -97,7 +97,7 @@ export class VendorProducts implements OnInit, OnDestroy {
       if (sort === 'price_desc') {
         return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY);
       }
-      return b.id - a.id;
+      return String(b.id).localeCompare(String(a.id));
     });
   });
 
@@ -132,7 +132,7 @@ export class VendorProducts implements OnInit, OnDestroy {
     this.vendorData.getProfile().subscribe({
       next: (profile) => {
         if (profile) {
-          this.vendorProfile.set({ ...profile, id: Number(profile.id) });
+          this.vendorProfile.set({ ...profile, id: String(profile.id) });
         }
       },
     });
@@ -264,7 +264,7 @@ export class VendorProducts implements OnInit, OnDestroy {
     }
   }
 
-  toggleMenu(event: Event, productId: number): void {
+  toggleMenu(event: Event, productId: string): void {
     event.stopPropagation();
     this.openMenuId.update((id) => (id === productId ? null : productId));
   }
@@ -301,7 +301,7 @@ export class VendorProducts implements OnInit, OnDestroy {
     return /[a-zA-Z]/.test(weight ?? '');
   }
 
-  isSelected(id: number): boolean {
+  isSelected(id: string): boolean {
     return this.selectedIds().has(id);
   }
 
@@ -309,7 +309,7 @@ export class VendorProducts implements OnInit, OnDestroy {
     return !!product.imageUrl && !this.brokenImageIds().has(product.id);
   }
 
-  onImageError(productId: number): void {
+  onImageError(productId: string): void {
     const ids = new Set(this.brokenImageIds());
     ids.add(productId);
     this.brokenImageIds.set(ids);
@@ -374,7 +374,7 @@ export class VendorProducts implements OnInit, OnDestroy {
     this.shareError.set('');
   }
 
-  removeFromShare(productId: number): void {
+  removeFromShare(productId: string): void {
     const ids = new Set(this.selectedIds());
     ids.delete(productId);
     this.selectedIds.set(ids);

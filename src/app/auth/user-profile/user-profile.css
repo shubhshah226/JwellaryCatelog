@@ -1,0 +1,113 @@
+:host {
+  display: block;
+}
+
+.user-profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.page-header h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.9rem;
+}
+
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--app-text-muted);
+  min-height: 10rem;
+}
+
+.state-message.error {
+  color: #f87171;
+}
+
+.page-loader-ring {
+  width: 36px;
+  height: 36px;
+  border: 2.5px solid rgba(124, 58, 237, 0.2);
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: user-profile-spin 0.8s linear infinite;
+}
+
+@keyframes user-profile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.retry-btn {
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-text-secondary);
+}
+
+.field input {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-input-bg);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.field input[readonly] {
+  opacity: 0.95;
+  cursor: default;
+}
+
+@media (max-width: 700px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}

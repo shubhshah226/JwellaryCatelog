@@ -51,7 +51,7 @@ export class AdminUsers implements OnInit {
   });
 
   readonly adminCount = computed(
-    () => this.displayUsers().filter((user) => user.role === 'admin').length
+    () => this.displayUsers().filter((user) => user.role === 'superadmin').length
   );
   readonly vendorCount = computed(
     () => this.displayUsers().filter((user) => user.role === 'vendor').length
@@ -311,13 +311,14 @@ export class AdminUsers implements OnInit {
   }
 
   formatRole(role: string): string {
-    return role === 'admin' ? 'Super Admin' : 'Vendor';
+    return role === 'superadmin' ? 'Super Admin' : 'Vendor';
   }
 
-  getVendorName(vendorId?: number): string {
-    if (!vendorId) {
+  getVendorName(vendorId?: string | number): string {
+    if (vendorId === undefined || vendorId === null || vendorId === '') {
       return '-';
     }
-    return this.vendors().find((vendor) => vendor.id === vendorId)?.name ?? `Vendor #${vendorId}`;
+    const id = String(vendorId);
+    return this.vendors().find((vendor) => String(vendor.id) === id)?.name ?? `Vendor #${id}`;
   }
 }

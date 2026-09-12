@@ -2,18 +2,33 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { ApiClientError } from '../../core/api/api.types';
 import { ApiHttpService } from '../../core/api/api-http.service';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { environment } from '../../../environments/environment';
 import { Product, ProductFormData, ProductStatus } from '../../dashboard/models/dashboard.model';
 
-interface ApiProductImage {
-  id?: number;
-  url: string;
-  sortOrder?: number;
-  isCover?: boolean;
+interface ApiProductListItem {
+  productId?: string;
+  skuCode?: string;
+  name?: string;
+  categoryId?: string;
+  categoryName?: string;
+  metalTypeId?: string | null;
+  metalType?: string | null;
+  purityId?: string | null;
+  purity?: string | null;
+  colorId?: string | null;
+  color?: string | null;
+  grossWeight?: number | null;
+  price?: number | null;
+  stockStatus?: string | null;
+  status?: string | null;
+  collectionName?: string | null;
+  primaryImageId?: string | null;
+  imageCount?: number | null;
 }
 
-interface ApiProduct extends Omit<Product, 'images'> {
-  images?: ApiProductImage[] | string[];
+interface ApiProductListResponse {
+  products?: ApiProductListItem[];
+  totalCount?: number;
 }
 
 @Injectable({
@@ -24,13 +39,57 @@ export class ProductService {
 
   getVendorProducts(): Observable<Product[]> {
     return this.api
-      .get<ApiProduct[]>('/vendor/products')
-      .pipe(map((items) => items.map((p) => this.normalize(p))));
+      .post<ApiProductListResponse>('/product/productList', {
+        status: null,
+        search: null,
+        pageSize: null,
+        pageOffset: null,
+      })
+      .pipe(map((res) => (res?.products ?? []).map((p) => this.normalizeListItem(p))));
   }
 
   createProduct(form: ProductFormData, _existing: Product[]): Observable<Product> {
-    return this.api.post<ApiProduct>('/vendor/products', this.buildPayload(form)).pipe(
-      map((p) => this.normalize(p)),
+    const formData = new FormData();
+    const productJson = {
+      skuCode: form.sku.trim() || `SKU-${Date.now()}`,
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      categoryName: form.category.trim() || null,
+      grossWeight: this.parseWeight(form.weight) ?? 0,
+      price: form.price == null || form.price === ('' as unknown) ? null : Number(form.price),
+      stockStatus: this.toApiStockStatus(form.status),
+      status: 'active',
+    };
+    formData.append('product', JSON.stringify(productJson));
+
+    const files = this.collectImageFiles(form);
+    if (!files.length) {
+      return throwError(() => new Error('Please add at least one product image.'));
+    }
+    for (const file of files) {
+      formData.append('images', file, file.name);
+    }
+
+    return this.api.postFormData<{ product?: ApiProductListItem; productId?: string }>(
+      '/product/addProduct',
+      formData
+    ).pipe(
+      map((res) => {
+        const productId = res?.productId || res?.product?.productId;
+        return this.normalizeListItem({
+          productId,
+          name: form.name.trim(),
+          skuCode: productJson.skuCode,
+          categoryName: form.category,
+          grossWeight: productJson.grossWeight,
+          price: productJson.price,
+          stockStatus: productJson.stockStatus,
+          status: 'active',
+          metalType: form.metalType || null,
+          purity: form.purity || null,
+          color: form.color || null,
+        });
+      }),
       catchError((err: unknown) => {
         if (err instanceof ApiClientError) {
           return throwError(() => new Error(err.message || 'Failed to add product.'));
@@ -41,19 +100,44 @@ export class ProductService {
   }
 
   updateProduct(product: Product, form: ProductFormData): Observable<Product> {
-    return this.api.put<ApiProduct>(`/vendor/products/${product.id}`, this.buildPayload(form)).pipe(
-      map((p) => this.normalize(p)),
-      catchError((err: unknown) => {
-        if (err instanceof ApiClientError) {
-          return throwError(() => new Error(err.message || 'Failed to update product.'));
-        }
-        return throwError(() => new Error('Unable to connect to the API server.'));
+    return this.api
+      .post<unknown>('/product/updateProduct', {
+        productId: product.id,
+        skuCode: form.sku.trim() || product.sku,
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        categoryName: form.category.trim() || null,
+        grossWeight: this.parseWeight(form.weight),
+        price: form.price == null ? null : Number(form.price),
+        stockStatus: this.toApiStockStatus(form.status),
+        status: form.status === 'inactive' ? 'inactive' : 'active',
       })
-    );
+      .pipe(
+        map(() => ({
+          ...product,
+          name: form.name.trim(),
+          category: form.category,
+          description: form.description.trim(),
+          price: form.price,
+          metalType: form.metalType,
+          weight: form.weight,
+          purity: form.purity,
+          sku: form.sku.trim(),
+          color: form.color,
+          status: this.normalizeStatus(form.status),
+          stockStatus: this.toApiStockStatus(form.status),
+        })),
+        catchError((err: unknown) => {
+          if (err instanceof ApiClientError) {
+            return throwError(() => new Error(err.message || 'Failed to update product.'));
+          }
+          return throwError(() => new Error('Unable to connect to the API server.'));
+        })
+      );
   }
 
-  deleteProduct(productId: number): Observable<void> {
-    return this.api.delete<void>(`/vendor/products/${productId}`);
+  deleteProduct(productId: string): Observable<void> {
+    return this.api.post<void>('/product/deleteProduct', { productId });
   }
 
   mapToForm(product: Product): ProductFormData {
@@ -69,7 +153,7 @@ export class ProductService {
     return {
       name: product.name,
       category: product.category,
-      catalogId: product.catalogId,
+      catalogId: product.catalogId ?? null,
       description: product.description ?? '',
       price: product.price ?? null,
       imageUrl: cover,
@@ -80,7 +164,7 @@ export class ProductService {
       purity: product.purity ?? '',
       sku: product.sku ?? '',
       color: product.color ?? '',
-      status: this.normalizeStatus(product.status),
+      status: this.normalizeStatus(product.status || product.stockStatus),
     };
   }
 
@@ -104,8 +188,9 @@ export class ProductService {
         item.category.toLowerCase().includes(term) ||
         (item.sku ?? '').toLowerCase().includes(term);
       const matchesCategory = category === 'all' || item.category === category;
-      const matchesCatalog = catalogId === 'all' || item.catalogId === Number(catalogId);
-      const itemStatus = this.normalizeStatus(item.status);
+      const matchesCatalog =
+        catalogId === 'all' || String(item.catalogId ?? '') === String(catalogId);
+      const itemStatus = this.normalizeStatus(item.status || item.stockStatus);
       const matchesStatus = status === 'all' || itemStatus === status;
       const matchesMetal = metalType === 'all' || item.metalType === metalType;
       const price = item.price ?? null;
@@ -139,6 +224,59 @@ export class ProductService {
     return 'In Stock';
   }
 
+  private normalizeListItem(product: ApiProductListItem): Product {
+    const imageUrl = product.primaryImageId
+      ? `${environment.apiBaseUrl}/public/productImage/pending/${product.primaryImageId}/grid`
+      : '';
+    return {
+      id: String(product.productId || ''),
+      name: product.name || '',
+      category: product.categoryName || '',
+      categoryId: product.categoryId || null,
+      price: product.price == null ? null : Number(product.price),
+      metalType: product.metalType || '',
+      metalTypeId: product.metalTypeId || null,
+      weight: product.grossWeight != null ? String(product.grossWeight) : '',
+      purity: product.purity || '',
+      purityId: product.purityId || null,
+      sku: product.skuCode || '',
+      color: product.color || '',
+      colorId: product.colorId || null,
+      status: this.normalizeStatus(product.stockStatus || product.status),
+      stockStatus: product.stockStatus || '',
+      imageUrl,
+      images: imageUrl ? [imageUrl] : [],
+    };
+  }
+
+  private normalizeStatus(status?: string | null): ProductStatus {
+    const value = (status || 'in_stock').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+    if (value === 'active' || value === 'available' || value === 'in_stock') {
+      return 'in_stock';
+    }
+    if (value === 'out_of_stock' || value === 'oos') {
+      return 'out_of_stock';
+    }
+    if (value === 'make_to_order' || value === 'mto') {
+      return 'make_to_order';
+    }
+    if (value === 'inactive') {
+      return 'inactive';
+    }
+    return 'in_stock';
+  }
+
+  private toApiStockStatus(status?: string | null): string {
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'out_of_stock') {
+      return 'out_of_stock';
+    }
+    if (normalized === 'make_to_order') {
+      return 'make_to_order';
+    }
+    return 'in_stock';
+  }
+
   private parseWeight(weight?: string | null): number | null {
     if (!weight) {
       return null;
@@ -151,100 +289,39 @@ export class ProductService {
     return Number.isFinite(value) ? value : null;
   }
 
-  /**
-   * Sends base64 data URLs (or existing /uploads paths) in JSON.
-   * API saves cover as public image; gallery images are post-OTP only.
-   * catalogId omitted so API assigns Default catalog.
-   */
-  private buildPayload(form: ProductFormData) {
-    const cover = this.toStoredUrl(form.imageUrl);
-    const gallery = (form.galleryImages ?? []).map((u) => this.toStoredUrl(u)).filter(Boolean);
-
-    return {
-      name: form.name.trim(),
-      category: form.category,
-      description: form.description.trim() || null,
-      price: form.price === null || form.price === undefined || form.price === ('' as unknown)
-        ? null
-        : Number(form.price),
-      metalType: form.metalType || null,
-      weight: form.weight.trim() || null,
-      purity: form.purity.trim() || null,
-      sku: form.sku.trim() || null,
-      color: form.color.trim() || null,
-      status: this.normalizeStatus(form.status),
-      coverImage: cover || null,
-      galleryImages: gallery,
-    };
+  private collectImageFiles(form: ProductFormData): File[] {
+    const urls = [
+      form.imageUrl,
+      ...(form.galleryImages ?? []),
+      ...(form.images ?? []),
+    ].filter(Boolean);
+    const unique = [...new Set(urls)];
+    const files: File[] = [];
+    let index = 0;
+    for (const url of unique) {
+      const file = this.dataUrlToFile(url, `product-${index++}.jpg`);
+      if (file) {
+        files.push(file);
+      }
+    }
+    return files;
   }
 
-  /** Keep data: URLs as-is; strip absolute API host from /uploads paths. */
-  private toStoredUrl(url: string): string {
-    if (!url) {
-      return '';
+  private dataUrlToFile(url: string, filename: string): File | null {
+    if (!url?.startsWith('data:')) {
+      return null;
     }
-    if (url.startsWith('data:')) {
-      return url;
+    const parts = url.split(',');
+    if (parts.length < 2) {
+      return null;
     }
-    if (url.startsWith('/uploads/')) {
-      return url;
+    const mimeMatch = parts[0].match(/data:(.*?);/);
+    const mime = mimeMatch?.[1] || 'image/jpeg';
+    const binary = atob(parts[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
     }
-    const marker = '/uploads/';
-    const idx = url.indexOf(marker);
-    if (idx >= 0) {
-      return url.slice(idx);
-    }
-    return url;
-  }
-
-  private normalize(product: ApiProduct): Product {
-    const imageUrls = this.extractImageUrls(product);
-    return {
-      ...product,
-      id: Number(product.id),
-      vendorId: Number(product.vendorId),
-      catalogId: Number(product.catalogId),
-      price: product.price == null || product.price === ('' as unknown) ? null : Number(product.price),
-      color: product.color ?? '',
-      status: this.normalizeStatus(product.status),
-      images: imageUrls,
-      imageUrl: imageUrls[0] ?? resolveMediaUrl(product.imageUrl),
-    };
-  }
-
-  private normalizeStatus(status?: string | null): ProductStatus {
-    const value = (status || 'in_stock').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
-    if (value === 'active') {
-      return 'in_stock';
-    }
-    if (value === 'inactive') {
-      return 'out_of_stock';
-    }
-    if (value === 'out_of_stock' || value === 'make_to_order' || value === 'in_stock') {
-      return value;
-    }
-    return 'in_stock';
-  }
-
-  private extractImageUrls(product: ApiProduct): string[] {
-    if (product.images?.length) {
-      const sorted = [...product.images].sort((a, b) => {
-        if (typeof a === 'string' || typeof b === 'string') {
-          return 0;
-        }
-        if (a.isCover && !b.isCover) {
-          return -1;
-        }
-        if (!a.isCover && b.isCover) {
-          return 1;
-        }
-        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-      });
-      return sorted
-        .map((img) => (typeof img === 'string' ? img : img.url))
-        .map((u) => resolveMediaUrl(u))
-        .filter(Boolean);
-    }
-    return product.imageUrl ? [resolveMediaUrl(product.imageUrl)] : [];
+    return new File([bytes], filename, { type: mime });
   }
 }
