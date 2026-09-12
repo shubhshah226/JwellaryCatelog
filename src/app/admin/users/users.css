@@ -51,9 +51,9 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
 
 .btn-primary:disabled {
@@ -223,8 +223,8 @@ tbody tr:hover {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,8 +254,8 @@ tbody tr:hover {
 }
 
 .role-admin {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
+  background: color-mix(in srgb, var(--app-accent) 15%, transparent);
+  color: var(--app-accent);
 }
 
 .role-vendor {
@@ -308,7 +308,7 @@ tbody tr:hover {
 
 .actions-dropdown button:hover {
   background: var(--app-hover-bg);
-  color: #7c3aed;
+  color: var(--app-accent);
 }
 
 .actions-dropdown button.danger:hover {
@@ -440,8 +440,8 @@ tbody tr:hover {
 .form-field input:focus,
 .form-field select:focus {
   outline: none;
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: color-mix(in srgb, var(--app-accent) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 
 .form-error {
@@ -490,5 +490,35 @@ tbody tr:hover {
 
   .page-header {
     flex-direction: column;
+  }
+
+  .drawer {
+    width: 100%;
+    inset: 0;
+    border-left: none;
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .drawer-form {
+    gap: 1rem;
+  }
+
+  .form-field input,
+  .form-field select {
+    min-height: 2.85rem;
+    font-size: 1rem;
+  }
+
+  .drawer-footer {
+    flex-direction: column-reverse;
+    gap: 0.55rem;
+    margin-top: auto;
+    padding-top: 1rem;
+  }
+
+  .drawer-footer .btn {
+    width: 100%;
+    min-height: 3rem;
+    justify-content: center;
   }
 }

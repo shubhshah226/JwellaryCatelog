@@ -1,5 +1,7 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { Catalog } from '../../dashboard/models/dashboard.model';
 import { ApiClientError } from '../../core/api/api.types';
 import { DataGridComponent } from '../../core/components/data-grid/data-grid';
@@ -21,6 +23,7 @@ export class VendorCatalogs implements OnInit {
   private readonly vendorData = inject(VendorDataService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
@@ -117,31 +120,38 @@ export class VendorCatalogs implements OnInit {
 
   ngOnInit(): void {
     this.loadCatalogs();
-    this.vendorData.getProfile().subscribe({
-      next: (profile) => this.storeCode.set(profile?.storeCode || ''),
-      error: () => this.storeCode.set(''),
-    });
+    this.vendorData
+      .getProfile()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (profile) => this.storeCode.set(profile?.storeCode || ''),
+        error: () => this.storeCode.set(''),
+      });
   }
 
   loadCatalogs(): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
-    this.vendorData.getCatalogs().subscribe({
-      next: (catalogs) => {
-        this.allCatalogs.set(catalogs);
-        this.isLoading.set(false);
-      },
-      error: (err: unknown) => {
-        this.errorMessage.set(
-          err instanceof ApiClientError
-            ? err.message
-            : err instanceof Error
+    this.vendorData
+      .getCatalogs()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isLoading.set(false))
+      )
+      .subscribe({
+        next: (catalogs) => {
+          this.allCatalogs.set(catalogs);
+        },
+        error: (err: unknown) => {
+          this.errorMessage.set(
+            err instanceof ApiClientError
               ? err.message
-              : 'Unable to load catalogs.'
-        );
-        this.isLoading.set(false);
-      },
-    });
+              : err instanceof Error
+                ? err.message
+                : 'Unable to load catalogs.'
+          );
+        },
+      });
   }
 
   onGridAction(event: DataGridActionEvent<Catalog>): void {

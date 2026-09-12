@@ -245,8 +245,8 @@
 .field input:focus,
 .field select:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--app-accent, #a855f7) 65%, transparent);
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.14);
+  border-color: color-mix(in srgb, var(--app-accent) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
 
 .field-hint {
@@ -351,7 +351,7 @@
 }
 
 .switch input:checked + .switch-slider {
-  background: #7c3aed;
+  background: var(--app-accent);
 }
 
 .switch input:checked + .switch-slider::before {
@@ -359,7 +359,7 @@
 }
 
 .switch input:focus-visible + .switch-slider {
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 25%, transparent);
 }
 
 .sr-only {
@@ -427,14 +427,33 @@
 
   .fields {
     grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .profile-form {
+    padding-bottom: 5.5rem;
   }
 
   .form-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
     flex-direction: column-reverse;
+    gap: 0.55rem;
+    padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
+    margin: 0;
+    z-index: 40;
   }
 
   .form-actions .btn {
     width: 100%;
+    min-height: 3rem;
+    font-size: 0.95rem;
   }
 
   .logo-upload {
@@ -443,6 +462,13 @@
 
   .toggle-field {
     align-items: flex-start;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    min-height: 2.85rem;
+    font-size: 1rem;
   }
 }
 

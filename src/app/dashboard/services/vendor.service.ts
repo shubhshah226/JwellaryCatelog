@@ -1,17 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
-import { generateStoreCode } from '../../core/utils/store-code.util';
 import {
-  SortDirection,
   ResetOwnerPasswordParamModel,
   UpdateTenantStatusParamModel,
   VendorAccount,
   VendorCreateResult,
-  VendorFilters,
   VendorFormData,
   VendorLoginCredentials,
-  VendorSortField,
   VendorStats,
   buildVendorMasters,
   createEmptyVendorForm,
@@ -62,11 +58,6 @@ interface TenantListParams {
   pageOffset?: number | null;
 }
 
-type ApiVendor = VendorAccount & {
-  subscriptionLabel?: string;
-  loginCredentials?: VendorLoginCredentials;
-};
-
 @Injectable({
   providedIn: 'root',
 })
@@ -95,28 +86,6 @@ export class VendorService {
         };
       })
     );
-  }
-
-  /** Tenant list only — used by admin dashboard for top vendors. */
-  getVendors(): Observable<VendorAccount[]> {
-    return this.api
-      .post<ApiTenant[] | { tenants?: ApiTenant[] }>('/admin/tenantList', {
-        tenantId: null,
-        accountStatus: null,
-        search: null,
-        pageSize: null,
-        pageOffset: null,
-      } satisfies TenantListParams)
-      .pipe(
-        map((res) => {
-          const list = Array.isArray(res) ? res : res?.tenants ?? [];
-          return list.map((t) => this.mapTenantToVendor(t));
-        })
-      );
-  }
-
-  previewStoreCode(name: string, existingVendors: VendorAccount[]): string {
-    return generateStoreCode(existingVendors.length + 1, name.trim() || 'New Vendor');
   }
 
   createVendor(form: VendorFormData): Observable<VendorCreateResult> {
@@ -294,57 +263,6 @@ export class VendorService {
     };
   }
 
-  filterVendors(vendors: VendorAccount[], filters: VendorFilters): VendorAccount[] {
-    return vendors.filter((vendor) => {
-      const search = filters.search.trim().toLowerCase();
-      const matchesSearch =
-        !search ||
-        vendor.name.toLowerCase().includes(search) ||
-        vendor.email.toLowerCase().includes(search) ||
-        vendor.website.toLowerCase().includes(search) ||
-        vendor.phone.includes(search) ||
-        (vendor.storeCode ?? '').toLowerCase().includes(search) ||
-        String(vendor.id).toLowerCase().includes(search);
-
-      const matchesStatus = filters.status === 'all' || vendor.status === filters.status;
-      const matchesPlan = filters.plan === 'all' || vendor.plan === filters.plan;
-      const matchesSubscription =
-        filters.subscription === 'all' || vendor.subscriptionType === filters.subscription;
-      const matchesJoinedDate =
-        !filters.joinedDate || vendor.joinedOn.includes(filters.joinedDate);
-
-      return (
-        matchesSearch && matchesStatus && matchesPlan && matchesSubscription && matchesJoinedDate
-      );
-    });
-  }
-
-  sortVendors(
-    vendors: VendorAccount[],
-    field: VendorSortField,
-    direction: SortDirection
-  ): VendorAccount[] {
-    const sorted = [...vendors].sort((a, b) => {
-      let comparison = 0;
-      switch (field) {
-        case 'joinedOn':
-          comparison = this.parseDate(a.joinedOn) - this.parseDate(b.joinedOn);
-          break;
-        case 'subscription':
-          comparison = a.subscription.localeCompare(b.subscription, undefined, {
-            sensitivity: 'base',
-          });
-          break;
-        default:
-          comparison = String(a[field] ?? '').localeCompare(String(b[field] ?? ''), undefined, {
-            sensitivity: 'base',
-          });
-      }
-      return direction === 'asc' ? comparison : -comparison;
-    });
-    return sorted;
-  }
-
   private mapTenantToVendor(tenant: ApiTenant): VendorAccount {
     const name = (tenant.businessName || '').trim() || 'Untitled';
     const status = this.mapAccountStatus(tenant.accountStatus);
@@ -445,26 +363,5 @@ export class VendorService {
       return parts[0].slice(0, 2).toUpperCase();
     }
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-
-  private normalizeVendor(vendor: ApiVendor): VendorAccount {
-    return {
-      ...vendor,
-      id: String(vendor.id),
-      website: vendor.website ?? '',
-      email: vendor.email ?? '',
-      phone: vendor.phone ?? '',
-      alternativePhone: vendor.alternativePhone ?? '',
-      userId: vendor.userId != null ? String(vendor.userId) : undefined,
-      catalogsCount: Number(vendor.catalogsCount ?? 0),
-      totalSales: Number(vendor.totalSales ?? 0),
-      rank: Number(vendor.rank ?? 0),
-      subscription: vendor.subscriptionLabel || vendor.subscription || '',
-    };
-  }
-
-  private parseDate(value: string): number {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
   }
 }

@@ -67,8 +67,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.2));
-  color: #c084fc;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 25%, transparent), color-mix(in srgb, var(--app-accent-2) 20%, transparent));
+  color: var(--app-accent);
   font-size: 1.15rem;
 }
 
@@ -124,7 +124,7 @@
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.25);
+  background: color-mix(in srgb, var(--app-accent) 25%, transparent);
   border-radius: 4px;
 }
 
@@ -147,9 +147,9 @@
 }
 
 .nav-item.active {
-  background: linear-gradient(90deg, #7c3aed 0%, #5b21b6 45%, #3730a3 100%);
-  color: #ffffff;
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
+  background: linear-gradient(90deg, var(--app-accent) 0%, var(--app-accent-2) 45%, var(--app-accent-2) 100%);
+  color: var(--app-on-accent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
 }
 
 .nav-icon {
@@ -175,7 +175,7 @@
   margin-top: 1.25rem;
   padding: 1rem 1.1rem;
   border-radius: 14px;
-  background: rgba(124, 58, 237, 0.08);
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
   border: 1px solid rgba(139, 92, 246, 0.35);
   display: flex;
   gap: 0.85rem;
@@ -185,7 +185,7 @@
 .help-icon {
   width: 22px;
   height: 22px;
-  color: #a855f7;
+  color: var(--app-accent);
   flex-shrink: 0;
   margin-top: 0.1rem;
   display: flex;
@@ -204,7 +204,7 @@
 .help-link {
   display: inline-block;
   margin-top: 0.2rem;
-  color: #a855f7;
+  color: var(--app-accent);
   font-size: 0.8rem;
   font-weight: 500;
   text-decoration: none;
@@ -212,7 +212,7 @@
 }
 
 .help-link:hover {
-  color: #c084fc;
+  color: var(--app-accent);
 }
 
 /* ── Main area ── */
@@ -353,7 +353,7 @@
 .mark-all-btn {
   border: none;
   background: transparent;
-  color: var(--app-accent, #a855f7);
+  color: var(--app-accent);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
@@ -394,7 +394,7 @@
 }
 
 .notification-item.unread {
-  background: rgba(168, 85, 247, 0.08);
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
 }
 
 .notification-title {
@@ -451,7 +451,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -543,14 +544,46 @@
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
     bottom: 0;
     z-index: 100;
-    width: min(272px, 86%);
-    max-width: 86%;
+    width: 100%;
+    max-width: 100%;
     height: 100%;
     max-height: 100%;
     transform: translateX(-105%);
-    box-shadow: 8px 0 32px var(--app-shadow);
+    box-shadow: none;
+    border-right: none;
+    padding: 1.15rem 1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sidebar-brand {
+    padding: 0.15rem 0.15rem 1.15rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .brand-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--app-border-strong);
+    background: var(--app-surface-muted);
+    color: var(--app-text);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+  }
+
+  .sidebar-close-btn:active {
+    background: var(--app-hover-bg);
   }
 
   .main-area {
@@ -635,12 +668,6 @@
 
   .dashboard-shell.sidebar-open .sidebar-backdrop {
     display: block;
-  }
-
-  .sidebar-close-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .user-info {

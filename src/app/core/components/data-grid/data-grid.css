@@ -62,8 +62,8 @@
 }
 
 .dg-filter-select option {
-  color: #0f172a;
-  background-color: #ffffff;
+  color: var(--app-text);
+  background-color: var(--app-surface);
 }
 
 .dg-filter-actions {
@@ -90,8 +90,8 @@
 }
 
 .dg-btn-primary {
-  background: linear-gradient(90deg, #a855f7, #6366f1);
-  color: #fff;
+  background: linear-gradient(90deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
 }
 
 .dg-btn-icon {
@@ -166,8 +166,8 @@ th {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
   display: grid;
   place-items: center;
   font-size: 0.78rem;
@@ -199,33 +199,33 @@ th {
 }
 
 .dg-badge.status-active {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  background: color-mix(in srgb, var(--app-success) 16%, transparent);
+  color: var(--app-success);
 }
 
 .dg-badge.status-inactive {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  background: color-mix(in srgb, var(--app-warning) 16%, transparent);
+  color: var(--app-warning);
 }
 
 .dg-badge.status-in_stock {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
+  background: color-mix(in srgb, var(--app-success) 16%, transparent);
+  color: var(--app-success);
 }
 
 .dg-badge.status-out_of_stock {
-  background: rgba(239, 68, 68, 0.14);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--app-danger) 14%, transparent);
+  color: var(--app-danger);
 }
 
 .dg-badge.status-make_to_order {
-  background: rgba(59, 130, 246, 0.14);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--app-warning) 14%, transparent);
+  color: var(--app-warning);
 }
 
 .dg-badge.status-trial {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
 }
 
 .dg-actions-wrap {
@@ -271,7 +271,7 @@ th {
 
 .dg-actions-dropdown button:hover:not(:disabled) {
   background: var(--app-hover-bg);
-  color: #7c3aed;
+  color: var(--app-accent);
 }
 
 .dg-actions-dropdown button:disabled {
@@ -326,9 +326,9 @@ th {
 }
 
 .dg-page-btn.active {
-  background: linear-gradient(90deg, #a855f7, #6366f1);
+  background: linear-gradient(90deg, var(--app-accent), var(--app-accent-2));
   border-color: transparent;
-  color: #fff;
+  color: var(--app-on-accent);
 }
 
 .dg-page-btn:disabled {
@@ -358,20 +358,277 @@ th {
   font: inherit;
 }
 
+/* Mobile cards hidden on desktop */
+.dg-cards {
+  display: none;
+}
+
+.dg-cards-select-all {
+  padding: 0.55rem 0.75rem 0.4rem;
+}
+
+.dg-cards-select-all label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--app-text-secondary);
+  cursor: pointer;
+}
+
+.dg-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0 0.65rem 0.75rem;
+}
+
+.dg-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 0.75rem;
+  box-shadow: 0 1px 3px var(--app-shadow);
+}
+
+.dg-card-selected {
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  box-shadow: 0 0 0 1px var(--app-accent);
+}
+
+.dg-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.dg-card-check {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 1.05rem;
+  flex-shrink: 0;
+  accent-color: var(--app-accent);
+}
+
+.dg-card-media {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+}
+
+.dg-card-media .dg-avatar-cell {
+  gap: 0;
+}
+
+.dg-card-media .dg-avatar,
+.dg-card-media .product-thumb,
+.dg-card-media :is(img, .product-thumb-fallback) {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.dg-card-media .product-thumb {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-muted);
+}
+
+.dg-card-media .product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dg-card-media .product-thumb-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--app-text-muted);
+  font-size: 1rem;
+}
+
+.dg-card-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.dg-card-identity .dg-primary {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.dg-card-identity .dg-secondary {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.dg-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.dg-card-menu {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.dg-card-menu .dg-menu-dots {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dg-card-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 0.75rem;
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.dg-card-meta-item {
+  min-width: 0;
+}
+
+.dg-card-meta-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--app-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.dg-card-meta-value {
+  font-size: 0.84rem;
+  font-weight: 550;
+  color: var(--app-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.dg-card-meta-value .dg-primary {
+  font-size: 0.84rem;
+}
+
+.dg-card-meta-value .dg-secondary {
+  font-size: 0.72rem;
+}
+
+.dg-card-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--app-border);
+}
+
+.dg-card-footer-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-surface-muted);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dg-card-footer-btn i {
+  font-size: 0.8rem;
+  color: var(--app-accent);
+}
+
+.dg-card-footer-btn.danger,
+.dg-card-footer-btn[class*='revoke'] {
+  background: color-mix(in srgb, var(--app-danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--app-danger) 28%, transparent);
+  color: var(--app-danger);
+}
+
+.dg-card-footer-btn.danger i {
+  color: var(--app-danger);
+}
+
+.dg-card-footer-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dg-empty-cards {
+  text-align: center;
+  color: var(--app-text-muted);
+  padding: 1.5rem 1rem;
+  background: var(--app-surface-muted);
+  border: 1px dashed var(--app-border-strong);
+  border-radius: 12px;
+  font-size: 0.88rem;
+}
+
 @media (max-width: 900px) {
+  .dg-table-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .dg-table-wrap {
+    display: none;
+  }
+
+  .dg-cards {
+    display: block;
+  }
+
   .dg-table-footer {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.85rem;
+    margin-top: 0.35rem;
+    padding: 1rem 0.85rem 0.25rem;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
   }
 
   .dg-pagination {
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
-}
 
-@media (max-width: 640px) {
+  .dg-rows-per-page {
+    justify-content: space-between;
+  }
+
+  .dg-filters-card {
+    margin-bottom: 0.85rem;
+  }
+
   .dg-filters-grid {
     flex-wrap: wrap;
+    gap: 0.7rem;
   }
 
   .dg-filter-search {
@@ -384,14 +641,40 @@ th {
     flex: 1 1 calc(50% - 0.35rem);
     width: auto;
     max-width: none;
+    height: 42px;
+  }
+
+  .dg-filter-search input {
+    height: 42px;
   }
 
   .dg-filter-actions {
     width: 100%;
     margin-left: 0;
+    gap: 0.55rem;
+  }
+
+  .dg-filter-actions .dg-btn {
+    height: 42px;
   }
 
   .dg-filter-actions .dg-btn-primary {
     flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .dg-filter-select,
+  .dg-filter-text {
+    flex: 1 1 100%;
+  }
+
+  .dg-card-meta {
+    gap: 0.45rem 0.55rem;
+  }
+
+  .dg-card-footer-btn {
+    min-height: 38px;
+    font-size: 0.78rem;
   }
 }

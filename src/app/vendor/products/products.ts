@@ -1,6 +1,8 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { PRODUCT_STOCK_STATUSES, Product } from '../../dashboard/models/dashboard.model';
 import { DataGridComponent } from '../../core/components/data-grid/data-grid';
 import { DataGridCellDirective } from '../../core/components/data-grid/data-grid-cell.directive';
@@ -24,6 +26,7 @@ export class VendorProducts implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly masterDataService = inject(MasterDataService);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild(DataGridComponent) private dataGrid?: DataGridComponent<Product>;
 
@@ -229,25 +232,32 @@ export class VendorProducts implements OnInit {
 
   ngOnInit(): void {
     this.loadProducts();
-    this.masterDataService.getFilterOptions().subscribe({
-      next: (opts) => this.filterOptions.set(opts),
-      error: () => this.filterOptions.set(null),
-    });
+    this.masterDataService
+      .getFilterOptions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (opts) => this.filterOptions.set(opts),
+        error: () => this.filterOptions.set(null),
+      });
   }
 
   loadProducts(): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
-    this.productService.getVendorProducts().subscribe({
-      next: (products) => {
-        this.allProducts.set(products);
-        this.isLoading.set(false);
-      },
-      error: (err: Error) => {
-        this.errorMessage.set(err.message || 'Unable to load products.');
-        this.isLoading.set(false);
-      },
-    });
+    this.productService
+      .getVendorProducts()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isLoading.set(false))
+      )
+      .subscribe({
+        next: (products) => {
+          this.allProducts.set(products);
+        },
+        error: (err: Error) => {
+          this.errorMessage.set(err.message || 'Unable to load products.');
+        },
+      });
   }
 
   onGridAction(event: DataGridActionEvent<Product>): void {

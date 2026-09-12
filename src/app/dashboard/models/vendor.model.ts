@@ -1,8 +1,6 @@
 export type VendorPlan = 'premium' | 'standard' | 'basic';
 export type VendorStatus = 'active' | 'inactive' | 'trial';
 export type SubscriptionType = 'renewal' | 'expiry' | 'trial';
-export type VendorSortField = 'name' | 'email' | 'plan' | 'status' | 'subscription' | 'joinedOn';
-export type SortDirection = 'asc' | 'desc';
 
 /** API accountStatus values for /admin/updateTenantStatus */
 export type TenantAccountStatus = 'active' | 'suspended';
@@ -91,14 +89,6 @@ export interface VendorStats {
   };
 }
 
-export interface VendorFilters {
-  search: string;
-  status: string;
-  plan: string;
-  subscription: string;
-  joinedDate: string;
-}
-
 /** Superadmin add/edit vendor form aligned to /admin/addTenant */
 export interface VendorFormData {
   businessName: string;
@@ -128,12 +118,6 @@ export interface VendorFormData {
   pincode?: string;
   alternativePhone?: string;
 }
-
-export const VENDOR_MASTER_TYPES: { type: VendorMasterType; label: string }[] = [
-  { type: 'metal_type', label: 'Metal Type' },
-  { type: 'purity', label: 'Purity' },
-  { type: 'color', label: 'Color' },
-];
 
 export function createEmptyVendorForm(): VendorFormData {
   return {

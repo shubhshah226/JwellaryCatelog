@@ -139,6 +139,44 @@ export class DataGridComponent<T = unknown> implements OnInit {
 
   readonly hasActions = computed(() => (this.config().actions?.length ?? 0) > 0);
 
+  /** Image / avatar column for the mobile card media. */
+  readonly cardMediaColumn = computed(() => {
+    const cols = this.config().columns;
+    return (
+      cols.find((c) => (c.cellType || 'text') === 'avatar') ||
+      cols.find((c) => (c.cellType || 'text') === 'template' && (c.templateKey === 'photo' || c.key === 'image')) ||
+      null
+    );
+  });
+
+  /** Title column for mobile cards (skip media columns). */
+  readonly cardTitleColumn = computed(() => {
+    const mediaKey = this.cardMediaColumn()?.key;
+    return (
+      this.config().columns.find(
+        (c) => c.key !== mediaKey && (c.cellType || 'text') !== 'badge'
+      ) ?? null
+    );
+  });
+
+  /** Badge columns shown in the mobile card header. */
+  readonly cardBadgeColumns = computed(() =>
+    this.config().columns.filter((c) => (c.cellType || 'text') === 'badge')
+  );
+
+  /** Remaining detail fields for the mobile card body (2-col meta). */
+  readonly cardDetailColumns = computed(() => {
+    const mediaKey = this.cardMediaColumn()?.key;
+    const titleKey = this.cardTitleColumn()?.key;
+    const badgeKeys = new Set(this.cardBadgeColumns().map((c) => c.key));
+    return this.config().columns.filter(
+      (c) => c.key !== mediaKey && c.key !== titleKey && !badgeKeys.has(c.key)
+    );
+  });
+
+  /** Primary footer actions (Edit / Delete) on mobile. */
+  readonly cardPrimaryActionIds = new Set(['edit', 'delete', 'revoke']);
+
   readonly columnCount = computed(() => {
     let count = this.config().columns.length;
     if (this.config().selectable) {
@@ -309,6 +347,14 @@ export class DataGridComponent<T = unknown> implements OnInit {
     return (this.config().actions ?? []).filter((action) =>
       action.visible ? action.visible(row) : true
     );
+  }
+
+  primaryCardActions(row: T): DataGridAction<T>[] {
+    return this.visibleActions(row).filter((action) => this.cardPrimaryActionIds.has(action.id));
+  }
+
+  secondaryCardActions(row: T): DataGridAction<T>[] {
+    return this.visibleActions(row).filter((action) => !this.cardPrimaryActionIds.has(action.id));
   }
 
   actionLabel(action: DataGridAction<T>, row: T): string {

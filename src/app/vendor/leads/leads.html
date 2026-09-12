@@ -124,24 +124,62 @@
         </table>
       </div>
 
-      <div class="mobile-list mobile-only">
+      <div class="mobile-list">
         @for (lead of filteredLeads(); track lead.id) {
-          <article class="ml-card" (click)="openDetail(lead)">
-            <div class="ml-top">
+          <article class="ml-card lead-ml-card" (click)="openDetail(lead)">
+            <div class="lead-ml-top">
               <div class="user-avatar">{{ lead.initials }}</div>
-              <div>
+              <div class="lead-ml-identity">
                 <p class="user-name">{{ lead.customerName }}</p>
                 <p class="user-meta">{{ formatPhone(lead.customerPhone) }}</p>
+                <div class="lead-ml-tags">
+                  <span class="badge status-{{ lead.status }}">{{ formatStatus(lead.status) }}</span>
+                  @if (lead.catalogTitle) {
+                    <span class="lead-ml-pill">{{ lead.catalogTitle }}</span>
+                  }
+                </div>
               </div>
-              <span class="badge status-{{ lead.status }}">{{ formatStatus(lead.status) }}</span>
             </div>
-            <p class="ml-products">{{ productSummary(lead) }}</p>
+
+            <div class="lead-ml-meta">
+              <div class="lead-ml-meta-item">
+                <span class="lead-ml-meta-label">Products</span>
+                <div class="lead-ml-meta-value">{{ productSummary(lead) }}</div>
+              </div>
+              <div class="lead-ml-meta-item">
+                <span class="lead-ml-meta-label">Received</span>
+                <div class="lead-ml-meta-value">
+                  {{ formatLeadTime(lead) }}
+                  @if (formatLeadRelative(lead)) {
+                    <small>{{ formatLeadRelative(lead) }}</small>
+                  }
+                </div>
+              </div>
+            </div>
+
             @if (lead.message) {
               <p class="ml-message">{{ lead.message }}</p>
             }
-            <div class="ml-foot">
-              <span class="ml-time">{{ formatLeadTime(lead) }}</span>
-              <span class="ml-open">Open →</span>
+
+            <div class="lead-ml-footer">
+              <button
+                type="button"
+                class="lead-ml-open-btn"
+                (click)="openDetail(lead); $event.stopPropagation()"
+              >
+                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                <span>Open</span>
+              </button>
+              @if (lead.customerPhone) {
+                <button
+                  type="button"
+                  class="lead-ml-call-btn"
+                  (click)="callCustomer(lead); $event.stopPropagation()"
+                >
+                  <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                  <span>Call</span>
+                </button>
+              }
             </div>
           </article>
         } @empty {

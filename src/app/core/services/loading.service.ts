@@ -11,7 +11,10 @@ export class LoadingService {
   private readonly uiVisible = signal(false);
   private shownAt = 0;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
+  private safetyTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly minVisibleMs = 280;
+  /** Hard cap so a drifted counter cannot leave the overlay stuck. */
+  private readonly maxVisibleMs = 20000;
 
   readonly isLoading = computed(() => this.uiVisible());
 
@@ -25,6 +28,7 @@ export class LoadingService {
       this.pendingCount.update((n) => n + 1);
       if (wasIdle) {
         this.shownAt = Date.now();
+        this.armSafetyTimer();
       }
       this.uiVisible.set(true);
     });
@@ -36,6 +40,8 @@ export class LoadingService {
       if (this.pendingCount() > 0) {
         return;
       }
+
+      this.clearSafetyTimer();
 
       const elapsed = Date.now() - this.shownAt;
       const remaining = Math.max(0, this.minVisibleMs - elapsed);
@@ -65,8 +71,40 @@ export class LoadingService {
         clearTimeout(this.hideTimer);
         this.hideTimer = null;
       }
+      this.clearSafetyTimer();
       this.pendingCount.set(0);
       this.uiVisible.set(false);
     });
+  }
+
+  /** Hide overlay if the counter is already idle (safe after navigation). */
+  reconcile(): void {
+    this.zone.run(() => {
+      if (this.pendingCount() === 0) {
+        if (this.hideTimer) {
+          clearTimeout(this.hideTimer);
+          this.hideTimer = null;
+        }
+        this.clearSafetyTimer();
+        this.uiVisible.set(false);
+      }
+    });
+  }
+
+  private armSafetyTimer(): void {
+    this.clearSafetyTimer();
+    this.safetyTimer = setTimeout(() => {
+      this.safetyTimer = null;
+      if (this.pendingCount() > 0 || this.uiVisible()) {
+        this.reset();
+      }
+    }, this.maxVisibleMs);
+  }
+
+  private clearSafetyTimer(): void {
+    if (this.safetyTimer) {
+      clearTimeout(this.safetyTimer);
+      this.safetyTimer = null;
+    }
   }
 }

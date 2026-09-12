@@ -65,9 +65,9 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
 
 .btn-outline {
@@ -119,8 +119,8 @@
 }
 
 .stat-icon.purple {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
+  background: color-mix(in srgb, var(--app-accent) 15%, transparent);
+  color: var(--app-accent);
 }
 
 .stat-icon.blue {
@@ -185,7 +185,7 @@
 }
 
 .stat-trend.purple {
-  color: #a855f7;
+  color: var(--app-accent);
 }
 
 .stat-trend.blue {
@@ -344,7 +344,7 @@ tbody tr:hover {
 
 .actions-dropdown button:hover:not(:disabled) {
   background: var(--app-hover-bg);
-  color: #7c3aed;
+  color: var(--app-accent);
 }
 
 .actions-dropdown button:disabled {
@@ -367,8 +367,8 @@ tbody tr:hover {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-2));
+  color: var(--app-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -404,8 +404,8 @@ tbody tr:hover {
 }
 
 .plan-premium {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
+  background: color-mix(in srgb, var(--app-accent) 15%, transparent);
+  color: var(--app-accent);
 }
 
 .plan-standard {
@@ -488,9 +488,9 @@ tbody tr:hover {
 }
 
 .page-btn.active {
-  background: #7c3aed;
-  border-color: #7c3aed;
-  color: #ffffff;
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: var(--app-on-accent);
 }
 
 .page-btn:disabled {
@@ -697,8 +697,8 @@ tbody tr:hover {
 .form-field input:focus,
 .form-field select:focus {
   outline: none;
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: color-mix(in srgb, var(--app-accent) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 
 .color-field {
@@ -762,9 +762,11 @@ tbody tr:hover {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 900px) {
   .vendor-drawer {
     width: 100%;
+    inset: 0;
+    border-left: none;
   }
 
   .form-grid {
@@ -775,13 +777,34 @@ tbody tr:hover {
     grid-column: span 1;
   }
 
+  .drawer-form .form-field input,
+  .drawer-form .form-field select,
+  .drawer-form .form-field textarea {
+    min-height: 2.85rem;
+    font-size: 1rem;
+  }
+
   .drawer-footer {
     flex-direction: column-reverse;
+    gap: 0.55rem;
   }
 
   .drawer-footer .btn {
     width: 100%;
+    min-height: 3rem;
     justify-content: center;
+  }
+
+  .creds-modal {
+    width: calc(100% - 1.5rem);
+    max-height: calc(100dvh - 2rem);
+    overflow: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .drawer-header {
+    padding: 1rem;
   }
 }
 
@@ -789,8 +812,8 @@ tbody tr:hover {
   margin: 0;
   padding: 0.75rem 0.9rem;
   border-radius: 10px;
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 20%, transparent);
   color: var(--app-text-secondary);
   font-size: 0.85rem;
   line-height: 1.45;
@@ -839,8 +862,8 @@ tbody tr:hover {
   gap: 0.35rem;
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
-  background: rgba(124, 58, 237, 0.12);
-  border: 1px solid rgba(124, 58, 237, 0.25);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 25%, transparent);
   color: var(--app-text);
   font-size: 0.8rem;
   font-weight: 500;

@@ -1,5 +1,7 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { PublicStoreNav } from '../../components/public-store-nav/public-store-nav';
 import { ProductViewerModal } from '../../components/product-viewer-modal/product-viewer-modal';
 import {
@@ -22,6 +24,7 @@ export class PublicHome implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontService = inject(StorefrontService);
   private readonly customerAuth = inject(CustomerAuthService);
+  private readonly destroyRef = inject(DestroyRef);
   private storeCode = '';
   private wasVerified = false;
   private pricingReady = false;
@@ -39,7 +42,9 @@ export class PublicHome implements OnInit {
     this.storeCode = this.route.snapshot.paramMap.get('storeCode') ?? '';
     this.customerAuth.setActiveStore(this.storeCode);
 
-    this.route.fragment.subscribe(() => this.scrollToFragment());
+    this.route.fragment
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.scrollToFragment());
     this.loadPage();
     this.pricingReady = true;
   }
@@ -71,21 +76,25 @@ export class PublicHome implements OnInit {
     if (!quiet) {
       this.isLoading.set(true);
     }
-    this.storefrontService.getPublicPage(this.storeCode).subscribe({
-      next: (data) => {
-        if (!data) {
+    this.storefrontService
+      .getPublicPage(this.storeCode)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isLoading.set(false))
+      )
+      .subscribe({
+        next: (data) => {
+          if (!data) {
+            this.notFound.set(true);
+          } else {
+            this.page.set(data);
+          }
+          this.scrollToFragment();
+        },
+        error: () => {
           this.notFound.set(true);
-        } else {
-          this.page.set(data);
-        }
-        this.isLoading.set(false);
-        this.scrollToFragment();
-      },
-      error: () => {
-        this.notFound.set(true);
-        this.isLoading.set(false);
-      },
-    });
+        },
+      });
   }
 
   primaryColor(): string {

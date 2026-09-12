@@ -11,9 +11,11 @@ import {
   AuthSession,
   AuthUser,
   ChangePasswordParamModel,
+  LoginApiPayload,
   LoginParamModel,
   LoginResponse,
   UserProfile,
+  UserProfileApiPayload,
   UserRole,
 } from '../models/user.model';
 import { environment } from '../../../environments/environment';
@@ -36,7 +38,7 @@ export class AuthService {
 
   /** Login API — returns unwrapped `data` (LoginResponse). Login component stays unchanged. */
   login(loginParamModel: LoginParamModel): Observable<LoginResponse> {
-    return this.api.post<unknown>('/account/login', loginParamModel).pipe(
+    return this.api.post<LoginApiPayload>('/account/login', loginParamModel).pipe(
       map((res) => {
         const normalized = this.normalizeLoginPayload(res);
         if (normalized.accessToken) {
@@ -56,33 +58,31 @@ export class AuthService {
 
   /** POST /account/changePassword — body is ChangePasswordParamModel. */
   changePassword(paramModel: ChangePasswordParamModel): Observable<AccountActionResponse> {
-    return this.api
-      .post<{ success?: boolean; message?: string | null }>('/account/changePassword', paramModel)
-      .pipe(
-        map((res) => {
-          const response = new AccountActionResponse();
-          response.success = res?.success === true;
-          response.message = res?.message ?? null;
-          if (!response.success) {
-            throw new Error(response.message || 'Unable to change password.');
-          }
-          return response;
-        }),
-        catchError((err: unknown) => {
-          if (err instanceof Error && !(err instanceof ApiClientError)) {
-            return throwError(() => err);
-          }
-          if (err instanceof ApiClientError) {
-            return throwError(() => new Error(err.message || 'Unable to change password.'));
-          }
-          return throwError(() => new Error('Unable to connect to the API server.'));
-        })
-      );
+    return this.api.post<AccountActionResponse>('/account/changePassword', paramModel).pipe(
+      map((res) => {
+        const response = new AccountActionResponse();
+        response.success = res?.success === true;
+        response.message = res?.message ?? null;
+        if (!response.success) {
+          throw new Error(response.message || 'Unable to change password.');
+        }
+        return response;
+      }),
+      catchError((err: unknown) => {
+        if (err instanceof Error && !(err instanceof ApiClientError)) {
+          return throwError(() => err);
+        }
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Unable to change password.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
   }
 
   /** POST /account/userProfile — current logged-in user. */
   getUserProfile(): Observable<UserProfile> {
-    return this.api.post<Record<string, unknown>>('/account/userProfile', {}).pipe(
+    return this.api.post<UserProfileApiPayload>('/account/userProfile', {}).pipe(
       map((res) => this.normalizeUserProfile(res)),
       catchError((err: unknown) => {
         if (err instanceof ApiClientError) {

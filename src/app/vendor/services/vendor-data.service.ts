@@ -27,6 +27,23 @@ interface ApiCatalogListResponse {
   catalogs?: ApiCatalog[];
 }
 
+interface ApiCatalogCreateResponse {
+  success?: boolean;
+  catalogId?: string;
+  token?: string;
+  catalogUrl?: string;
+  whatsappUrl?: string;
+  title?: string;
+  itemCount?: number;
+  message?: string | null;
+}
+
+interface ApiCatalogActionResponse {
+  success?: boolean;
+  itemCount?: number;
+  message?: string | null;
+}
+
 interface ApiEnquiry {
   enquiryId?: string;
   catalogId?: string;
@@ -150,16 +167,7 @@ export class VendorDataService {
       return throwError(() => new Error('Select at least one product for the catalog.'));
     }
     return this.api
-      .post<{
-        success?: boolean;
-        catalogId?: string;
-        token?: string;
-        catalogUrl?: string;
-        whatsappUrl?: string;
-        title?: string;
-        itemCount?: number;
-        message?: string | null;
-      }>('/catalog/createCatalog', {
+      .post<ApiCatalogCreateResponse>('/catalog/createCatalog', {
         title: name.trim(),
         productIds: ids,
         selectAll: false,
@@ -262,7 +270,7 @@ export class VendorDataService {
     const addIds = [...new Set((payload.addProductIds ?? []).map(String).filter(Boolean))];
     const removeIds = [...new Set((payload.removeProductIds ?? []).map(String).filter(Boolean))];
     return this.api
-      .post<{ success?: boolean; message?: string | null; itemCount?: number }>(
+      .post<ApiCatalogActionResponse>(
         '/catalog/updateCatalog',
         {
           catalogId: id,
@@ -293,15 +301,6 @@ export class VendorDataService {
       );
   }
 
-  getCatalogProducts(catalogId: string): Observable<Product[]> {
-    return this.getCatalogDetail(catalogId).pipe(map((d) => d.products));
-  }
-
-  /** @deprecated Prefer updateCatalog with add/remove product ids. */
-  setCatalogProducts(catalogId: string, productIds: string[]): Observable<Catalog> {
-    return this.updateCatalog(catalogId, { addProductIds: productIds });
-  }
-
   ensureCatalogShare(catalogId: string): Observable<{ shortCode: string; url: string }> {
     return this.getCatalogDetail(catalogId).pipe(
       map((d) => ({
@@ -314,7 +313,7 @@ export class VendorDataService {
   /** POST /catalog/revokeCatalog */
   deleteCatalog(id: string): Observable<void> {
     return this.api
-      .post<{ success?: boolean; message?: string | null }>('/catalog/revokeCatalog', {
+      .post<ApiCatalogActionResponse>('/catalog/revokeCatalog', {
         catalogId: id,
       })
       .pipe(

@@ -154,7 +154,7 @@ export class DashboardService {
           this.emptyDashboard(false, userName, 'Owner', 'Last 30 days', [
             this.stat('Products', 0, 'products', '#3b82f6'),
             this.stat('Catalogs', 0, 'catalogs', '#10b981'),
-            this.stat('Enquiries', 0, 'enquiries', '#a855f7'),
+            this.stat('Enquiries', 0, 'enquiries', '#c9a227'),
             this.stat('Active Products', 0, 'vendors', '#f59e0b'),
           ])
         )
@@ -219,8 +219,8 @@ export class DashboardService {
       this.stat('Vendors', summary.tenantCount, 'vendors', '#3b82f6'),
       this.stat('Active', summary.activeTenantCount, 'products', '#10b981'),
       this.stat('Suspended', summary.suspendedTenantCount, 'enquiries', '#f59e0b'),
-      this.stat('New Vendors', summary.newTenantCount, 'vendors', '#6366f1'),
-      this.stat('Products', summary.productCount, 'products', '#a855f7'),
+      this.stat('New Vendors', summary.newTenantCount, 'vendors', '#c9a227'),
+      this.stat('Products', summary.productCount, 'products', '#a8841a'),
       this.stat('Catalogs', summary.catalogCount, 'catalogs', '#14b8a6'),
       this.stat('Viewed Catalogs', summary.viewedCatalogCount, 'catalogs', '#0ea5e9'),
       this.stat('Enquiries', summary.enquiryCount, 'enquiries', '#ec4899'),
@@ -236,7 +236,7 @@ export class DashboardService {
       this.stat('Out of Stock', s.outOfStockCount, 'enquiries', '#f59e0b'),
       this.stat('Catalogs', s.catalogCount, 'catalogs', '#14b8a6'),
       this.stat('Live Catalogs', s.liveCatalogCount, 'catalogs', '#0ea5e9'),
-      this.stat('Enquiries', s.enquiryCount, 'enquiries', '#a855f7'),
+      this.stat('Enquiries', s.enquiryCount, 'enquiries', '#c9a227'),
       this.stat('New Enquiries', s.newEnquiryCount, 'enquiries', '#ec4899'),
       this.stat('Unread', s.unreadCount, 'enquiries', '#f43f5e'),
     ]);

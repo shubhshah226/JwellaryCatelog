@@ -68,6 +68,7 @@
 }
 
 <div class="dg-table-card">
+  <!-- Desktop / tablet table -->
   <div class="dg-table-wrap">
     <table>
       <thead>
@@ -120,71 +121,16 @@
             }
             @for (column of config().columns; track column.key) {
               <td [class]="column.className || ''">
-                @if ((column.cellType || 'text') === 'avatar') {
-                  <div class="dg-avatar-cell">
-                    <div class="dg-avatar">{{ displayAvatar(row, column) }}</div>
-                    <div>
-                      <p class="dg-primary">{{ displayValue(row, column) }}</p>
-                      @if (displaySubtitle(row, column)) {
-                        <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
-                      }
-                    </div>
-                  </div>
-                } @else if ((column.cellType || 'text') === 'stack') {
-                  <div>
-                    <p class="dg-primary">{{ displayValue(row, column) }}</p>
-                    @if (displaySubtitle(row, column)) {
-                      <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
-                    }
-                  </div>
-                } @else if ((column.cellType || 'text') === 'badge') {
-                  <span class="dg-badge" [class]="badgeClass(row, column)">
-                    {{ displayValue(row, column) }}
-                  </span>
-                } @else if ((column.cellType || 'text') === 'date') {
-                  {{ dateRawValue(row, column) | appDate }}
-                } @else if ((column.cellType || 'text') === 'template') {
-                  @if (cellTemplate(column); as tpl) {
-                    <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, row: row }"></ng-container>
-                  }
-                } @else {
-                  {{ displayValue(row, column) }}
-                }
+                <ng-container
+                  *ngTemplateOutlet="cellContent; context: { $implicit: row, column: column }"
+                ></ng-container>
               </td>
             }
             @if (hasActions()) {
               <td class="dg-col-actions">
-                <div class="dg-actions-wrap">
-                  <button
-                    type="button"
-                    class="dg-menu-dots"
-                    aria-label="Row actions"
-                    (click)="toggleActionsMenu(row, $event)"
-                  >
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                  </button>
-
-                  @if (openActionsMenuId() === rowId(row)) {
-                    <div
-                      class="dg-actions-dropdown"
-                      [ngStyle]="actionsMenuStyle()"
-                      (click)="$event.stopPropagation()"
-                    >
-                      @for (item of visibleActions(row); track item.id) {
-                        <button
-                          type="button"
-                          [disabled]="isActionDisabled(item, row)"
-                          (click)="onAction(item, row, $event)"
-                        >
-                          <span class="dg-action-icon">
-                            <i [class]="actionIcon(item, row)"></i>
-                          </span>
-                          {{ actionLabel(item, row) }}
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
+                <ng-container
+                  *ngTemplateOutlet="rowActions; context: { $implicit: row }"
+                ></ng-container>
               </td>
             }
           </tr>
@@ -197,6 +143,144 @@
         }
       </tbody>
     </table>
+  </div>
+
+  <!-- Mobile list (card layout) -->
+  <div class="dg-cards">
+    @if (config().selectable && paginatedRows().length) {
+      <div class="dg-cards-select-all">
+        <label>
+          <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
+          Select all on this page
+        </label>
+      </div>
+    }
+
+    <div class="dg-cards-list">
+      @for (row of paginatedRows(); track trackRow($index, row)) {
+        <article class="dg-card" [class.dg-card-selected]="isSelected(row)">
+          <div class="dg-card-top">
+            @if (config().selectable) {
+              <input
+                type="checkbox"
+                class="dg-card-check"
+                [checked]="isSelected(row)"
+                (change)="toggleSelect(row, $event)"
+              />
+            }
+
+            @if (cardMediaColumn(); as mediaCol) {
+              <div class="dg-card-media">
+                <ng-container
+                  *ngTemplateOutlet="cellContent; context: { $implicit: row, column: mediaCol }"
+                ></ng-container>
+              </div>
+            }
+
+            <div class="dg-card-identity">
+              @if (cardTitleColumn(); as titleCol) {
+                <ng-container
+                  *ngTemplateOutlet="cellContent; context: { $implicit: row, column: titleCol }"
+                ></ng-container>
+              }
+              @if (cardBadgeColumns().length) {
+                <div class="dg-card-tags">
+                  @for (column of cardBadgeColumns(); track column.key) {
+                    <ng-container
+                      *ngTemplateOutlet="cellContent; context: { $implicit: row, column: column }"
+                    ></ng-container>
+                  }
+                </div>
+              }
+            </div>
+
+            @if (secondaryCardActions(row).length) {
+              <div class="dg-card-menu">
+                <button
+                  type="button"
+                  class="dg-menu-dots"
+                  aria-label="More actions"
+                  (click)="toggleActionsMenu(row, $event)"
+                >
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                @if (openActionsMenuId() === rowId(row)) {
+                  <div
+                    class="dg-actions-dropdown"
+                    [ngStyle]="actionsMenuStyle()"
+                    (click)="$event.stopPropagation()"
+                  >
+                    @for (item of secondaryCardActions(row); track item.id) {
+                      <button
+                        type="button"
+                        [disabled]="isActionDisabled(item, row)"
+                        (click)="onAction(item, row, $event)"
+                      >
+                        <span class="dg-action-icon">
+                          <i [class]="actionIcon(item, row)"></i>
+                        </span>
+                        {{ actionLabel(item, row) }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          @if (cardDetailColumns().length) {
+            <div class="dg-card-meta">
+              @for (column of cardDetailColumns(); track column.key) {
+                <div class="dg-card-meta-item">
+                  <span class="dg-card-meta-label">{{ column.header }}</span>
+                  <div class="dg-card-meta-value">
+                    <ng-container
+                      *ngTemplateOutlet="cellContent; context: { $implicit: row, column: column }"
+                    ></ng-container>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (primaryCardActions(row).length) {
+            <div class="dg-card-footer">
+              @for (item of primaryCardActions(row); track item.id) {
+                <button
+                  type="button"
+                  class="dg-card-footer-btn"
+                  [class.danger]="item.id === 'delete' || item.id === 'revoke'"
+                  [disabled]="isActionDisabled(item, row)"
+                  (click)="onAction(item, row, $event)"
+                >
+                  <i [class]="actionIcon(item, row)" aria-hidden="true"></i>
+                  <span>{{ actionLabel(item, row) }}</span>
+                </button>
+              }
+            </div>
+          } @else if (visibleActions(row).length) {
+            <div class="dg-card-footer">
+              @for (item of visibleActions(row); track item.id) {
+                <button
+                  type="button"
+                  class="dg-card-footer-btn"
+                  [class.danger]="item.id === 'delete' || item.id === 'revoke'"
+                  [disabled]="isActionDisabled(item, row)"
+                  (click)="onAction(item, row, $event)"
+                >
+                  <i [class]="actionIcon(item, row)" aria-hidden="true"></i>
+                  <span>{{ actionLabel(item, row) }}</span>
+                </button>
+              }
+            </div>
+          }
+        </article>
+      } @empty {
+        <div class="dg-empty-cards">
+          {{ config().emptyMessage || 'No records found.' }}
+        </div>
+      }
+    </div>
   </div>
 
   @if (showPagination()) {
@@ -252,3 +336,71 @@
       </div>
     </div>
   }
+</div>
+
+<ng-template #cellContent let-row let-column="column">
+  @if ((column.cellType || 'text') === 'avatar') {
+    <div class="dg-avatar-cell">
+      <div class="dg-avatar">{{ displayAvatar(row, column) }}</div>
+      <div>
+        <p class="dg-primary">{{ displayValue(row, column) }}</p>
+        @if (displaySubtitle(row, column)) {
+          <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
+        }
+      </div>
+    </div>
+  } @else if ((column.cellType || 'text') === 'stack') {
+    <div>
+      <p class="dg-primary">{{ displayValue(row, column) }}</p>
+      @if (displaySubtitle(row, column)) {
+        <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
+      }
+    </div>
+  } @else if ((column.cellType || 'text') === 'badge') {
+    <span class="dg-badge" [class]="badgeClass(row, column)">
+      {{ displayValue(row, column) }}
+    </span>
+  } @else if ((column.cellType || 'text') === 'date') {
+    {{ dateRawValue(row, column) | appDate }}
+  } @else if ((column.cellType || 'text') === 'template') {
+    @if (cellTemplate(column); as tpl) {
+      <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, row: row }"></ng-container>
+    }
+  } @else {
+    {{ displayValue(row, column) }}
+  }
+</ng-template>
+
+<ng-template #rowActions let-row>
+  <div class="dg-actions-wrap">
+    <button
+      type="button"
+      class="dg-menu-dots"
+      aria-label="Row actions"
+      (click)="toggleActionsMenu(row, $event)"
+    >
+      <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
+
+    @if (openActionsMenuId() === rowId(row)) {
+      <div
+        class="dg-actions-dropdown"
+        [ngStyle]="actionsMenuStyle()"
+        (click)="$event.stopPropagation()"
+      >
+        @for (item of visibleActions(row); track item.id) {
+          <button
+            type="button"
+            [disabled]="isActionDisabled(item, row)"
+            (click)="onAction(item, row, $event)"
+          >
+            <span class="dg-action-icon">
+              <i [class]="actionIcon(item, row)"></i>
+            </span>
+            {{ actionLabel(item, row) }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+</ng-template>

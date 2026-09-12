@@ -59,3 +59,39 @@ export class UserProfile {
   lastLoginAt: string | null = null;
   businessName: string | null = null;
 }
+
+/** Raw wire shape for login before normalization (allows snake_case variants). */
+export interface LoginApiPayload {
+  accessToken?: string;
+  access_token?: string;
+  expiresAt?: string;
+  expires_at?: string;
+  userId?: string;
+  user_id?: string;
+  tenantId?: string | null;
+  tenant_id?: string | null;
+  fullName?: string;
+  full_name?: string;
+  userRole?: string;
+  user_role?: string;
+  message?: string | null;
+}
+
+/** Raw wire shape for userProfile. */
+export interface UserProfileApiPayload {
+  userId?: string;
+  user_id?: string;
+  tenantId?: string | null;
+  tenant_id?: string | null;
+  fullName?: string;
+  full_name?: string;
+  email?: string;
+  userRole?: string;
+  user_role?: string;
+  accountStatus?: string;
+  account_status?: string;
+  lastLoginAt?: string | null;
+  last_login_at?: string | null;
+  businessName?: string | null;
+  business_name?: string | null;
+}
