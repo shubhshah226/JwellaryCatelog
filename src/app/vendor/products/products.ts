@@ -1,5 +1,5 @@
-import { CurrencyPipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { CurrencyPipe, NgStyle } from '@angular/common';
+import { Component, DestroyRef, HostListener, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -17,7 +17,7 @@ import { ProductService } from '../services/product.service';
 
 @Component({
   selector: 'app-vendor-products',
-  imports: [CurrencyPipe, DataGridComponent, DataGridCellDirective],
+  imports: [CurrencyPipe, NgStyle, DataGridComponent, DataGridCellDirective],
   templateUrl: './products.html',
   styleUrls: ['../shared/vendor-page.css', './products.css'],
 })
@@ -36,8 +36,14 @@ export class VendorProducts implements OnInit {
   readonly filterOptions = signal<FilterOptions | null>(null);
 
   readonly selectedIds = signal<Set<string>>(new Set());
-
   readonly selectedCount = computed(() => this.selectedIds().size);
+
+  /** Amazon/Flipkart-style large image preview on thumbnail hover (desktop). */
+  readonly imagePreview = signal<{
+    url: string;
+    name: string;
+    style: Record<string, string>;
+  } | null>(null);
 
   /** Same Add Catalog form, with selected products pre-checked. */
   openCreateCatalog(): void {
@@ -364,6 +370,65 @@ export class VendorProducts implements OnInit {
       fallback.innerHTML = '<i class="fa-solid fa-gem"></i>';
       wrap.appendChild(fallback);
     }
+    this.hideImagePreview();
+  }
+
+  onThumbEnter(event: MouseEvent, product: Product): void {
+    if (!product.imageUrl || !this.canHoverPreview()) {
+      return;
+    }
+    this.positionImagePreview(event.currentTarget as HTMLElement, product);
+  }
+
+  onThumbMove(event: MouseEvent, product: Product): void {
+    if (!this.imagePreview() || !product.imageUrl) {
+      return;
+    }
+    this.positionImagePreview(event.currentTarget as HTMLElement, product);
+  }
+
+  hideImagePreview(): void {
+    this.imagePreview.set(null);
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  onViewportChange(): void {
+    if (this.imagePreview()) {
+      this.hideImagePreview();
+    }
+  }
+
+  private canHoverPreview(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }
+
+  private positionImagePreview(anchor: HTMLElement, product: Product): void {
+    const rect = anchor.getBoundingClientRect();
+    const previewW = 280;
+    const previewH = 280;
+    const gap = 12;
+    const pad = 12;
+
+    let left = rect.right + gap;
+    if (left + previewW > window.innerWidth - pad) {
+      left = rect.left - previewW - gap;
+    }
+    left = Math.max(pad, Math.min(left, window.innerWidth - previewW - pad));
+
+    let top = rect.top + rect.height / 2 - previewH / 2;
+    top = Math.max(pad, Math.min(top, window.innerHeight - previewH - pad));
+
+    this.imagePreview.set({
+      url: product.imageUrl!,
+      name: product.name || 'Product',
+      style: {
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        width: `${previewW}px`,
+        height: `${previewH}px`,
+      },
+    });
   }
 
   private normalizeStockKey(status?: string | null): string {

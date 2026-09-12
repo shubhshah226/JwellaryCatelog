@@ -18,6 +18,16 @@
   place-items: center;
   flex-shrink: 0;
   margin: 0 auto;
+  position: relative;
+}
+
+.product-thumb.has-preview {
+  cursor: zoom-in;
+}
+
+.product-thumb.has-preview:hover {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
 }
 
 .product-thumb img {
@@ -30,6 +40,66 @@
 .product-thumb-fallback {
   color: #94a3b8;
   font-size: 1rem;
+}
+
+.product-image-preview {
+  position: fixed;
+  z-index: 3000;
+  pointer-events: none;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-strong);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  animation: product-preview-in 0.12s ease-out;
+}
+
+.product-image-preview img {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  object-fit: contain;
+  background: var(--app-surface-muted);
+  display: block;
+}
+
+.product-image-preview p {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-text);
+  border-top: 1px solid var(--app-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes product-preview-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .product-thumb.has-preview {
+    cursor: default;
+  }
+
+  .product-thumb.has-preview:hover {
+    outline: none;
+  }
+
+  .product-image-preview {
+    display: none !important;
+  }
 }
 
 .muted {

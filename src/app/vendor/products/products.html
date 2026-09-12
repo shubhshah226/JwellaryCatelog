@@ -32,7 +32,13 @@
       (selectionChange)="onSelectionChange($event)"
     >
       <ng-template dataGridCell="photo" let-row>
-        <div class="product-thumb">
+        <div
+          class="product-thumb"
+          [class.has-preview]="!!row.imageUrl"
+          (mouseenter)="onThumbEnter($event, row)"
+          (mousemove)="onThumbMove($event, row)"
+          (mouseleave)="hideImagePreview()"
+        >
           @if (row.imageUrl) {
             <img
               [src]="row.imageUrl"
@@ -55,6 +61,13 @@
         }
       </ng-template>
     </app-data-grid>
+
+    @if (imagePreview(); as preview) {
+      <div class="product-image-preview" [ngStyle]="preview.style" role="img" [attr.aria-label]="preview.name">
+        <img [src]="preview.url" [alt]="preview.name" />
+        <p>{{ preview.name }}</p>
+      </div>
+    }
 
     @if (selectedCount() > 0) {
       <div class="share-sticky-bar">
