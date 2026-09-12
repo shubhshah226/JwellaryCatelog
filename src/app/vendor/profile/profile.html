@@ -1,104 +1,233 @@
 @if (isLoading()) {
   <div class="state-message">
     <div class="page-loader-ring" aria-hidden="true"></div>
-    <span>Loading profile...</span>
+    <span>Loading business profile...</span>
   </div>
 } @else if (errorMessage()) {
-  <div class="state-message error">{{ errorMessage() }}</div>
+  <div class="state-message error">
+    <p>{{ errorMessage() }}</p>
+    <button type="button" class="btn btn-outline" (click)="loadProfile()">Retry</button>
+  </div>
 } @else if (profile(); as vendor) {
   <section class="vendor-page profile-page">
     <div class="page-header">
       <div>
-        <h2>Profile</h2>
-        <p>Details shown on your public catalog.</p>
+        <h2>Business Profile</h2>
+        <p>Keep your shop details up to date for catalogs and customer links.</p>
       </div>
-    </div>
-
-    @if (successMessage()) {
-      <p class="success-banner">{{ successMessage() }}</p>
-    }
-
-    <div class="profile-top">
-      <div class="identity">
-        @if (editLogoUrl) {
-          <img class="identity-logo" [src]="editLogoUrl" [alt]="vendor.name" />
-        } @else {
-          <div class="identity-avatar">{{ vendor.initials }}</div>
-        }
-        <div class="identity-text">
-          <h3>{{ vendor.name }}</h3>
-          <p>{{ formatPlan(vendor.plan) }} · {{ formatStatus(vendor.status) }}</p>
-        </div>
-      </div>
-      <div class="meta-chips">
-        <span class="chip">Store {{ vendor.storeCode || '—' }}</span>
-        <span class="chip">{{ vendor.catalogsCount }} catalogs</span>
-        <span class="chip">Rs {{ vendor.totalSales | number }} sales</span>
-      </div>
+      <span class="status-pill" [class.is-inactive]="vendor.status === 'inactive'">
+        {{ formatStatus(vendor.status) }}
+      </span>
     </div>
 
     <form class="profile-form" (ngSubmit)="saveProfile()">
-      <section class="form-block">
-        <h4>Logo</h4>
-        <div class="logo-row">
-          @if (editLogoUrl) {
-            <img class="logo-thumb" [src]="editLogoUrl" alt="Logo" />
-          } @else {
-            <div class="logo-thumb empty">No logo</div>
-          }
-          <div class="logo-actions">
-            <label class="btn btn-outline file-btn">
-              {{ editLogoUrl ? 'Change' : 'Upload' }}
-              <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onLogoSelected($event)" hidden />
-            </label>
-            @if (editLogoUrl) {
-              <button type="button" class="btn btn-ghost" (click)="removeLogo()">Remove</button>
+      <section
+        class="profile-hero"
+        [style.--brand]="brandColorPickerValue()"
+      >
+        <div class="hero-brand-bar" aria-hidden="true"></div>
+        <div class="hero-body">
+          <div class="logo-upload">
+            @if (editLogoUrl && !logoBroken()) {
+              <img
+                class="logo-preview"
+                [src]="editLogoUrl"
+                [alt]="editBusinessName || vendor.name"
+                (error)="onLogoError()"
+              />
+            } @else {
+              <div class="logo-preview empty">
+                <span>{{ vendor.initials }}</span>
+              </div>
             }
+            <div class="logo-controls">
+              <label class="btn btn-outline file-btn">
+                <i class="fa-solid fa-camera" aria-hidden="true"></i>
+                {{ editLogoUrl ? 'Change logo' : 'Upload logo' }}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  (change)="onLogoSelected($event)"
+                  hidden
+                />
+              </label>
+              @if (editLogoUrl) {
+                <button type="button" class="btn btn-ghost" (click)="removeLogo()">Remove</button>
+              }
+              <p class="logo-hint">JPG, PNG or WEBP · max 2MB</p>
+              @if (logoBroken() && storedLogoPresent()) {
+                <p class="logo-hint warn">
+                  Logo is saved. Open Catalogs once (create any catalog) so we can preview it here.
+                </p>
+              }
+              @if (logoError()) {
+                <p class="form-error">{{ logoError() }}</p>
+              }
+            </div>
+          </div>
+
+          <div class="hero-copy">
+            <h3>{{ editBusinessName || 'Your business name' }}</h3>
+            <p>
+              @if (editOwnerName) {
+                Owner: {{ editOwnerName }}
+              } @else {
+                Add owner name and contact details below
+              }
+            </p>
+            <div class="hero-meta">
+              @if (editCity) {
+                <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> {{ editCity }}</span>
+              }
+              <span><i class="fa-solid fa-coins" aria-hidden="true"></i> {{ editCurrency || 'INR' }}</span>
+            </div>
           </div>
         </div>
-        @if (logoError()) {
-          <p class="form-error">{{ logoError() }}</p>
-        }
       </section>
 
-      <section class="form-block">
-        <h4>Contact</h4>
+      <section class="form-card">
+        <header class="form-card-head">
+          <div>
+            <h4>Business details</h4>
+            <p>Name and owner shown on your public catalog.</p>
+          </div>
+        </header>
         <div class="fields">
           <label class="field">
-            <span>Email</span>
-            <input type="email" [(ngModel)]="editEmail" name="editEmail" required autocomplete="email" />
+            <span>Business name <em>*</em></span>
+            <input
+              type="text"
+              [(ngModel)]="editBusinessName"
+              name="editBusinessName"
+              placeholder="e.g. Shubh Jewellers"
+              required
+              autocomplete="organization"
+            />
           </label>
           <label class="field">
-            <span>Mobile</span>
-            <input type="tel" [(ngModel)]="editPhone" name="editPhone" required autocomplete="tel" />
-          </label>
-        </div>
-      </section>
-
-      <section class="form-block">
-        <h4>Address</h4>
-        <div class="fields">
-          <label class="field full">
-            <span>Street / building</span>
-            <input type="text" [(ngModel)]="editAddress" name="editAddress" autocomplete="street-address" />
+            <span>Owner name</span>
+            <input
+              type="text"
+              [(ngModel)]="editOwnerName"
+              name="editOwnerName"
+              placeholder="e.g. Shubh Shah"
+              autocomplete="name"
+            />
           </label>
           <label class="field">
             <span>City</span>
-            <input type="text" [(ngModel)]="editCity" name="editCity" autocomplete="address-level2" />
+            <input
+              type="text"
+              [(ngModel)]="editCity"
+              name="editCity"
+              placeholder="e.g. Ahmedabad"
+              autocomplete="address-level2"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <header class="form-card-head">
+          <div>
+            <h4>Contact</h4>
+            <p>Customers use these details to reach you.</p>
+          </div>
+        </header>
+        <div class="fields">
+          <label class="field">
+            <span>Email <em>*</em></span>
+            <input
+              type="email"
+              [(ngModel)]="editEmail"
+              name="editEmail"
+              placeholder="you@business.com"
+              required
+              autocomplete="email"
+            />
           </label>
           <label class="field">
-            <span>State</span>
-            <input type="text" [(ngModel)]="editState" name="editState" autocomplete="address-level1" />
+            <span>Phone <em>*</em></span>
+            <input
+              type="tel"
+              [(ngModel)]="editPhone"
+              name="editPhone"
+              placeholder="10-digit mobile"
+              required
+              autocomplete="tel"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <header class="form-card-head">
+          <div>
+            <h4>Catalog look &amp; settings</h4>
+            <p>Controls how shared catalogs appear to customers.</p>
+          </div>
+        </header>
+        <div class="fields">
+          <label class="field">
+            <span>Brand color</span>
+            <div class="color-field">
+              <input
+                type="color"
+                name="brandColor"
+                class="color-swatch-input"
+                [ngModel]="brandColorPickerValue()"
+                (ngModelChange)="onBrandColorChange($event)"
+              />
+              <input
+                type="text"
+                name="brandColorHex"
+                class="color-hex-input"
+                maxlength="7"
+                placeholder="#004e8a"
+                [ngModel]="brandColorPickerValue()"
+                (ngModelChange)="onBrandColorChange($event)"
+              />
+            </div>
           </label>
           <label class="field">
-            <span>Pincode</span>
-            <input type="text" [(ngModel)]="editPincode" name="editPincode" autocomplete="postal-code" />
+            <span>Currency</span>
+            <select name="editCurrency" [(ngModel)]="editCurrency">
+              <option value="INR">INR</option>
+              <option value="USD">USD</option>
+              <option value="AED">AED</option>
+            </select>
           </label>
+          <label class="field">
+            <span>Catalog expiry (days)</span>
+            <input
+              type="number"
+              name="editCatalogExpiryDays"
+              min="1"
+              [(ngModel)]="editCatalogExpiryDays"
+              placeholder="30"
+            />
+            <small class="field-hint">Shared catalog links expire after this many days.</small>
+          </label>
+          <div class="toggle-field">
+            <div class="toggle-copy">
+              <span class="toggle-title">Show prices by default</span>
+              <span class="toggle-desc">When on, product prices are visible in catalogs.</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                name="editPriceVisibleDefault"
+                [(ngModel)]="editPriceVisibleDefault"
+              />
+              <span class="switch-slider" aria-hidden="true"></span>
+              <span class="sr-only">Show prices by default</span>
+            </label>
+          </div>
         </div>
       </section>
 
       @if (formError()) {
-        <p class="form-error">{{ formError() }}</p>
+        <p class="form-error banner">{{ formError() }}</p>
       }
 
       <div class="form-actions">
@@ -106,21 +235,11 @@
           Reset
         </button>
         <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
-          {{ isSaving() ? 'Saving...' : 'Save changes' }}
+          {{ isSaving() ? 'Updating...' : 'Update Profile' }}
         </button>
       </div>
     </form>
-
-    <aside class="readonly-note">
-      Contact person, website, and subscription are managed by admin.
-      @if (vendor.contactPerson) {
-        <span>Contact: {{ vendor.contactPerson }}.</span>
-      }
-      @if (vendor.website) {
-        <span>Website: {{ vendor.website }}.</span>
-      }
-    </aside>
   </section>
 } @else {
-  <div class="state-message error">Vendor profile not found.</div>
+  <div class="state-message error">Business profile not found.</div>
 }

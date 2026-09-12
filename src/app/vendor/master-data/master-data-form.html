@@ -6,7 +6,7 @@
 } @else if (pageError()) {
   <div class="state-message error">
     <p>{{ pageError() }}</p>
-    <button type="button" class="btn btn-outline" (click)="goBack()">Back to Master Data</button>
+    <button type="button" class="btn btn-outline" (click)="goBack()">Back to Product Options</button>
   </div>
 } @else {
   <section class="master-form-page">
@@ -17,11 +17,16 @@
       </button>
     </div>
 
+    <header class="mf-heading">
+      <h2>{{ pageTitle() }}</h2>
+      <p>{{ pageHelp() }}</p>
+    </header>
+
     <form class="mf-form" (ngSubmit)="submit()">
       <section class="mf-card">
         <div class="form-row">
           <label class="form-field form-field-span2">
-            <span>{{ entityLabel() }} Name <em>*</em></span>
+            <span>{{ entityLabel() }} name <em>*</em></span>
             <input
               type="text"
               [(ngModel)]="formName"
@@ -31,6 +36,35 @@
               autofocus
             />
           </label>
+
+          @if (type() === 'categories') {
+            <label class="form-field">
+              <span>Parent category</span>
+              <select [(ngModel)]="formParentId" name="parentId">
+                <option value="">None — top level</option>
+                @for (parent of parentOptions(); track parent.id) {
+                  <option [value]="parent.id">{{ parent.name }}</option>
+                }
+              </select>
+              <small class="field-hint">
+                Use a parent to create a sub-category (e.g. Wedding under Ring).
+              </small>
+            </label>
+
+            <label class="form-field">
+              <span>Display order</span>
+              <input
+                type="number"
+                name="sortOrder"
+                min="0"
+                [(ngModel)]="formSortOrder"
+                placeholder="1"
+              />
+              <small class="field-hint">
+                Lower numbers show first. Each order number must be unique.
+              </small>
+            </label>
+          }
 
           <label class="form-field">
             <span>Status</span>
@@ -51,7 +85,8 @@
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
-          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update' : 'Save') }} {{ entityLabel() }}
+          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update' : 'Save') }}
+          {{ entityLabel() }}
         </button>
       </div>
     </form>

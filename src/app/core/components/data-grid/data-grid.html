@@ -14,8 +14,7 @@
                 [ngModelOptions]="{ standalone: true }"
                 [placeholder]="field.placeholder || 'Search...'"
                 [ngModel]="draftValue(field.key)"
-                (ngModelChange)="setDraftFilter(field.key, $event)"
-                (keyup.enter)="applyFilters()"
+                (ngModelChange)="onSearchChange(field.key, $event)"
               />
             </div>
           }

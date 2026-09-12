@@ -3,7 +3,6 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { filter, Subscription } from 'rxjs';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService } from '../../auth/services/auth.service';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
 import { VendorDataService } from '../../vendor/services/vendor-data.service';
 
 interface NavItem {
@@ -50,6 +49,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   readonly isSidebarOpen = signal(this.isDesktopViewport());
   readonly vendorLogo = signal('');
+  private vendorLogoObjectUrl: string | null = null;
   readonly vendorDisplayName = signal('');
 
   readonly user = this.authService.getSession()?.user;
@@ -66,13 +66,12 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   readonly vendorNavItems: NavItem[] = [
     { label: 'Dashboard', route: '/vendor/dashboard', icon: 'dashboard' },
-    { label: 'Catalogs', route: '/vendor/catalogs', icon: 'catalogs' },
+    { label: 'Product Options', route: '/vendor/master-data', icon: 'categories' },
     { label: 'Manage Products', route: '/vendor/products', icon: 'products' },
-    { label: 'Master Data', route: '/vendor/master-data', icon: 'categories' },
+    { label: 'Catalogs', route: '/vendor/catalogs', icon: 'catalogs' },
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
     // { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
     { label: 'Business Profile', route: '/vendor/profile', icon: 'profile' },
-    { label: 'User Profile', route: '/vendor/user-profile', icon: 'users' },
     { label: 'Change Password', route: '/vendor/change-password', icon: 'password' },
   ];
 
@@ -103,9 +102,11 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
       clearTimeout(this.syncTimer);
     }
     this.clearMobileScrollArea();
+    this.clearVendorLogoObjectUrl();
   }
 
   onBrandLogoError(): void {
+    this.clearVendorLogoObjectUrl();
     this.vendorLogo.set('');
   }
 
@@ -153,10 +154,16 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
       return 'Edit Product';
     }
     if (url.includes('/master-data/new')) {
-      return url.includes('type=metals') ? 'Add Metal Type' : 'Add Category';
+      if (url.includes('type=metals')) return 'Add Metal Type';
+      if (url.includes('type=purities')) return 'Add Purity';
+      if (url.includes('type=colors')) return 'Add Color';
+      return 'Add Category';
     }
-    if (/\/master-data\/\d+\/edit/.test(url)) {
-      return url.includes('type=metals') ? 'Edit Metal Type' : 'Edit Category';
+    if (/\/master-data\/[^/]+\/edit/.test(url)) {
+      if (url.includes('type=metals')) return 'Edit Metal Type';
+      if (url.includes('type=purities')) return 'Edit Purity';
+      if (url.includes('type=colors')) return 'Edit Color';
+      return 'Edit Category';
     }
     const current = this.visibleNavItems().find((item) => this.isNavActive(item.route));
     return current?.label ?? 'Dashboard';
@@ -181,12 +188,33 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
         this.vendorDisplayName.set(profile.name || '');
-        this.vendorLogo.set(resolveMediaUrl(profile.logoUrl || '') || '');
+        if (!profile.logoUrl) {
+          this.clearVendorLogoObjectUrl();
+          this.vendorLogo.set('');
+          return;
+        }
+        this.vendorData.resolveBusinessLogoUrl().subscribe({
+          next: (url) => {
+            this.clearVendorLogoObjectUrl();
+            this.vendorLogo.set(url);
+          },
+          error: () => {
+            this.clearVendorLogoObjectUrl();
+            this.vendorLogo.set('');
+          },
+        });
       },
       error: () => {
         /* keep default brand */
       },
     });
+  }
+
+  private clearVendorLogoObjectUrl(): void {
+    if (this.vendorLogoObjectUrl) {
+      URL.revokeObjectURL(this.vendorLogoObjectUrl);
+      this.vendorLogoObjectUrl = null;
+    }
   }
 
   private isDesktopViewport(): boolean {

@@ -21,6 +21,24 @@
   margin-bottom: 0.85rem;
 }
 
+.mf-heading {
+  margin-bottom: 1rem;
+}
+
+.mf-heading h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.mf-heading p {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .mf-back {
   display: inline-flex;
   align-items: center;
@@ -81,6 +99,14 @@
 .form-field span em {
   color: #ef4444;
   font-style: normal;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--app-text-muted);
+  line-height: 1.35;
 }
 
 .form-field input,

@@ -179,9 +179,21 @@
   color: #ef4444;
 }
 
-.sparkline {
-  width: 80px;
-  height: 28px;
+.stat-trend {
+  font-size: 1.1rem;
+  opacity: 0.85;
+}
+
+.stat-trend.purple {
+  color: #a855f7;
+}
+
+.stat-trend.blue {
+  color: #3b82f6;
+}
+
+.stat-trend.orange {
+  color: #f59e0b;
 }
 
 .filters-card,

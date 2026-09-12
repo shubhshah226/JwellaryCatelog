@@ -1,66 +1,225 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { ApiClientError } from '../../core/api/api.types';
+import { DataGridComponent } from '../../core/components/data-grid/data-grid';
+import {
+  DataGridActionEvent,
+  DataGridConfig,
+} from '../../core/components/data-grid/data-grid.types';
+import { ToastService } from '../../core/services/toast.service';
 import { MasterDataItem, MasterDataService } from '../services/master-data.service';
 
-type MasterTab = 'categories' | 'metals';
-type SortKey = 'name' | 'status' | 'id';
+/** UI sections — categories use category APIs; others use /master/masterList. */
+export type MasterTab = 'categories' | 'metals' | 'purities' | 'colors';
+
+interface TabMeta {
+  label: string;
+  plural: string;
+  header: string;
+  title: string;
+  description: string;
+  example: string;
+  addLabel: string;
+  icon: string;
+}
+
+const TAB_META: Record<MasterTab, TabMeta> = {
+  categories: {
+    label: 'Category',
+    plural: 'categories',
+    header: 'Category',
+    title: 'Categories',
+    description: 'Product groups like Ring, Chain, Pendant. Used when you add products.',
+    example: 'Examples: Ring, Necklace, Bracelet',
+    addLabel: '+ Add Category',
+    icon: 'fa-solid fa-tags',
+  },
+  metals: {
+    label: 'Metal Type',
+    plural: 'metal types',
+    header: 'Metal Type',
+    title: 'Metal Types',
+    description: 'Metal used in jewellery. Shown in product forms and filters.',
+    example: 'Examples: Gold, Silver, Platinum',
+    addLabel: '+ Add Metal Type',
+    icon: 'fa-solid fa-coins',
+  },
+  purities: {
+    label: 'Purity',
+    plural: 'purities',
+    header: 'Purity',
+    title: 'Purities',
+    description: 'Purity / karat values for metal products.',
+    example: 'Examples: 22K, 18K, 925',
+    addLabel: '+ Add Purity',
+    icon: 'fa-solid fa-certificate',
+  },
+  colors: {
+    label: 'Color',
+    plural: 'colors',
+    header: 'Color',
+    title: 'Colors',
+    description: 'Metal or stone colors shown on products.',
+    example: 'Examples: Yellow, Rose Gold, White',
+    addLabel: '+ Add Color',
+    icon: 'fa-solid fa-palette',
+  },
+};
+
+const VALID_TABS = Object.keys(TAB_META) as MasterTab[];
 
 @Component({
   selector: 'app-vendor-master-data',
-  imports: [FormsModule],
+  imports: [DataGridComponent],
   templateUrl: './master-data.html',
   styleUrls: ['../shared/vendor-page.css', './master-data.css'],
 })
 export class VendorMasterData implements OnInit {
   private readonly masterData = inject(MasterDataService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  readonly tabs = VALID_TABS;
   readonly activeTab = signal<MasterTab>('categories');
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
   readonly categories = signal<MasterDataItem[]>([]);
   readonly metalTypes = signal<MasterDataItem[]>([]);
-  readonly openMenuId = signal<string | null>(null);
+  readonly purities = signal<MasterDataItem[]>([]);
+  readonly colors = signal<MasterDataItem[]>([]);
 
-  readonly search = signal('');
-  readonly status = signal('all');
-  readonly sortBy = signal<SortKey>('name');
-  readonly sortDir = signal<'asc' | 'desc'>('asc');
-
-  readonly filteredItems = computed(() => {
-    const source =
-      this.activeTab() === 'categories' ? this.categories() : this.metalTypes();
-    return this.masterData.filterItems(
-      source,
-      this.search(),
-      this.status(),
-      this.sortBy(),
-      this.sortDir()
-    );
+  readonly activeRows = computed(() => {
+    switch (this.activeTab()) {
+      case 'metals':
+        return this.metalTypes();
+      case 'purities':
+        return this.purities();
+      case 'colors':
+        return this.colors();
+      default:
+        return this.categories();
+    }
   });
 
+  readonly activeMeta = computed(() => TAB_META[this.activeTab()]);
+
+  readonly totalCount = computed(() => this.activeRows().length);
+
   readonly activeCount = computed(
-    () => this.filteredItems().filter((i) => i.status === 'active').length
+    () => this.activeRows().filter((i) => i.status === 'active').length
   );
 
+  readonly gridConfig = computed<DataGridConfig<MasterDataItem>>(() => {
+    const tab = this.activeTab();
+    const meta = TAB_META[tab];
+    const isCategories = tab === 'categories';
+
+    const columns: DataGridConfig<MasterDataItem>['columns'] = [
+      {
+        key: 'name',
+        header: meta.header,
+        sortable: true,
+        cellType: 'text',
+        value: (row) => row.name,
+        sortValue: (row) => row.name,
+      },
+    ];
+
+    if (isCategories) {
+      columns.push(
+        {
+          key: 'parentName',
+          header: 'Parent',
+          sortable: true,
+          cellType: 'text',
+          value: (row) => row.parentName || 'Top level',
+          sortValue: (row) => row.parentName || '',
+        },
+        {
+          key: 'sortOrder',
+          header: 'Display order',
+          sortable: true,
+          cellType: 'text',
+          value: (row) => (row.sortOrder != null ? row.sortOrder : '—'),
+          sortValue: (row) => row.sortOrder ?? Number.MAX_SAFE_INTEGER,
+        }
+      );
+    }
+
+    columns.push({
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      cellType: 'badge',
+      value: (row) => row.status,
+      badgeClass: (row) => `status-${row.status}`,
+      sortValue: (row) => row.status,
+    });
+
+    return {
+      rowId: 'id',
+      selectable: false,
+      entityLabel: meta.plural,
+      emptyMessage: `No ${meta.plural} yet. Click "${meta.addLabel}" to create one.`,
+      defaultPageSize: 10,
+      pageSizeOptions: [10, 20, 50],
+      filters: [
+        {
+          key: 'search',
+          type: 'search',
+          placeholder: `Search ${meta.plural}...`,
+          searchFields: isCategories ? ['name', 'parentName'] : ['name'],
+        },
+        {
+          key: 'status',
+          type: 'select',
+          defaultValue: 'all',
+          matchField: 'status',
+          matchMode: 'equals',
+          options: [
+            { label: 'All Status', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
+          ],
+        },
+      ],
+      columns,
+      actions: [
+        { id: 'edit', label: 'Edit', icon: 'fa-solid fa-pen' },
+        { id: 'delete', label: 'Delete', icon: 'fa-solid fa-trash' },
+      ],
+    };
+  });
+
   ngOnInit(): void {
-    const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'metals' || tab === 'categories') {
+    const tab = this.route.snapshot.queryParamMap.get('tab') as MasterTab | null;
+    if (tab && VALID_TABS.includes(tab)) {
       this.activeTab.set(tab);
     }
     this.loadAll();
   }
 
+  tabMeta(tab: MasterTab): TabMeta {
+    return TAB_META[tab];
+  }
+
+  tabCount(tab: MasterTab): number {
+    switch (tab) {
+      case 'metals':
+        return this.metalTypes().length;
+      case 'purities':
+        return this.purities().length;
+      case 'colors':
+        return this.colors().length;
+      default:
+        return this.categories().length;
+    }
+  }
+
   setTab(tab: MasterTab): void {
     this.activeTab.set(tab);
-    this.openMenuId.set(null);
-    this.search.set('');
-    this.status.set('all');
-    this.sortBy.set('name');
-    this.sortDir.set('asc');
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab },
@@ -68,132 +227,107 @@ export class VendorMasterData implements OnInit {
     });
   }
 
-  toggleSort(column: SortKey): void {
-    if (this.sortBy() === column) {
-      this.sortDir.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-    } else {
-      this.sortBy.set(column);
-      this.sortDir.set('asc');
-    }
-  }
-
-  sortIcon(column: SortKey): string {
-    if (this.sortBy() !== column) {
-      return 'fa-solid fa-sort';
-    }
-    return this.sortDir() === 'asc' ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down';
-  }
-
   loadAll(): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
-    let pending = 2;
-    const done = () => {
-      pending -= 1;
-      if (pending <= 0) {
+
+    forkJoin({
+      categories: this.masterData.getCategories(),
+      metals: this.masterData.getMetalTypes(),
+      purities: this.masterData.getPurities(),
+      colors: this.masterData.getColors(),
+    }).subscribe({
+      next: (data) => {
+        this.categories.set(data.categories);
+        this.metalTypes.set(data.metals);
+        this.purities.set(data.purities);
+        this.colors.set(data.colors);
         this.isLoading.set(false);
-      }
-    };
-
-    this.masterData.getCategories().subscribe({
-      next: (items) => {
-        this.categories.set(items);
-        done();
       },
       error: (err: unknown) => {
-        this.errorMessage.set(this.errMsg(err, 'Unable to load categories.'));
-        done();
+        this.errorMessage.set(this.errMsg(err, 'Unable to load product options.'));
+        this.isLoading.set(false);
       },
     });
-
-    this.masterData.getMetalTypes().subscribe({
-      next: (items) => {
-        this.metalTypes.set(items);
-        done();
-      },
-      error: (err: unknown) => {
-        this.errorMessage.set(this.errMsg(err, 'Unable to load metal types.'));
-        done();
-      },
-    });
-  }
-
-  onSearchChange(value: string): void {
-    this.search.set(value ?? '');
-  }
-
-  onStatusChange(value: string): void {
-    this.status.set(value || 'all');
-  }
-
-  resetFilters(): void {
-    this.search.set('');
-    this.status.set('all');
-    this.sortBy.set('name');
-    this.sortDir.set('asc');
   }
 
   openAddPage(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.openMenuId.set(null);
     void this.router.navigate(['/vendor/master-data/new'], {
       queryParams: { type: this.activeTab() },
     });
   }
 
-  openEditPage(item: MasterDataItem, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
+  onGridAction(event: DataGridActionEvent<MasterDataItem>): void {
+    if (event.actionId === 'edit') {
+      this.openEditPage(event.row);
+      return;
+    }
+    if (event.actionId === 'delete') {
+      this.deleteItem(event.row);
+    }
+  }
+
+  openEditPage(item: MasterDataItem): void {
     void this.router.navigate([`/vendor/master-data/${item.id}/edit`], {
       queryParams: { type: this.activeTab() },
     });
   }
 
-  toggleMenu(event: MouseEvent, id: string): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.openMenuId.update((current) => (current === id ? null : id));
-  }
-
-  closeMenu(): void {
-    this.openMenuId.set(null);
-  }
-
-  deleteItem(item: MasterDataItem, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
-    const label = this.activeTab() === 'categories' ? 'category' : 'metal type';
-    if (!confirm(`Delete ${label} "${item.name}"?`)) {
+  deleteItem(item: MasterDataItem): void {
+    const label = TAB_META[this.activeTab()].label.toLowerCase();
+    if (!confirm(`Remove ${label} "${item.name}"?`)) {
       return;
     }
 
+    const tab = this.activeTab();
     const request =
-      this.activeTab() === 'categories'
+      tab === 'categories'
         ? this.masterData.deleteCategory(item.id)
-        : this.masterData.deleteMetalType(item.id);
+        : tab === 'metals'
+          ? this.masterData.deleteMetalType(item.id)
+          : tab === 'purities'
+            ? this.masterData.deletePurity(item.id)
+            : this.masterData.deleteColor(item.id);
 
     request.subscribe({
       next: () => {
-        if (this.activeTab() === 'categories') {
-          this.categories.update((list) => list.filter((i) => i.id !== item.id));
-        } else {
-          this.metalTypes.update((list) => list.filter((i) => i.id !== item.id));
-        }
+        this.removeFromList(tab, item.id);
+        this.toast.success(`${TAB_META[tab].label} removed successfully.`);
       },
       error: (err: unknown) => {
-        this.errorMessage.set(this.errMsg(err, 'Failed to delete.'));
+        const message = this.errMsg(err, 'Failed to remove.');
+        this.errorMessage.set(message);
+        this.toast.error(message);
       },
     });
   }
 
-  entityLabel(): string {
-    return this.activeTab() === 'categories' ? 'Category' : 'Metal Type';
+  private removeFromList(tab: MasterTab, id: string): void {
+    const drop = (list: MasterDataItem[]) => list.filter((i) => i.id !== id);
+    switch (tab) {
+      case 'metals':
+        this.metalTypes.update(drop);
+        break;
+      case 'purities':
+        this.purities.update(drop);
+        break;
+      case 'colors':
+        this.colors.update(drop);
+        break;
+      default:
+        this.categories.update(drop);
+    }
   }
 
   private errMsg(err: unknown, fallback: string): string {
-    return err instanceof ApiClientError ? err.message : fallback;
+    if (err instanceof ApiClientError) {
+      return err.message || fallback;
+    }
+    if (err instanceof Error) {
+      return err.message || fallback;
+    }
+    return fallback;
   }
 }

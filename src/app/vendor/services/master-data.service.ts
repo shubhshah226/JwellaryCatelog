@@ -9,11 +9,32 @@ export interface MasterDataItem {
   status: 'active' | 'inactive' | string;
   masterType?: string;
   productCount?: number;
+  /** Category hierarchy: null/empty = top-level */
+  parentId?: string | null;
+  parentName?: string | null;
+  /** Display order in lists / filters */
+  sortOrder?: number | null;
+}
+
+/** One category row inside POST /master/addCategory */
+export class CategoryParamModel {
+  public categoryName: string = '';
+  public parentId: string | null = null;
+  public sortOrder: number | null = null;
+}
+
+/** Payload for POST /master/addCategory */
+export class AddCategoryParamModel {
+  public tenantId: string | null = null;
+  public categories: CategoryParamModel[] = [];
 }
 
 interface ApiCategory {
   categoryId?: string;
   categoryName?: string;
+  parentId?: string | null;
+  parentName?: string | null;
+  sortOrder?: number | null;
   isActive?: boolean;
   productCount?: number;
 }
@@ -24,6 +45,16 @@ interface ApiMaster {
   masterValue?: string;
   isActive?: boolean;
   productCount?: number;
+  sortOrder?: number | null;
+}
+
+interface MasterActionResponse {
+  success?: boolean;
+  message?: string | null;
+  successCount?: number;
+  skippedCount?: number;
+  categoryIds?: string[];
+  masterIds?: string[];
 }
 
 @Injectable({
@@ -34,46 +65,83 @@ export class MasterDataService {
 
   getCategories(): Observable<MasterDataItem[]> {
     return this.api
-      .post<ApiCategory[]>('/master/categoryList', { isActive: null })
+      .post<ApiCategory[]>('/master/categoryList', {
+        tenantId: null,
+        parentId: null,
+        isActive: null,
+      })
       .pipe(map((items) => (items ?? []).map((i) => this.normalizeCategory(i))));
   }
 
-  createCategory(name: string, status = 'active'): Observable<MasterDataItem> {
-    return this.api
-      .post<{ success?: boolean; message?: string | null; categories?: ApiCategory[] }>(
-        '/master/addCategory',
-        {
-          categories: [{ categoryName: name.trim(), parentId: null, sortOrder: null }],
-        }
+  /** Top-level only — used as Parent dropdown options. */
+  getParentCategoryOptions(excludeId?: string | null): Observable<MasterDataItem[]> {
+    return this.getCategories().pipe(
+      map((items) =>
+        items.filter(
+          (item) =>
+            item.status === 'active' &&
+            !item.parentId &&
+            (!excludeId || item.id !== excludeId)
+        )
       )
-      .pipe(
-        map((res) => {
-          const created = res?.categories?.[0];
-          if (!created?.categoryId) {
-            throw new Error(res?.message || 'Unable to create category.');
-          }
-          return this.normalizeCategory({
-            ...created,
-            categoryName: created.categoryName || name.trim(),
-            isActive: status !== 'inactive',
-          });
-        })
-      );
+    );
+  }
+
+  createCategory(param: AddCategoryParamModel): Observable<MasterDataItem> {
+    const first = param.categories[0];
+    return this.api.post<MasterActionResponse>('/master/addCategory', param).pipe(
+      map((res) => {
+        if (!res?.success || !res.categoryIds?.length) {
+          throw new Error(res?.message || 'Unable to create category.');
+        }
+        return {
+          id: String(res.categoryIds[0]),
+          name: first?.categoryName?.trim() || '',
+          status: 'active',
+          parentId: first?.parentId ?? null,
+          parentName: null,
+          sortOrder: first?.sortOrder ?? null,
+          productCount: 0,
+        } satisfies MasterDataItem;
+      })
+    );
   }
 
   updateCategory(
     id: string,
-    payload: { name?: string; status?: string }
+    payload: {
+      name?: string;
+      status?: string;
+      parentId?: string | null;
+      sortOrder?: number | null;
+    }
   ): Observable<MasterDataItem> {
     return this.api
-      .post<ApiCategory>('/master/updateCategory', {
+      .post<ApiCategory | MasterActionResponse | null>('/master/updateCategory', {
+        tenantId: null,
         categoryId: id,
         categoryName: payload.name?.trim() || null,
+        parentId: payload.parentId ?? null,
+        sortOrder: payload.sortOrder ?? null,
         isActive: payload.status ? payload.status !== 'inactive' : null,
-        parentId: null,
-        sortOrder: null,
       })
-      .pipe(map((i) => this.normalizeCategory(i)));
+      .pipe(
+        map((res) => {
+          if (res && typeof res === 'object' && 'categoryId' in res && res.categoryId) {
+            return this.normalizeCategory(res);
+          }
+          // API may return success payload without the full category row
+          return {
+            id,
+            name: payload.name?.trim() || '',
+            status: payload.status === 'inactive' ? 'inactive' : 'active',
+            parentId: payload.parentId ?? null,
+            parentName: null,
+            sortOrder: payload.sortOrder ?? null,
+            productCount: 0,
+          } satisfies MasterDataItem;
+        })
+      );
   }
 
   /** Soft-deactivate (API has no hard delete). */
@@ -97,63 +165,117 @@ export class MasterDataService {
   }
 
   deleteMetalType(id: string): Observable<void> {
-    return this.updateMaster(id, { status: 'inactive' }).pipe(map(() => undefined));
+    return this.deleteMaster(id);
   }
 
   getPurities(): Observable<MasterDataItem[]> {
     return this.getMastersByType('purity');
   }
 
+  createPurity(name: string, status = 'active'): Observable<MasterDataItem> {
+    return this.createMaster('purity', name, status);
+  }
+
+  updatePurity(
+    id: string,
+    payload: { name?: string; status?: string }
+  ): Observable<MasterDataItem> {
+    return this.updateMaster(id, payload);
+  }
+
+  deletePurity(id: string): Observable<void> {
+    return this.deleteMaster(id);
+  }
+
   getColors(): Observable<MasterDataItem[]> {
     return this.getMastersByType('color');
   }
 
+  createColor(name: string, status = 'active'): Observable<MasterDataItem> {
+    return this.createMaster('color', name, status);
+  }
+
+  updateColor(
+    id: string,
+    payload: { name?: string; status?: string }
+  ): Observable<MasterDataItem> {
+    return this.updateMaster(id, payload);
+  }
+
+  deleteColor(id: string): Observable<void> {
+    return this.deleteMaster(id);
+  }
+
+  /** POST /master/masterList — filter by masterType (metal_type | purity | color). */
   getMastersByType(masterType: string): Observable<MasterDataItem[]> {
     return this.api
-      .post<ApiMaster[]>('/master/masterList', { masterType, isActive: null })
+      .post<ApiMaster[]>('/master/masterList', {
+        tenantId: null,
+        masterType,
+        isActive: null,
+      })
       .pipe(map((items) => (items ?? []).map((i) => this.normalizeMaster(i))));
   }
 
+  /** POST /master/addMaster */
   createMaster(
     masterType: string,
     name: string,
     status = 'active'
   ): Observable<MasterDataItem> {
     return this.api
-      .post<{ success?: boolean; message?: string | null; masters?: ApiMaster[] }>(
-        '/master/addMaster',
-        {
-          masters: [{ masterType, masterValue: name.trim(), sortOrder: null }],
-        }
-      )
+      .post<MasterActionResponse>('/master/addMaster', {
+        tenantId: null,
+        masters: [{ masterType, masterValue: name.trim(), sortOrder: null }],
+      })
       .pipe(
         map((res) => {
-          const created = res?.masters?.[0];
-          if (!created?.masterId) {
+          if (!res?.success || !res.masterIds?.length) {
             throw new Error(res?.message || 'Unable to create master value.');
           }
-          return this.normalizeMaster({
-            ...created,
-            masterValue: created.masterValue || name.trim(),
+          return {
+            id: String(res.masterIds[0]),
+            name: name.trim(),
+            status: status === 'inactive' ? 'inactive' : 'active',
             masterType,
-            isActive: status !== 'inactive',
-          });
+            productCount: 0,
+          } satisfies MasterDataItem;
         })
       );
   }
 
+  /** POST /master/updateMaster */
   updateMaster(
     id: string,
-    payload: { name?: string; status?: string }
+    payload: { name?: string; status?: string; sortOrder?: number | null }
   ): Observable<MasterDataItem> {
     return this.api
-      .post<ApiMaster>('/master/updateMaster', {
+      .post<ApiMaster | MasterActionResponse | null>('/master/updateMaster', {
+        tenantId: null,
         masterId: id,
         masterValue: payload.name?.trim() || null,
         isActive: payload.status ? payload.status !== 'inactive' : null,
-        sortOrder: null,
+        sortOrder: payload.sortOrder ?? null,
       })
-      .pipe(map((i) => this.normalizeMaster(i)));
+      .pipe(
+        map((res) => {
+          if (res && typeof res === 'object' && 'masterId' in res && res.masterId) {
+            return this.normalizeMaster(res);
+          }
+          return {
+            id,
+            name: payload.name?.trim() || '',
+            status: payload.status === 'inactive' ? 'inactive' : 'active',
+            productCount: 0,
+            sortOrder: payload.sortOrder ?? null,
+          } satisfies MasterDataItem;
+        })
+      );
+  }
+
+  /** Soft-deactivate master row. */
+  deleteMaster(id: string): Observable<void> {
+    return this.updateMaster(id, { status: 'inactive' }).pipe(map(() => undefined));
   }
 
   filterItems(
@@ -165,7 +287,10 @@ export class MasterDataService {
   ): MasterDataItem[] {
     const term = search.trim().toLowerCase();
     const filtered = items.filter((item) => {
-      const matchesSearch = !term || item.name.toLowerCase().includes(term);
+      const matchesSearch =
+        !term ||
+        item.name.toLowerCase().includes(term) ||
+        (item.parentName || '').toLowerCase().includes(term);
       const matchesStatus = status === 'all' || item.status === status;
       return matchesSearch && matchesStatus;
     });
@@ -179,6 +304,10 @@ export class MasterDataService {
       if (sortBy === 'id') {
         return a.id.localeCompare(b.id) * dir;
       }
+      const orderCmp = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (orderCmp !== 0) {
+        return orderCmp * dir;
+      }
       const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       return cmp * dir;
     });
@@ -190,6 +319,9 @@ export class MasterDataService {
       name: item.categoryName || '',
       status: item.isActive === false ? 'inactive' : 'active',
       productCount: Number(item.productCount ?? 0),
+      parentId: item.parentId ? String(item.parentId) : null,
+      parentName: item.parentName || null,
+      sortOrder: item.sortOrder ?? null,
     };
   }
 
@@ -200,6 +332,7 @@ export class MasterDataService {
       status: item.isActive === false ? 'inactive' : 'active',
       masterType: item.masterType,
       productCount: Number(item.productCount ?? 0),
+      sortOrder: item.sortOrder ?? null,
     };
   }
 }

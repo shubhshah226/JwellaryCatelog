@@ -7,13 +7,8 @@
     <div class="page-header">
       <div>
         <h2>Manage Vendors</h2>
-        <p>Create and manage jeweller accounts. Login credentials are emailed on create.</p>
       </div>
       <div class="header-actions">
-        <button type="button" class="btn btn-outline">
-          Export
-          <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-        </button>
         <button type="button" class="btn btn-primary" (click)="openAddVendorDrawer()">+ Add Vendor</button>
       </div>
     </div>
@@ -23,51 +18,36 @@
         <article class="stat-card">
           <div class="stat-top">
             <div class="stat-icon purple"><i class="fa-solid fa-store"></i></div>
-            <button type="button" class="menu-dots" aria-label="Options">
-              <i class="fa-solid fa-ellipsis-vertical"></i>
-            </button>
           </div>
           <p class="stat-label">Total Vendors</p>
           <h3>{{ vendorStats.total }}</h3>
           <div class="stat-footer">
             <span class="change up"><i class="fa-solid fa-arrow-up"></i> {{ vendorStats.totalChange }}%</span>
-            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
-              <path [attr.d]="getSparklinePath(vendorStats.sparklines.total)" fill="none" stroke="#a855f7" stroke-width="2" />
-            </svg>
+            <span class="stat-trend purple" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
           </div>
         </article>
 
         <article class="stat-card">
           <div class="stat-top">
             <div class="stat-icon blue"><i class="fa-solid fa-check"></i></div>
-            <button type="button" class="menu-dots" aria-label="Options">
-              <i class="fa-solid fa-ellipsis-vertical"></i>
-            </button>
           </div>
           <p class="stat-label">Active Vendors</p>
           <h3>{{ vendorStats.active }}</h3>
           <div class="stat-footer">
             <span class="change up"><i class="fa-solid fa-arrow-up"></i> {{ vendorStats.activeChange }}%</span>
-            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
-              <path [attr.d]="getSparklinePath(vendorStats.sparklines.active)" fill="none" stroke="#3b82f6" stroke-width="2" />
-            </svg>
+            <span class="stat-trend blue" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
           </div>
         </article>
 
         <article class="stat-card">
           <div class="stat-top">
             <div class="stat-icon orange"><i class="fa-solid fa-pause"></i></div>
-            <button type="button" class="menu-dots" aria-label="Options">
-              <i class="fa-solid fa-ellipsis-vertical"></i>
-            </button>
           </div>
           <p class="stat-label">Inactive Vendors</p>
           <h3>{{ vendorStats.inactive }}</h3>
           <div class="stat-footer">
             <span class="change down"><i class="fa-solid fa-arrow-down"></i> {{ vendorStats.inactiveChange | number:'1.1-1' }}%</span>
-            <svg viewBox="0 0 100 30" class="sparkline" preserveAspectRatio="none">
-              <path [attr.d]="getSparklinePath(vendorStats.sparklines.inactive)" fill="none" stroke="#f59e0b" stroke-width="2" />
-            </svg>
+            <span class="stat-trend orange" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
           </div>
         </article>
       </div>
@@ -203,7 +183,6 @@
         @if (drawerMode() === 'add') {
           <div class="form-section">
             <h4>Categories</h4>
-            <p class="section-hint">Product categories this jeweller deals in (sent as <code>categories: ["Ring", ...]</code>).</p>
             <div class="chip-row">
               <input
                 type="text"
@@ -226,11 +205,6 @@
 
           <div class="form-section">
             <h4>Master Data</h4>
-            <p class="section-hint">
-              API only allows 3 types: <code>metal_type</code>, <code>purity</code>, <code>color</code>.
-              Each value becomes <code>{{ '{' }} "masterType": "...", "masterValue": "..." {{ '}' }}</code>.
-            </p>
-
             <div class="master-block">
               <label>Metal Types <small>(masterType = metal_type)</small></label>
               <div class="chip-row">
@@ -297,10 +271,6 @@
               </div>
             </div>
           </div>
-
-          <p class="form-hint">
-            On save, owner login is created automatically. Password is shown once — share it with the jeweller.
-          </p>
         }
 
         @if (formError()) {

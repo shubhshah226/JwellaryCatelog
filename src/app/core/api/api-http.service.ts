@@ -17,6 +17,21 @@ export class ApiHttpService {
     return this.request<T>('GET', path, undefined, params, headers);
   }
 
+  /** Raw bytes (e.g. streamed logo). Does not unwrap the JSON envelope. */
+  getBlob(path: string, params?: QueryParams, headers?: HttpHeaders): Observable<Blob> {
+    let reqHeaders = headers || new HttpHeaders();
+    if (!reqHeaders.has('X-Skip-Loader')) {
+      reqHeaders = reqHeaders.set('X-Skip-Loader', 'true');
+    }
+    return this.http
+      .get(this.url(path), {
+        params: this.toParams(params),
+        headers: reqHeaders,
+        responseType: 'blob',
+      })
+      .pipe(catchError((err) => throwError(() => this.toApiError(err))));
+  }
+
   getWithMeta<T>(
     path: string,
     params?: QueryParams,

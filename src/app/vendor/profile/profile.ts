@@ -1,18 +1,20 @@
-import { DecimalPipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
+import { finalize } from 'rxjs';
+import { ApiClientError } from '../../core/api/api.types';
+import { ToastService } from '../../core/services/toast.service';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 import { VendorDataService } from '../services/vendor-data.service';
 
 @Component({
   selector: 'app-vendor-profile',
-  imports: [DecimalPipe, FormsModule],
+  imports: [FormsModule],
   templateUrl: './profile.html',
   styleUrls: ['../shared/vendor-page.css', './profile.css'],
 })
-export class VendorProfile implements OnInit {
+export class VendorProfile implements OnInit, OnDestroy {
   private readonly vendorData = inject(VendorDataService);
+  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
@@ -20,21 +22,34 @@ export class VendorProfile implements OnInit {
   readonly isSaving = signal(false);
   readonly formError = signal('');
   readonly logoError = signal('');
-  readonly successMessage = signal('');
+  readonly logoBroken = signal(false);
 
+  editBusinessName = '';
+  editOwnerName = '';
   editEmail = '';
   editPhone = '';
-  editAddress = '';
   editCity = '';
-  editState = '';
-  editPincode = '';
+  editBrandColor = '#004e8a';
+  editCurrency = 'INR';
+  editCatalogExpiryDays: number | null = 30;
+  editPriceVisibleDefault = true;
   editLogoUrl = '';
+  /** Raw logoUri from API (s3://…); kept for update when file not changed */
+  private storedLogoUri = '';
+  private logoFile: File | null = null;
+  private logoObjectUrl: string | null = null;
 
   ngOnInit(): void {
     this.loadProfile();
   }
 
+  ngOnDestroy(): void {
+    this.revokeLogoObjectUrl();
+  }
+
   loadProfile(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
     this.vendorData.getProfile().subscribe({
       next: (profile) => {
         if (!profile) {
@@ -42,20 +57,32 @@ export class VendorProfile implements OnInit {
           this.isLoading.set(false);
           return;
         }
-        const next = {
-          ...profile,
-          id: String(profile.id),
-          logoUrl: resolveMediaUrl(profile.logoUrl || '') || '',
-        };
+        const next = { ...profile, id: String(profile.id) };
         this.profile.set(next);
+        this.storedLogoUri = (profile.logoUrl || '').trim();
         this.fillForm(next);
+        this.loadLogoPreview(this.storedLogoUri);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Unable to load profile. Please ensure the API is running on port 8001.');
+      error: (err: unknown) => {
+        this.errorMessage.set(
+          this.errMsg(err, 'Unable to load business profile. Please try again.')
+        );
         this.isLoading.set(false);
       },
     });
+  }
+
+  brandColorPickerValue(): string {
+    return this.normalizeBrandColor(this.editBrandColor) || '#004e8a';
+  }
+
+  onBrandColorChange(value: string): void {
+    this.editBrandColor = this.normalizeBrandColor(value) || '#004e8a';
+  }
+
+  onLogoError(): void {
+    this.logoBroken.set(true);
   }
 
   onLogoSelected(event: Event): void {
@@ -74,13 +101,15 @@ export class VendorProfile implements OnInit {
       input.value = '';
       return;
     }
+    this.logoFile = file;
+    this.logoBroken.set(false);
+    this.logoError.set('');
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
       if (result) {
+        this.revokeLogoObjectUrl();
         this.editLogoUrl = result;
-        this.logoError.set('');
-        this.successMessage.set('');
       }
     };
     reader.onerror = () => this.logoError.set('Could not read image file.');
@@ -89,9 +118,12 @@ export class VendorProfile implements OnInit {
   }
 
   removeLogo(): void {
+    this.revokeLogoObjectUrl();
     this.editLogoUrl = '';
+    this.logoFile = null;
+    this.storedLogoUri = '';
+    this.logoBroken.set(false);
     this.logoError.set('');
-    this.successMessage.set('');
   }
 
   resetForm(): void {
@@ -100,14 +132,20 @@ export class VendorProfile implements OnInit {
       return;
     }
     this.fillForm(p);
+    this.logoFile = null;
+    this.storedLogoUri = (p.logoUrl || '').trim();
     this.formError.set('');
     this.logoError.set('');
-    this.successMessage.set('');
+    this.loadLogoPreview(this.storedLogoUri);
   }
 
   saveProfile(): void {
     const p = this.profile();
     if (!p) {
+      return;
+    }
+    if (!this.editBusinessName.trim()) {
+      this.formError.set('Business name is required.');
       return;
     }
     if (!this.editEmail.trim() || !this.editPhone.trim()) {
@@ -117,76 +155,136 @@ export class VendorProfile implements OnInit {
 
     this.isSaving.set(true);
     this.formError.set('');
-    this.successMessage.set('');
-
-    const logoPayload = this.editLogoUrl.startsWith('data:')
-      ? this.editLogoUrl
-      : this.stripMediaHost(this.editLogoUrl);
 
     this.vendorData
-      .updateProfile({
-        email: this.editEmail.trim(),
-        phone: this.editPhone.trim(),
-        address: this.editAddress.trim(),
-        city: this.editCity.trim(),
-        state: this.editState.trim(),
-        pincode: this.editPincode.trim(),
-        logoUrl: logoPayload,
-      })
+      .updateProfile(
+        {
+          businessName: this.editBusinessName.trim(),
+          ownerName: this.editOwnerName.trim() || null,
+          contactEmail: this.editEmail.trim(),
+          contactPhone: this.editPhone.trim(),
+          city: this.editCity.trim() || null,
+          brandColor: this.brandColorPickerValue(),
+          currency: this.editCurrency || 'INR',
+          catalogExpiryDays: this.editCatalogExpiryDays,
+          priceVisibleDefault: this.editPriceVisibleDefault,
+          // null keeps existing logo on server when no new file is sent
+          logoUri: this.logoFile ? null : this.storedLogoUri || null,
+        },
+        this.logoFile
+      )
+      .pipe(finalize(() => this.isSaving.set(false)))
       .subscribe({
         next: (updated) => {
           const next = {
             ...p,
             ...updated,
             id: String(updated.id || p.id),
-            logoUrl: resolveMediaUrl(updated.logoUrl || '') || '',
+            logoUrl: updated.logoUrl || this.storedLogoUri,
           };
           this.profile.set(next);
+          this.storedLogoUri = (next.logoUrl || '').trim();
           this.fillForm(next);
-          this.isSaving.set(false);
-          this.successMessage.set('Profile saved.');
+          this.logoFile = null;
+          // After save, refresh preview from stream (new upload) or keep local data URL
+          if (this.storedLogoUri) {
+            this.loadLogoPreview(this.storedLogoUri, true);
+          }
+          this.toast.success('Business profile updated successfully.');
         },
-        error: (err) => {
-          const msg =
-            err?.error?.error?.message ||
-            err?.error?.message ||
-            'Failed to update profile.';
-          this.formError.set(msg);
-          this.isSaving.set(false);
+        error: (err: unknown) => {
+          const message = this.errMsg(err, 'Failed to update business profile.');
+          this.formError.set(message);
+          this.toast.error(message);
         },
       });
   }
 
-  formatPlan(plan: string): string {
-    return plan.charAt(0).toUpperCase() + plan.slice(1);
+  formatStatus(status: string): string {
+    return status === 'inactive' ? 'Inactive' : 'Active';
   }
 
-  formatStatus(status: string): string {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  storedLogoPresent(): boolean {
+    return !!this.storedLogoUri;
   }
 
   private fillForm(p: VendorAccount): void {
+    this.editBusinessName = p.name || '';
+    this.editOwnerName = p.contactPerson || '';
     this.editEmail = p.email || '';
     this.editPhone = p.phone || '';
-    this.editAddress = p.address || '';
     this.editCity = p.city || '';
-    this.editState = p.state || '';
-    this.editPincode = p.pincode || '';
-    this.editLogoUrl = p.logoUrl || '';
+    this.editBrandColor = this.normalizeBrandColor(p.brandColor || '') || '#004e8a';
+    this.editCurrency = p.currency || 'INR';
+    this.editCatalogExpiryDays = p.catalogExpiryDays ?? 30;
+    this.editPriceVisibleDefault = p.priceVisibleDefault ?? true;
   }
 
-  private stripMediaHost(url: string): string {
-    if (!url) {
+  /** logoUri is s3://… — use existing GET /public/businessLogo/{catalogToken}. */
+  private loadLogoPreview(logoUri: string, cacheBust = false): void {
+    this.logoBroken.set(false);
+    if (!logoUri) {
+      this.revokeLogoObjectUrl();
+      this.editLogoUrl = '';
+      return;
+    }
+    // Local file preview after pick / data URL
+    if (/^(data:|blob:)/i.test(logoUri)) {
+      this.editLogoUrl = logoUri;
+      return;
+    }
+    if (/^https?:/i.test(logoUri) && !logoUri.includes('s3://')) {
+      this.editLogoUrl = logoUri;
+      return;
+    }
+
+    this.vendorData.resolveBusinessLogoUrl(cacheBust).subscribe({
+      next: (url) => {
+        this.revokeLogoObjectUrl();
+        this.editLogoUrl = url;
+        this.logoBroken.set(!url);
+      },
+      error: () => {
+        this.revokeLogoObjectUrl();
+        this.editLogoUrl = '';
+        this.logoBroken.set(true);
+      },
+    });
+  }
+
+  private revokeLogoObjectUrl(): void {
+    if (this.logoObjectUrl) {
+      URL.revokeObjectURL(this.logoObjectUrl);
+      this.logoObjectUrl = null;
+    }
+  }
+
+  private normalizeBrandColor(value: string | null | undefined): string {
+    if (!value) {
       return '';
     }
-    if (url.startsWith('/uploads/')) {
-      return url;
+    let hex = value.trim();
+    if (!hex) {
+      return '';
     }
-    const marker = '/uploads/';
-    const idx = url.indexOf(marker);
-    if (idx >= 0) {
-      return url.slice(idx);
+    if (!hex.startsWith('#')) {
+      hex = `#${hex}`;
     }
-    return url;
+    const short = /^#([0-9a-fA-F]{3})$/.exec(hex);
+    if (short) {
+      const [r, g, b] = short[1].split('');
+      hex = `#${r}${r}${g}${g}${b}${b}`;
+    }
+    return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toUpperCase() : '';
+  }
+
+  private errMsg(err: unknown, fallback: string): string {
+    if (err instanceof ApiClientError) {
+      return err.message || fallback;
+    }
+    if (err instanceof Error) {
+      return err.message || fallback;
+    }
+    return fallback;
   }
 }

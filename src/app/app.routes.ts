@@ -115,11 +115,6 @@ export const routes: Routes = [
           import('./vendor/profile/profile').then((m) => m.VendorProfile),
       },
       {
-        path: 'user-profile',
-        loadComponent: () =>
-          import('./auth/user-profile/user-profile').then((m) => m.UserProfilePage),
-      },
-      {
         path: 'change-password',
         loadComponent: () =>
           import('./auth/change-password/change-password').then((m) => m.ChangePassword),

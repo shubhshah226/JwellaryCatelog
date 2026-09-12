@@ -1,32 +1,32 @@
-<section class="vendor-page" (click)="closeMenu()">
+<section class="vendor-page product-options-page">
   <div class="page-header">
     <div>
-      <h2>Master Data</h2>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="btn btn-primary master-add-btn" (click)="openAddPage($event)">
-        + Add {{ entityLabel() }}
-      </button>
+      <h2>Product Options</h2>
+      <p class="page-subtitle">
+        Set up the lists you pick from when adding products — categories, metals, purity, and colors.
+      </p>
     </div>
   </div>
 
-  <div class="master-tabs">
-    <button
-      type="button"
-      class="tab-btn"
-      [class.active]="activeTab() === 'categories'"
-      (click)="setTab('categories')"
-    >
-      Categories
-    </button>
-    <button
-      type="button"
-      class="tab-btn"
-      [class.active]="activeTab() === 'metals'"
-      (click)="setTab('metals')"
-    >
-      Metal Types
-    </button>
+  <div class="option-cards" role="tablist" aria-label="Product option types">
+    @for (tab of tabs; track tab) {
+      <button
+        type="button"
+        class="option-card"
+        role="tab"
+        [class.active]="activeTab() === tab"
+        [attr.aria-selected]="activeTab() === tab"
+        (click)="setTab(tab)"
+      >
+        <span class="option-card-icon" aria-hidden="true">
+          <i [class]="tabMeta(tab).icon"></i>
+        </span>
+        <span class="option-card-body">
+          <span class="option-card-title">{{ tabMeta(tab).title }}</span>
+          <span class="option-card-count">{{ tabCount(tab) }} items</span>
+        </span>
+      </button>
+    }
   </div>
 
   @if (errorMessage()) {
@@ -36,179 +36,38 @@
     </div>
   }
 
-  <div class="stats-row">
-    <article class="stat-card">
-      <p class="stat-label">Total</p>
-      <h3>{{ filteredItems().length }}</h3>
-    </article>
-    <article class="stat-card">
-      <p class="stat-label">Active</p>
-      <h3>{{ activeCount() }}</h3>
-    </article>
-  </div>
-
-  <div class="filters-card">
-    <div class="filters-grid compact">
-      <div class="filter-search">
-        <span class="filter-icon" aria-hidden="true">
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </span>
-        <input
-          type="text"
-          [placeholder]="'Search ' + (activeTab() === 'categories' ? 'categories' : 'metal types') + '...'"
-          [ngModel]="search()"
-          (ngModelChange)="onSearchChange($event)"
-        />
+  <section class="option-panel">
+    <div class="option-panel-header">
+      <div class="option-panel-intro">
+        <h3>
+          <i [class]="activeMeta().icon" aria-hidden="true"></i>
+          {{ activeMeta().title }}
+        </h3>
+        <p>{{ activeMeta().description }}</p>
+        <p class="option-example">{{ activeMeta().example }}</p>
       </div>
-
-      <select
-        class="filter-select"
-        [ngModel]="status()"
-        (ngModelChange)="onStatusChange($event)"
-      >
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-
-      <div class="filter-actions">
-        <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
-          <i class="fa-solid fa-rotate-right"></i>
-        </button>
-      </div>
+      <button type="button" class="btn btn-primary master-add-btn" (click)="openAddPage($event)">
+        {{ activeMeta().addLabel }}
+      </button>
     </div>
-  </div>
 
-  <div class="table-card">
+    <div class="option-stats">
+      <span><strong>{{ totalCount() }}</strong> total</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span><strong>{{ activeCount() }}</strong> active</span>
+    </div>
+
     @if (isLoading()) {
       <div class="state-message">
         <div class="page-loader-ring" aria-hidden="true"></div>
-        <span>Loading master data...</span>
+        <span>Loading {{ activeMeta().plural }}...</span>
       </div>
     } @else {
-      <div class="table-wrap desktop-only">
-        <table>
-          <thead>
-            <tr>
-              <th>
-                <button type="button" class="sort-btn" (click)="toggleSort('name')">
-                  {{ entityLabel() }} Name
-                  <i [class]="sortIcon('name')" aria-hidden="true"></i>
-                </button>
-              </th>
-              <th>
-                <button type="button" class="sort-btn" (click)="toggleSort('status')">
-                  Status
-                  <i [class]="sortIcon('status')" aria-hidden="true"></i>
-                </button>
-              </th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of filteredItems(); track item.id) {
-              <tr>
-                <td>
-                  <p class="user-name">{{ item.name }}</p>
-                  <p class="user-meta">ID: {{ item.id }}</p>
-                </td>
-                <td>
-                  <span class="badge status-{{ item.status }}">{{ item.status }}</span>
-                </td>
-                <td class="col-actions">
-                  <div class="actions-wrap">
-                    <button
-                      type="button"
-                      class="menu-dots"
-                      aria-label="Item actions"
-                      (click)="toggleMenu($event, item.id)"
-                    >
-                      <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                    @if (openMenuId() === item.id) {
-                      <div class="actions-menu" (click)="$event.stopPropagation()">
-                        <button type="button" (click)="openEditPage(item, $event)">Edit</button>
-                        <button type="button" class="danger" (click)="deleteItem(item, $event)">
-                          Delete
-                        </button>
-                      </div>
-                    }
-                  </div>
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="3" class="empty-row">
-                  No {{ activeTab() === 'categories' ? 'categories' : 'metal types' }} yet.
-                  Click <strong>+ Add {{ entityLabel() }}</strong> to create one.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <div class="mobile-list">
-        @for (item of filteredItems(); track item.id; let i = $index) {
-          <article class="ml-card">
-            <div class="ml-card-top">
-              <span class="ml-icon accent-{{ i % 3 }}" aria-hidden="true">
-                <i
-                  class="fa-solid"
-                  [class.fa-tags]="activeTab() === 'categories'"
-                  [class.fa-coins]="activeTab() === 'metals'"
-                ></i>
-              </span>
-              <div class="ml-card-info">
-                <p class="user-name">{{ item.name }}</p>
-                <p class="user-meta">ID: {{ item.id }}</p>
-              </div>
-              <div class="ml-card-menu actions-wrap">
-                <button
-                  type="button"
-                  class="menu-dots"
-                  aria-label="Item actions"
-                  (click)="toggleMenu($event, item.id)"
-                >
-                  <i class="fa-solid fa-ellipsis-vertical"></i>
-                </button>
-                @if (openMenuId() === item.id) {
-                  <div class="actions-menu" (click)="$event.stopPropagation()">
-                    <button type="button" (click)="openEditPage(item, $event)">
-                      <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                      Edit
-                    </button>
-                    <button type="button" class="danger" (click)="deleteItem(item, $event)">
-                      <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                      Delete
-                    </button>
-                  </div>
-                }
-              </div>
-            </div>
-            <div class="ml-card-bottom">
-              <div class="ml-stat">
-                <i
-                  class="fa-solid"
-                  [class.fa-tag]="activeTab() === 'categories'"
-                  [class.fa-gem]="activeTab() === 'metals'"
-                  aria-hidden="true"
-                ></i>
-                <span>{{ entityLabel() }}</span>
-              </div>
-              <span class="badge status-{{ item.status }}">
-                <span class="badge-dot" aria-hidden="true"></span>
-                {{ item.status }}
-              </span>
-            </div>
-          </article>
-        } @empty {
-          <p class="empty-mobile">
-            No {{ activeTab() === 'categories' ? 'categories' : 'metal types' }} yet.
-            Tap <strong>+ Add {{ entityLabel() }}</strong> to create one.
-          </p>
-        }
-      </div>
+      <app-data-grid
+        [rows]="activeRows()"
+        [config]="gridConfig()"
+        (action)="onGridAction($event)"
+      />
     }
-  </div>
+  </section>
 </section>

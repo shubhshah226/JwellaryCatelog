@@ -190,23 +190,6 @@ export class Vendors implements OnInit {
     });
   }
 
-  getSparklinePath(points: number[]): string {
-    if (!points.length) {
-      return '';
-    }
-
-    const max = Math.max(...points, 1);
-    const step = 100 / Math.max(points.length - 1, 1);
-
-    return points
-      .map((point, index) => {
-        const x = index * step;
-        const y = 100 - (point / max) * 100;
-        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-      })
-      .join(' ');
-  }
-
   formatStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }

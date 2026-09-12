@@ -189,6 +189,11 @@ export class DataGridComponent<T = unknown> implements OnInit {
     this.draftFilters.update((current) => ({ ...current, [key]: value }));
   }
 
+  onSearchChange(key: string, value: string): void {
+    this.setDraftFilter(key, value ?? '');
+    this.applyFilters();
+  }
+
   onRowsPerPageChange(value: string): void {
     this.rowsPerPage.set(Number(value) || 10);
     this.currentPage.set(1);
@@ -418,9 +423,27 @@ export class DataGridComponent<T = unknown> implements OnInit {
         const fields = field.searchFields?.length
           ? field.searchFields
           : this.config().columns.map((col) => col.key);
+
         return fields.some((name) => {
-          const value = String((row as Record<string, unknown>)[name] ?? '').toLowerCase();
-          return value.includes(needle);
+          const direct = String((row as Record<string, unknown>)[name] ?? '').toLowerCase();
+          if (direct.includes(needle)) {
+            return true;
+          }
+
+          const column = this.config().columns.find((col) => col.key === name);
+          if (column?.value) {
+            const display = String(column.value(row) ?? '').toLowerCase();
+            if (display.includes(needle)) {
+              return true;
+            }
+          }
+          if (column?.subtitle) {
+            const subtitle = String(column.subtitle(row) ?? '').toLowerCase();
+            if (subtitle.includes(needle)) {
+              return true;
+            }
+          }
+          return false;
         });
       }
 
