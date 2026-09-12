@@ -245,7 +245,8 @@ export class VendorMasterData implements OnInit {
         this.isLoading.set(false);
       },
       error: (err: unknown) => {
-        this.errorMessage.set(this.errMsg(err, 'Unable to load product options.'));
+        this.toast.error(this.errMsg(err, 'Unable to load product options.'));
+        this.errorMessage.set('Unable to load product options.');
         this.isLoading.set(false);
       },
     });
@@ -298,7 +299,6 @@ export class VendorMasterData implements OnInit {
       },
       error: (err: unknown) => {
         const message = this.errMsg(err, 'Failed to remove.');
-        this.errorMessage.set(message);
         this.toast.error(message);
       },
     });

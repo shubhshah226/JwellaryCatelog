@@ -183,8 +183,13 @@ export class Vendors implements OnInit {
         this.stats.set(stats);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Unable to load vendors. Please ensure the API is running on port 8400.');
+      error: (err: unknown) => {
+        this.toastService.error(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load vendors. Please ensure the API is running on port 8400.'
+        );
+        this.errorMessage.set('Unable to load vendors.');
         this.isLoading.set(false);
       },
     });
@@ -372,7 +377,6 @@ export class Vendors implements OnInit {
         this.isResettingPassword.set(false);
         const message =
           err instanceof Error ? err.message : 'Unable to reset owner password.';
-        this.resetPasswordError.set(message);
         this.toastService.error(message);
       },
     });
@@ -418,7 +422,7 @@ export class Vendors implements OnInit {
         next: (updatedVendor) => this.handleVendorSaved(updatedVendor),
         error: (err: Error) => {
           this.isSubmitting.set(false);
-          this.formError.set(err.message || 'Failed to update vendor. Please try again.');
+          this.toastService.error(err.message || 'Failed to update vendor. Please try again.');
         },
       });
 
@@ -436,7 +440,7 @@ export class Vendors implements OnInit {
       },
       error: (err: Error) => {
         this.isSubmitting.set(false);
-        this.formError.set(err.message || 'Failed to add vendor. Please try again.');
+        this.toastService.error(err.message || 'Failed to add vendor. Please try again.');
       },
     });
   }

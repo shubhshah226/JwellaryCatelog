@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ToastService } from '../../core/services/toast.service';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 import { VendorService } from '../../dashboard/services/vendor.service';
 import {
@@ -34,6 +35,7 @@ type DrawerMode = 'add' | 'edit';
 export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
   private readonly userService = inject(UserService);
   private readonly vendorService = inject(VendorService);
+  private readonly toast = inject(ToastService);
 
   @ViewChild('actionsPortal')
   private actionsPortal?: ElementRef<HTMLElement>;
@@ -101,8 +103,13 @@ export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
         this.allUsers.set(users);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Unable to load users. Please ensure the API is running on port 8001.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load users. Please ensure the API is running on port 8400.'
+        );
+        this.errorMessage.set('Unable to load users.');
         this.isLoading.set(false);
       },
     });
@@ -316,8 +323,10 @@ export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
             );
             this.closeDrawer();
           },
-          error: () => {
-            this.formError.set('Unable to update user. Please try again.');
+          error: (err: unknown) => {
+            this.toast.error(
+              err instanceof Error ? err.message : 'Unable to update user. Please try again.'
+            );
             this.isSubmitting.set(false);
           },
         });
@@ -329,8 +338,10 @@ export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
         this.allUsers.set([...this.allUsers(), user]);
         this.closeDrawer();
       },
-      error: () => {
-        this.formError.set('Unable to save user. Please try again.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to save user. Please try again.'
+        );
         this.isSubmitting.set(false);
       },
     });
@@ -350,8 +361,10 @@ export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
       next: () => {
         this.allUsers.set(this.allUsers().filter((item) => item.id !== user.id));
       },
-      error: () => {
-        alert('Unable to delete user. Please try again.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to delete user. Please try again.'
+        );
       },
     });
   }

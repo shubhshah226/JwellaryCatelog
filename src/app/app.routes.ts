@@ -1,13 +1,59 @@
 import { Routes } from '@angular/router';
-import { Login } from './auth/login/login';
-import { loginGuard, roleGuard } from './auth/guards/auth.guard';
+import { authGuard, loginGuard, roleGuard } from './auth/guards/auth.guard';
 
 export const routes: Routes = [
+  // Public marketing home
+  {
+    path: '',
+    loadComponent: () =>
+      import('./marketing/landing/landing').then((m) => m.Landing),
+    pathMatch: 'full',
+  },
+
   // Login
   {
     path: 'login',
-    component: Login,
+    loadComponent: () => import('./auth/login/login').then((m) => m.Login),
     canActivate: [loginGuard],
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
+    canActivate: [loginGuard],
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./auth/forgot-password/reset-password').then((m) => m.ResetPassword),
+    canActivate: [loginGuard],
+  },
+  // API email links may use /reset?token=…
+  {
+    path: 'reset',
+    loadComponent: () =>
+      import('./auth/forgot-password/reset-password').then((m) => m.ResetPassword),
+    canActivate: [loginGuard],
+  },
+
+  // Shared authenticated pages (same component for all roles)
+  {
+    path: 'common',
+    loadComponent: () =>
+      import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'changepassword',
+        loadComponent: () =>
+          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
+      },
+      {
+        path: 'access-denied',
+        loadComponent: () =>
+          import('./auth/access-denied/access-denied').then((m) => m.AccessDenied),
+      },
+    ],
   },
 
   // Super Admin routes (same pages as before; role renamed admin → superadmin)
@@ -33,11 +79,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./auth/user-profile/user-profile').then((m) => m.UserProfilePage),
       },
-      {
-        path: 'change-password',
-        loadComponent: () =>
-          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
-      },
+      { path: 'change-password', redirectTo: '/common/changepassword', pathMatch: 'full' },
     ],
   },
 
@@ -104,21 +146,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./vendor/leads/leads').then((m) => m.VendorLeads),
       },
-      // {
-      //   path: 'storefront',
-      //   loadComponent: () =>
-      //     import('./vendor/storefront/storefront').then((m) => m.VendorStorefront),
-      // },
       {
         path: 'profile',
         loadComponent: () =>
           import('./vendor/profile/profile').then((m) => m.VendorProfile),
       },
-      {
-        path: 'change-password',
-        loadComponent: () =>
-          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
-      },
+      { path: 'change-password', redirectTo: '/common/changepassword', pathMatch: 'full' },
     ],
   },
 
@@ -166,7 +199,6 @@ export const routes: Routes = [
     ],
   },
 
-  // Default redirect
-  { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: '**', redirectTo: 'login' },
+  // Unknown paths → public home (not login)
+  { path: '**', redirectTo: '' },
 ];

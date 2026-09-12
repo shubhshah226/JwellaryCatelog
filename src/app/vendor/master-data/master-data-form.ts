@@ -202,7 +202,6 @@ export class VendorMasterDataForm implements OnInit {
       },
       error: (err: unknown) => {
         const message = this.errMsg(err, 'Failed to save.');
-        this.formError.set(message);
         this.toast.error(message);
       },
     });
@@ -274,7 +273,8 @@ export class VendorMasterDataForm implements OnInit {
         this.isLoading.set(false);
       },
       error: (err: unknown) => {
-        this.pageError.set(this.errMsg(err, 'Unable to load item.'));
+        this.toast.error(this.errMsg(err, 'Unable to load item.'));
+        this.pageError.set('Unable to load item.');
         this.isLoading.set(false);
       },
     });

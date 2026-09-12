@@ -32,6 +32,17 @@ export class ChangePasswordParamModel {
   public newPassword: string = '';
 }
 
+/** Payload for POST /account/forgotPassword */
+export class ForgotPasswordParamModel {
+  public email: string = '';
+}
+
+/** Payload for POST /account/resetPassword */
+export class ResetPasswordParamModel {
+  public token: string = '';
+  public newPassword: string = '';
+}
+
 /** Unwrapped `data` from account action endpoints (changePassword, logout, …) */
 export class AccountActionResponse {
   public success: boolean = false;

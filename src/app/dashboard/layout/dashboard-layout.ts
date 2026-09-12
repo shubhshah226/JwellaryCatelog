@@ -86,7 +86,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     { label: 'Dashboard', route: '/superAdmin/dashboard', icon: 'dashboard' },
     { label: 'Manage Vendors', route: '/superAdmin/vendors', icon: 'vendors' },
     { label: 'User Profile', route: '/superAdmin/user-profile', icon: 'profile' },
-    { label: 'Change Password', route: '/superAdmin/change-password', icon: 'password' },
+    { label: 'Change Password', route: '/common/changepassword', icon: 'password' },
   ];
 
   readonly vendorNavItems: NavItem[] = [
@@ -97,7 +97,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
     // { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
     { label: 'Business Profile', route: '/vendor/profile', icon: 'profile' },
-    { label: 'Change Password', route: '/vendor/change-password', icon: 'password' },
+    { label: 'Change Password', route: '/common/changepassword', icon: 'password' },
   ];
 
   visibleNavItems(): NavItem[] {
@@ -170,6 +170,9 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   pageTitle(): string {
     const url = this.router.url;
+    if (url.includes('/common/access-denied')) {
+      return 'Access Denied';
+    }
     if (url.includes('/catalogs/new')) {
       return 'Add Catalog';
     }

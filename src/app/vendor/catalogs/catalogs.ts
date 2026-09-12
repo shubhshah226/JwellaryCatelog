@@ -143,13 +143,14 @@ export class VendorCatalogs implements OnInit {
           this.allCatalogs.set(catalogs);
         },
         error: (err: unknown) => {
-          this.errorMessage.set(
+          const detail =
             err instanceof ApiClientError
               ? err.message
               : err instanceof Error
                 ? err.message
-                : 'Unable to load catalogs.'
-          );
+                : 'Unable to load catalogs.';
+          this.toast.error(detail);
+          this.errorMessage.set('Unable to load catalogs.');
         },
       });
   }

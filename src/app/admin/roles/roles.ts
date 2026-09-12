@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ToastService } from '../../core/services/toast.service';
 import {
   AppRole,
   RoleFormData,
@@ -30,6 +31,7 @@ type DrawerMode = 'add' | 'edit';
 })
 export class AdminRoles implements OnInit, OnDestroy, AfterViewChecked {
   private readonly roleService = inject(RoleService);
+  private readonly toast = inject(ToastService);
 
   @ViewChild('actionsPortal')
   private actionsPortal?: ElementRef<HTMLElement>;
@@ -97,8 +99,13 @@ export class AdminRoles implements OnInit, OnDestroy, AfterViewChecked {
         this.allRoles.set(roles);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Unable to load roles. Please ensure the API is running on port 8001.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load roles. Please ensure the API is running on port 8400.'
+        );
+        this.errorMessage.set('Unable to load roles.');
         this.isLoading.set(false);
       },
     });
@@ -289,8 +296,10 @@ export class AdminRoles implements OnInit, OnDestroy, AfterViewChecked {
           );
           this.closeDrawer();
         },
-        error: () => {
-          this.formError.set('Unable to update role. Please try again.');
+        error: (err: unknown) => {
+          this.toast.error(
+            err instanceof Error ? err.message : 'Unable to update role. Please try again.'
+          );
           this.isSubmitting.set(false);
         },
       });
@@ -302,8 +311,10 @@ export class AdminRoles implements OnInit, OnDestroy, AfterViewChecked {
         this.allRoles.set([...this.allRoles(), role]);
         this.closeDrawer();
       },
-      error: () => {
-        this.formError.set('Unable to save role. Please try again.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to save role. Please try again.'
+        );
         this.isSubmitting.set(false);
       },
     });
@@ -327,8 +338,10 @@ export class AdminRoles implements OnInit, OnDestroy, AfterViewChecked {
       next: () => {
         this.allRoles.set(this.allRoles().filter((item) => item.id !== role.id));
       },
-      error: () => {
-        alert('Unable to delete role. Please try again.');
+      error: (err: unknown) => {
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to delete role. Please try again.'
+        );
       },
     });
   }

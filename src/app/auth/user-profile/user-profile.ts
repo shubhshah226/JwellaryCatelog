@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ToastService } from '../../core/services/toast.service';
 import { formatInIndia } from '../../core/utils/date-time.util';
 import { AuthService } from '../services/auth.service';
 import { UserProfile } from '../models/user.model';
@@ -12,9 +13,11 @@ import { UserProfile } from '../models/user.model';
 })
 export class UserProfilePage implements OnInit {
   private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
-  readonly errorMessage = signal('');
+  /** Static page state only — API detail goes to toast. */
+  readonly loadFailed = signal(false);
   readonly profile = signal<UserProfile | null>(null);
 
   ngOnInit(): void {
@@ -23,7 +26,7 @@ export class UserProfilePage implements OnInit {
 
   loadProfile(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.loadFailed.set(false);
 
     this.authService.getUserProfile().subscribe({
       next: (profile) => {
@@ -31,9 +34,10 @@ export class UserProfilePage implements OnInit {
         this.isLoading.set(false);
       },
       error: (err: unknown) => {
-        const message =
-          err instanceof Error ? err.message : 'Unable to load user profile.';
-        this.errorMessage.set(message);
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to load user profile.'
+        );
+        this.loadFailed.set(true);
         this.isLoading.set(false);
       },
     });

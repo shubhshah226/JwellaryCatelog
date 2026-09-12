@@ -65,9 +65,8 @@ export class VendorProfile implements OnInit, OnDestroy {
         this.isLoading.set(false);
       },
       error: (err: unknown) => {
-        this.errorMessage.set(
-          this.errMsg(err, 'Unable to load business profile. Please try again.')
-        );
+        this.toast.error(this.errMsg(err, 'Unable to load business profile. Please try again.'));
+        this.errorMessage.set('Unable to load business profile.');
         this.isLoading.set(false);
       },
     });
@@ -194,7 +193,6 @@ export class VendorProfile implements OnInit, OnDestroy {
         },
         error: (err: unknown) => {
           const message = this.errMsg(err, 'Failed to update business profile.');
-          this.formError.set(message);
           this.toast.error(message);
         },
       });

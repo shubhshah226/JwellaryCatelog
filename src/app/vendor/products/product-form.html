@@ -241,10 +241,6 @@
         </section>
       </div>
 
-      @if (formError()) {
-        <p class="form-error pfp-error">{{ formError() }}</p>
-      }
-
       <div class="pfp-footer">
         <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
           Cancel

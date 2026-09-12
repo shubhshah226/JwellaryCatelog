@@ -31,7 +31,6 @@ export class VendorProductForm implements OnInit {
   readonly productId = signal<string | null>(null);
   readonly isLoading = signal(true);
   readonly isSubmitting = signal(false);
-  readonly formError = signal('');
   readonly pageError = signal('');
   readonly categories = signal<MasterDataItem[]>([]);
   readonly metalTypes = signal<MasterDataItem[]>([]);
@@ -139,36 +138,35 @@ export class VendorProductForm implements OnInit {
     this.syncNamesFromIds();
 
     if (!this.productForm.name.trim()) {
-      this.formError.set('Product name is required.');
+      this.toast.error('Product name is required.');
       return;
     }
     if (!this.productForm.categoryId && !this.productForm.category) {
-      this.formError.set('Please select a category from Product Options.');
+      this.toast.error('Please select a category from Product Options.');
       return;
     }
     if (!this.productForm.metalTypeId && !this.productForm.metalType) {
-      this.formError.set('Please select a metal type from Product Options.');
+      this.toast.error('Please select a metal type from Product Options.');
       return;
     }
     if (!this.productForm.sku.trim()) {
-      this.formError.set('Product code (SKU) is required.');
+      this.toast.error('Product code (SKU) is required.');
       return;
     }
     const weightNum = Number(String(this.productForm.weight).replace(/[^\d.]/g, ''));
     if (!this.productForm.weight.trim() || !Number.isFinite(weightNum) || weightNum <= 0) {
-      this.formError.set('Weight in grams is required.');
+      this.toast.error('Weight in grams is required.');
       return;
     }
 
     const slots = this.photoSlots();
     if (!slots.length) {
-      this.formError.set('Please upload at least one photo (first image is the cover).');
+      this.toast.error('Please upload at least one photo (first image is the cover).');
       return;
     }
 
     this.applyNewPhotosToForm(slots);
     this.isSubmitting.set(true);
-    this.formError.set('');
 
     if (this.mode() === 'edit' && this.productId()) {
       const currentExistingIds = slots
@@ -195,7 +193,6 @@ export class VendorProductForm implements OnInit {
             void this.router.navigateByUrl('/vendor/products');
           },
           error: (err: Error) => {
-            this.formError.set(err.message || 'Failed to update product.');
             this.toast.error(err.message || 'Failed to update product.');
             this.isSubmitting.set(false);
           },
@@ -210,7 +207,6 @@ export class VendorProductForm implements OnInit {
         void this.router.navigateByUrl('/vendor/products');
       },
       error: (err: Error) => {
-        this.formError.set(err.message || 'Failed to add product.');
         this.toast.error(err.message || 'Failed to add product.');
         this.isSubmitting.set(false);
       },
@@ -226,7 +222,6 @@ export class VendorProductForm implements OnInit {
     Array.from(files).forEach((file) => {
       this.readFileAsBase64(file, (base64) => {
         this.photoSlots.update((slots) => [...slots, { kind: 'new', dataUrl: base64 }]);
-        this.formError.set('');
       });
     });
     input.value = '';
@@ -356,7 +351,6 @@ export class VendorProductForm implements OnInit {
     this.photoSlots.set([]);
     this.initialExistingIds = new Set();
     this.existingImageCount.set(0);
-    this.formError.set('');
   }
 
   private loadProduct(id: string): void {
@@ -373,7 +367,8 @@ export class VendorProductForm implements OnInit {
         this.isLoading.set(false);
       },
       error: (err: Error) => {
-        this.pageError.set(err.message || 'Unable to load product.');
+        this.toast.error(err.message || 'Unable to load product.');
+        this.pageError.set('Unable to load product.');
         this.isLoading.set(false);
       },
     });
@@ -381,11 +376,11 @@ export class VendorProductForm implements OnInit {
 
   private readFileAsBase64(file: File, onDone: (base64: string) => void): void {
     if (!file.type.startsWith('image/')) {
-      this.formError.set('Please select an image file.');
+      this.toast.error('Please select an image file.');
       return;
     }
     if (file.size > 5_000_000) {
-      this.formError.set('Each image must be under 5MB.');
+      this.toast.error('Each image must be under 5MB.');
       return;
     }
     const reader = new FileReader();
@@ -396,7 +391,7 @@ export class VendorProductForm implements OnInit {
       }
     };
     reader.onerror = () => {
-      this.formError.set('Could not read image file.');
+      this.toast.error('Could not read image file.');
     };
     reader.readAsDataURL(file);
   }

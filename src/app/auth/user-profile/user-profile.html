@@ -9,9 +9,9 @@
       <div class="page-loader-ring" aria-hidden="true"></div>
       <p>Loading profile...</p>
     </div>
-  } @else if (errorMessage()) {
+  } @else if (loadFailed()) {
     <div class="state-message error">
-      <p>{{ errorMessage() }}</p>
+      <p>Unable to load profile.</p>
       <button type="button" class="retry-btn" (click)="loadProfile()">Retry</button>
     </div>
   } @else if (profile(); as p) {

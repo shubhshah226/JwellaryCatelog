@@ -74,6 +74,10 @@
         </button>
       </div>
 
+      <div class="form-options">
+        <a routerLink="/forgot-password" class="forgot-link">Forgot password?</a>
+      </div>
+
       @if (errorMessage()) {
         <p class="login-error" role="alert">{{ errorMessage() }}</p>
       }
@@ -86,6 +90,7 @@
 
     <p class="login-hint">
       Admin and vendor accounts are created by the platform administrator.
+      <a routerLink="/" class="login-home-link">Back to home</a>
     </p>
   </div>
 </div>

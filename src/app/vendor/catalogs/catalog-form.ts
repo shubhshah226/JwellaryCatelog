@@ -236,7 +236,6 @@ export class VendorCatalogForm implements OnInit {
             this.goBack();
           },
           error: (err: unknown) => {
-            this.formError.set(this.errMsg(err, 'Failed to save catalog.'));
             this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
             this.isSubmitting.set(false);
           },
@@ -258,7 +257,6 @@ export class VendorCatalogForm implements OnInit {
         this.goBack();
       },
       error: (err: unknown) => {
-        this.formError.set(this.errMsg(err, 'Failed to save catalog.'));
         this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
         this.isSubmitting.set(false);
       },
@@ -359,7 +357,8 @@ export class VendorCatalogForm implements OnInit {
         this.loadingProducts.set(false);
       },
       error: (err: unknown) => {
-        this.pageError.set(this.errMsg(err, 'Unable to load catalog.'));
+        this.toast.error(this.errMsg(err, 'Unable to load catalog.'));
+        this.pageError.set('Unable to load catalog.');
         this.isLoading.set(false);
         this.loadingProducts.set(false);
       },

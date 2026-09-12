@@ -11,9 +11,11 @@ import {
   AuthSession,
   AuthUser,
   ChangePasswordParamModel,
+  ForgotPasswordParamModel,
   LoginApiPayload,
   LoginParamModel,
   LoginResponse,
+  ResetPasswordParamModel,
   UserProfile,
   UserProfileApiPayload,
   UserRole,
@@ -74,6 +76,50 @@ export class AuthService {
         }
         if (err instanceof ApiClientError) {
           return throwError(() => new Error(err.message || 'Unable to change password.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
+  }
+
+  /** POST /account/forgotPassword — always succeeds with a generic message. */
+  forgotPassword(paramModel: ForgotPasswordParamModel): Observable<AccountActionResponse> {
+    return this.api.post<AccountActionResponse>('/account/forgotPassword', paramModel).pipe(
+      map((res) => {
+        const response = new AccountActionResponse();
+        response.success = res?.success !== false;
+        response.message =
+          res?.message ??
+          'If that email is registered, a reset link has been sent to it.';
+        return response;
+      }),
+      catchError((err: unknown) => {
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Unable to send reset link.'));
+        }
+        return throwError(() => new Error('Unable to connect to the API server.'));
+      })
+    );
+  }
+
+  /** POST /account/resetPassword — token from email link + new password. */
+  resetPassword(paramModel: ResetPasswordParamModel): Observable<AccountActionResponse> {
+    return this.api.post<AccountActionResponse>('/account/resetPassword', paramModel).pipe(
+      map((res) => {
+        const response = new AccountActionResponse();
+        response.success = res?.success === true;
+        response.message = res?.message ?? null;
+        if (!response.success) {
+          throw new Error(response.message || 'Unable to reset password.');
+        }
+        return response;
+      }),
+      catchError((err: unknown) => {
+        if (err instanceof Error && !(err instanceof ApiClientError)) {
+          return throwError(() => err);
+        }
+        if (err instanceof ApiClientError) {
+          return throwError(() => new Error(err.message || 'Unable to reset password.'));
         }
         return throwError(() => new Error('Unable to connect to the API server.'));
       })

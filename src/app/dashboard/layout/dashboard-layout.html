@@ -94,63 +94,64 @@
           }
         </button>
 
-        <div class="notification-wrap">
-          <button
-            type="button"
-            class="icon-btn notification-btn"
-            aria-label="Notifications"
-            [attr.aria-expanded]="notificationsOpen()"
-            (click)="toggleNotifications($event)"
-            [disabled]="isAdmin"
-          >
-            <i class="fa-solid fa-bell" aria-hidden="true"></i>
-            @if (unreadBadge()) {
-              <span class="badge">{{ unreadBadge() }}</span>
-            }
-          </button>
-
-          @if (notificationsOpen()) {
-            <div class="notification-panel" (click)="$event.stopPropagation()" role="dialog" aria-label="Notifications">
-              <div class="notification-panel-head">
-                <strong>Notifications</strong>
-                <button
-                  type="button"
-                  class="mark-all-btn"
-                  (click)="markAllRead()"
-                  [disabled]="markReadBusy() || unreadCount() <= 0"
-                >
-                  Mark all read
-                </button>
-              </div>
-
-              @if (notificationsLoading()) {
-                <p class="notification-empty">Loading...</p>
-              } @else if (!unreadNotifications().length) {
-                <p class="notification-empty">No new notifications.</p>
-              } @else {
-                <ul class="notification-list">
-                  @for (item of unreadNotifications(); track item.id) {
-                    <li>
-                      <button
-                        type="button"
-                        class="notification-item unread"
-                        (click)="openNotification(item)"
-                      >
-                        <span class="notification-title">{{ item.title }}</span>
-                        @if (item.body) {
-                          <span class="notification-body">{{ item.body }}</span>
-                        }
-                        @if (notificationTime(item); as when) {
-                          <span class="notification-time">{{ when }}</span>
-                        }
-                      </button>
-                    </li>
-                  }
-                </ul>
+        @if (!isAdmin) {
+          <div class="notification-wrap">
+            <button
+              type="button"
+              class="icon-btn notification-btn"
+              aria-label="Notifications"
+              [attr.aria-expanded]="notificationsOpen()"
+              (click)="toggleNotifications($event)"
+            >
+              <i class="fa-solid fa-bell" aria-hidden="true"></i>
+              @if (unreadBadge()) {
+                <span class="badge">{{ unreadBadge() }}</span>
               }
-            </div>
-          }
-        </div>
+            </button>
+
+            @if (notificationsOpen()) {
+              <div class="notification-panel" (click)="$event.stopPropagation()" role="dialog" aria-label="Notifications">
+                <div class="notification-panel-head">
+                  <strong>Notifications</strong>
+                  <button
+                    type="button"
+                    class="mark-all-btn"
+                    (click)="markAllRead()"
+                    [disabled]="markReadBusy() || unreadCount() <= 0"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+
+                @if (notificationsLoading()) {
+                  <p class="notification-empty">Loading...</p>
+                } @else if (!unreadNotifications().length) {
+                  <p class="notification-empty">No new notifications.</p>
+                } @else {
+                  <ul class="notification-list">
+                    @for (item of unreadNotifications(); track item.id) {
+                      <li>
+                        <button
+                          type="button"
+                          class="notification-item unread"
+                          (click)="openNotification(item)"
+                        >
+                          <span class="notification-title">{{ item.title }}</span>
+                          @if (item.body) {
+                            <span class="notification-body">{{ item.body }}</span>
+                          }
+                          @if (notificationTime(item); as when) {
+                            <span class="notification-time">{{ when }}</span>
+                          }
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        }
 
         <div class="user-profile">
           <div class="avatar">{{ user?.firstName?.charAt(0) }}{{ user?.lastName?.charAt(0) }}</div>

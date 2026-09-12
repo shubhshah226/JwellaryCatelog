@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ToastService } from '../../core/services/toast.service';
 import { LoginParamModel, LoginResponse } from '../models/user.model';
@@ -9,7 +9,7 @@ import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
@@ -23,6 +23,7 @@ export class Login {
   password = '';
   showPassword = false;
   isLoading = signal(false);
+  /** Static client validation only — API messages go to toast. */
   errorMessage = signal('');
   userLoginResponse: LoginResponse = new LoginResponse();
 
@@ -65,16 +66,13 @@ export class Login {
               void this.router.navigate(['vendor/dashboard']);
             }
           } else {
-            const message = response.message || 'Login failed';
-            this.errorMessage.set(message);
-            this.toastService.error(message);
+            this.toastService.error(response.message || 'Login failed');
           }
         },
         error: (err: unknown) => {
-          const message =
-            err instanceof Error ? err.message : 'Unable to connect to the API server.';
-          this.errorMessage.set(message);
-          this.toastService.error(message);
+          this.toastService.error(
+            err instanceof Error ? err.message : 'Unable to connect to the API server.'
+          );
         },
       });
   }

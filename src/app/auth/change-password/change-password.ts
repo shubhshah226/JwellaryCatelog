@@ -14,9 +14,7 @@ export class ChangePassword {
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  /** API payload model — passed to AuthService.changePassword */
   changePasswordParamModel = new ChangePasswordParamModel();
-  /** UI-only confirm field (not sent to API) */
   confirmPassword = '';
 
   showOld = false;
@@ -24,6 +22,7 @@ export class ChangePassword {
   showConfirm = false;
 
   readonly isSubmitting = signal(false);
+  /** Static client validation only — API messages go to toast. */
   readonly errorMessage = signal('');
 
   submit(): void {
@@ -55,21 +54,20 @@ export class ChangePassword {
     this.errorMessage.set('');
 
     this.authService.changePassword(this.changePasswordParamModel).subscribe({
-      next: () => {
+      next: (res) => {
         this.isSubmitting.set(false);
         this.changePasswordParamModel = new ChangePasswordParamModel();
         this.confirmPassword = '';
-        this.toast.success('Password Changed Successfully.', 'Success');
+        this.toast.success(res.message || 'Password changed successfully.');
         this.authService.forceLogout();
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);
-        const message =
+        this.toast.error(
           err instanceof Error
             ? err.message
-            : 'Unable to change password. Please try again.';
-        this.errorMessage.set(message);
-        this.toast.error(message);
+            : 'Unable to change password. Please try again.'
+        );
       },
     });
   }

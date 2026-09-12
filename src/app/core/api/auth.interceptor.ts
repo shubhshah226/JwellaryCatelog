@@ -8,8 +8,12 @@ import { ApiClientError, ApiResponse } from './api.types';
 
 let handlingUnauthorized = false;
 
-function isLoginRequest(url: string): boolean {
-  return url.includes('/account/login');
+function isAnonymousAccountRequest(url: string): boolean {
+  return (
+    url.includes('/account/login') ||
+    url.includes('/account/forgotPassword') ||
+    url.includes('/account/resetPassword')
+  );
 }
 
 function isLogoutRequest(url: string): boolean {
@@ -50,13 +54,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const authService = inject(AuthService);
   const toastService = inject(ToastService);
-  const isLogin = isLoginRequest(req.url);
   const skipInvalidTokenHandler =
-    isLogin || isLogoutRequest(req.url) || isPublicApiRequest(req.url);
+    isAnonymousAccountRequest(req.url) ||
+    isLogoutRequest(req.url) ||
+    isPublicApiRequest(req.url);
 
   let outbound = req;
   if (
-    !isLogin &&
+    !isAnonymousAccountRequest(req.url) &&
     !isPublicApiRequest(req.url) &&
     !req.headers.has('Token') &&
     !req.headers.has('X-Customer-Session')

@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { ToastService } from '../../core/services/toast.service';
 import { buildPublicStoreUrl } from '../../core/utils/store-code.util';
 import { lockBodyScroll, unlockBodyScroll } from '../../core/utils/body-scroll-lock';
 import { Product } from '../../dashboard/models/dashboard.model';
@@ -97,6 +98,7 @@ export class VendorStorefront implements OnInit, OnDestroy {
   private readonly vendorData = inject(VendorDataService);
   private readonly storefrontService = inject(StorefrontService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
   readonly isSaving = signal(false);
@@ -180,13 +182,17 @@ export class VendorStorefront implements OnInit, OnDestroy {
             this.ensureStats();
             this.isLoading.set(false);
           },
-          error: () => {
+          error: (err: unknown) => {
+            this.toast.error(
+              err instanceof Error ? err.message : 'Unable to load storefront settings.'
+            );
             this.errorMessage.set('Unable to load storefront settings.');
             this.isLoading.set(false);
           },
         });
       },
-      error: () => {
+      error: (err: unknown) => {
+        this.toast.error(err instanceof Error ? err.message : 'Unable to load profile.');
         this.errorMessage.set('Unable to load profile.');
         this.isLoading.set(false);
       },
@@ -628,9 +634,11 @@ export class VendorStorefront implements OnInit, OnDestroy {
             this.refreshPreview();
           }
         },
-        error: () => {
+        error: (err: unknown) => {
           this.isSaving.set(false);
-          this.errorMessage.set('Failed to save website settings.');
+          this.toast.error(
+            err instanceof Error ? err.message : 'Failed to save website settings.'
+          );
         },
       });
   }

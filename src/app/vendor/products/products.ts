@@ -261,7 +261,8 @@ export class VendorProducts implements OnInit {
           this.allProducts.set(products);
         },
         error: (err: Error) => {
-          this.errorMessage.set(err.message || 'Unable to load products.');
+          this.toast.error(err.message || 'Unable to load products.');
+          this.errorMessage.set('Unable to load products.');
         },
       });
   }

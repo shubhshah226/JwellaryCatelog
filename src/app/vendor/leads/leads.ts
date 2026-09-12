@@ -65,9 +65,8 @@ export class VendorLeads implements OnInit {
         this.isLoading.set(false);
       },
       error: (err: unknown) => {
-        this.errorMessage.set(
-          err instanceof Error ? err.message : 'Unable to load leads.'
-        );
+        this.toast.error(err instanceof Error ? err.message : 'Unable to load leads.');
+        this.errorMessage.set('Unable to load leads.');
         this.isLoading.set(false);
       },
     });
