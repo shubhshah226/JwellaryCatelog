@@ -1,4 +1,4 @@
-import { ApplicationConfig, APP_INITIALIZER, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
+﻿import { ApplicationConfig, APP_INITIALIZER, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -6,9 +6,9 @@ import { provideToastr } from 'ngx-toastr';
 
 import { routes } from './app.routes';
 import { AuthService } from './auth/services/auth.service';
-import { authInterceptor } from './core/api/auth.interceptor';
-import { loadingInterceptor } from './core/api/loading.interceptor';
-import { customerSessionInterceptor } from './core/api/customer-session.interceptor';
+import { authInterceptor } from './common/api/auth.interceptor';
+import { loadingInterceptor } from './common/api/loading.interceptor';
+import { customerSessionInterceptor } from './common/api/customer-session.interceptor';
 
 /** Decrypt session into memory before first navigation / API call. */
 function initAuthSession(auth: AuthService): () => Promise<void> {

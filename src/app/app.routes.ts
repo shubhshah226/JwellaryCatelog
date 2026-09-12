@@ -6,160 +6,196 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./marketing/landing/landing').then((m) => m.Landing),
+      import('./marketing/components/landing/landing').then((m) => m.Landing),
     pathMatch: 'full',
   },
 
-  // Login
+  // Login / password recovery
   {
     path: 'login',
-    loadComponent: () => import('./auth/login/login').then((m) => m.Login),
+    loadComponent: () =>
+      import('./auth/components/login/login').then((m) => m.Login),
     canActivate: [loginGuard],
   },
   {
     path: 'forgot-password',
     loadComponent: () =>
-      import('./auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
+      import('./auth/components/forgot-password/forgot-password').then(
+        (m) => m.ForgotPassword
+      ),
     canActivate: [loginGuard],
   },
   {
     path: 'reset-password',
     loadComponent: () =>
-      import('./auth/forgot-password/reset-password').then((m) => m.ResetPassword),
+      import('./auth/components/forgot-password/reset-password').then(
+        (m) => m.ResetPassword
+      ),
     canActivate: [loginGuard],
   },
-  // API email links may use /reset?token=…
   {
     path: 'reset',
     loadComponent: () =>
-      import('./auth/forgot-password/reset-password').then((m) => m.ResetPassword),
+      import('./auth/components/forgot-password/reset-password').then(
+        (m) => m.ResetPassword
+      ),
     canActivate: [loginGuard],
   },
 
-  // Shared authenticated pages (same component for all roles)
+  // Shared authenticated pages
   {
     path: 'common',
     loadComponent: () =>
-      import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
+      import('./common/components/dashboard-layout/dashboard-layout').then(
+        (m) => m.DashboardLayout
+      ),
     canActivate: [authGuard],
     children: [
       {
         path: 'changepassword',
         loadComponent: () =>
-          import('./auth/change-password/change-password').then((m) => m.ChangePassword),
+          import('./auth/components/change-password/change-password').then(
+            (m) => m.ChangePassword
+          ),
       },
       {
         path: 'access-denied',
         loadComponent: () =>
-          import('./auth/access-denied/access-denied').then((m) => m.AccessDenied),
+          import('./auth/components/access-denied/access-denied').then(
+            (m) => m.AccessDenied
+          ),
       },
     ],
   },
 
-  // Super Admin routes (same pages as before; role renamed admin → superadmin)
+  // Super Admin
   {
     path: 'superAdmin',
     loadComponent: () =>
-      import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
+      import('./common/components/dashboard-layout/dashboard-layout').then(
+        (m) => m.DashboardLayout
+      ),
     canActivate: [roleGuard('superadmin')],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('./admin/dashboard/dashboard').then((m) => m.DashboardHome),
+          import('./super-admin/components/dashboard/dashboard').then(
+            (m) => m.DashboardHome
+          ),
       },
       {
         path: 'vendors',
         loadComponent: () =>
-          import('./admin/vendors/vendors').then((m) => m.Vendors),
+          import('./super-admin/components/vendors/vendors').then((m) => m.Vendors),
       },
       {
         path: 'user-profile',
         loadComponent: () =>
-          import('./auth/user-profile/user-profile').then((m) => m.UserProfilePage),
+          import('./auth/components/user-profile/user-profile').then(
+            (m) => m.UserProfilePage
+          ),
       },
       { path: 'change-password', redirectTo: '/common/changepassword', pathMatch: 'full' },
     ],
   },
 
-  // Owner (tenant) routes
+  // Owner (tenant) — URL stays /vendor for compatibility
   {
     path: 'vendor',
     loadComponent: () =>
-      import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
+      import('./common/components/dashboard-layout/dashboard-layout').then(
+        (m) => m.DashboardLayout
+      ),
     canActivate: [roleGuard('owner')],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('./admin/dashboard/dashboard').then((m) => m.DashboardHome),
+          import('./super-admin/components/dashboard/dashboard').then(
+            (m) => m.DashboardHome
+          ),
       },
       {
         path: 'catalogs/new',
         loadComponent: () =>
-          import('./vendor/catalogs/catalog-form').then((m) => m.VendorCatalogForm),
+          import('./owner/components/catalogs/catalog-form').then(
+            (m) => m.VendorCatalogForm
+          ),
       },
       {
         path: 'catalogs/:id/edit',
         loadComponent: () =>
-          import('./vendor/catalogs/catalog-form').then((m) => m.VendorCatalogForm),
+          import('./owner/components/catalogs/catalog-form').then(
+            (m) => m.VendorCatalogForm
+          ),
       },
       {
         path: 'catalogs',
         loadComponent: () =>
-          import('./vendor/catalogs/catalogs').then((m) => m.VendorCatalogs),
+          import('./owner/components/catalogs/catalogs').then((m) => m.VendorCatalogs),
       },
       {
         path: 'products/new',
         loadComponent: () =>
-          import('./vendor/products/product-form').then((m) => m.VendorProductForm),
+          import('./owner/components/products/product-form').then(
+            (m) => m.VendorProductForm
+          ),
       },
       {
         path: 'products/:id/edit',
         loadComponent: () =>
-          import('./vendor/products/product-form').then((m) => m.VendorProductForm),
+          import('./owner/components/products/product-form').then(
+            (m) => m.VendorProductForm
+          ),
       },
       {
         path: 'products',
         loadComponent: () =>
-          import('./vendor/products/products').then((m) => m.VendorProducts),
+          import('./owner/components/products/products').then((m) => m.VendorProducts),
       },
       {
         path: 'master-data/new',
         loadComponent: () =>
-          import('./vendor/master-data/master-data-form').then((m) => m.VendorMasterDataForm),
+          import('./owner/components/master-data/master-data-form').then(
+            (m) => m.VendorMasterDataForm
+          ),
       },
       {
         path: 'master-data/:id/edit',
         loadComponent: () =>
-          import('./vendor/master-data/master-data-form').then((m) => m.VendorMasterDataForm),
+          import('./owner/components/master-data/master-data-form').then(
+            (m) => m.VendorMasterDataForm
+          ),
       },
       {
         path: 'master-data',
         loadComponent: () =>
-          import('./vendor/master-data/master-data').then((m) => m.VendorMasterData),
+          import('./owner/components/master-data/master-data').then(
+            (m) => m.VendorMasterData
+          ),
       },
       {
         path: 'leads',
         loadComponent: () =>
-          import('./vendor/leads/leads').then((m) => m.VendorLeads),
+          import('./owner/components/leads/leads').then((m) => m.VendorLeads),
       },
       {
         path: 'profile',
         loadComponent: () =>
-          import('./vendor/profile/profile').then((m) => m.VendorProfile),
+          import('./owner/components/profile/profile').then((m) => m.VendorProfile),
       },
       { path: 'change-password', redirectTo: '/common/changepassword', pathMatch: 'full' },
     ],
   },
 
-  // Public shared catalog — matches API: {publicBaseUrl}/c/{token}
+  // Public shared catalog
   {
     path: 'c/:token',
     loadComponent: () =>
-      import('./storefront/pages/public-products/public-products').then(
+      import('./public/components/public-products/public-products').then(
         (m) => m.PublicProducts
       ),
   },
@@ -176,22 +212,21 @@ export const routes: Routes = [
       {
         path: 'products',
         loadComponent: () =>
-          import('./storefront/pages/public-products/public-products').then(
+          import('./public/components/public-products/public-products').then(
             (m) => m.PublicProducts
           ),
       },
       {
-        // Legacy /:storeCode/c/:token — same page as /c/:token
         path: 'c/:shortCode',
         loadComponent: () =>
-          import('./storefront/pages/public-products/public-products').then(
+          import('./public/components/public-products/public-products').then(
             (m) => m.PublicProducts
           ),
       },
       {
         path: 'cart',
         loadComponent: () =>
-          import('./storefront/pages/public-interest-cart/public-interest-cart').then(
+          import('./public/components/public-interest-cart/public-interest-cart').then(
             (m) => m.PublicInterestCart
           ),
       },
@@ -199,6 +234,5 @@ export const routes: Routes = [
     ],
   },
 
-  // Unknown paths → public home (not login)
   { path: '**', redirectTo: '' },
 ];

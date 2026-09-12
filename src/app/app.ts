@@ -1,9 +1,9 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+﻿import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
-import { GlobalLoader } from './core/components/global-loader/global-loader';
-import { LoadingService } from './core/services/loading.service';
+import { GlobalLoader } from './common/components/global-loader/global-loader';
+import { LoadingService } from './common/services/loading.service';
 
 @Component({
   selector: 'app-root',

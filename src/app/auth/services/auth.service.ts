@@ -1,12 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+﻿import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, from, map, switchMap, throwError } from 'rxjs';
-import { ApiClientError } from '../../core/api/api.types';
-import { ApiHttpService } from '../../core/api/api-http.service';
-import { CryptoStorageService } from '../../core/services/crypto-storage.service';
-import { ThemeService } from '../../core/services/theme.service';
-import { ToastService } from '../../core/services/toast.service';
-import { getRoleFromToken, normalizeAppRole } from '../../core/utils/jwt.util';
+import { ApiClientError } from '@common/api/api.types';
+import { ApiHttpService } from '@common/api/api-http.service';
+import { CryptoStorageService } from '@common/services/crypto-storage.service';
+import { ThemeService } from '@common/services/theme.service';
+import { ToastService } from '@common/services/toast.service';
+import { getRoleFromToken, normalizeAppRole } from '@common/utils/jwt.util';
 import {
   AccountActionResponse,
   AuthSession,
@@ -140,7 +140,7 @@ export class AuthService {
     );
   }
 
-  /** POST /account/userProfile — current logged-in user details. */
+  /** POST /account/userProfile â€” current logged-in user details. */
   getUserProfile(): Observable<UserProfile> {
     return this.api.post<UserProfileApiPayload>('/account/userProfile', {}).pipe(
       map((res) => this.normalizeUserProfile(res)),
@@ -214,7 +214,7 @@ export class AuthService {
     void this.router.navigateByUrl(this.getDashboardRoute());
   }
 
-  /** POST /account/logout — revoke server session, then clear local auth. */
+  /** POST /account/logout â€” revoke server session, then clear local auth. */
   logout(): void {
     const token = this.getAccessToken();
     if (!token) {
