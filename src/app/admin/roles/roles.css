@@ -286,7 +286,10 @@ tbody tr:hover {
 
 .actions-dropdown-fixed {
   position: fixed;
-  z-index: 150;
+  z-index: 5000;
+  max-height: min(70vh, calc(100vh - 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .actions-dropdown button {

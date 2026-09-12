@@ -200,30 +200,11 @@
                   type="button"
                   class="dg-menu-dots"
                   aria-label="More actions"
-                  (click)="toggleActionsMenu(row, $event)"
+                  [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
+                  (click)="toggleActionsMenu(row, $event, 'secondary')"
                 >
                   <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
-                @if (openActionsMenuId() === rowId(row)) {
-                  <div
-                    class="dg-actions-dropdown"
-                    [ngStyle]="actionsMenuStyle()"
-                    (click)="$event.stopPropagation()"
-                  >
-                    @for (item of secondaryCardActions(row); track item.id) {
-                      <button
-                        type="button"
-                        [disabled]="isActionDisabled(item, row)"
-                        (click)="onAction(item, row, $event)"
-                      >
-                        <span class="dg-action-icon">
-                          <i [class]="actionIcon(item, row)"></i>
-                        </span>
-                        {{ actionLabel(item, row) }}
-                      </button>
-                    }
-                  </div>
-                }
               </div>
             }
           </div>
@@ -338,6 +319,30 @@
   }
 </div>
 
+@if (openActionsMenuId() && actionsMenuRow(); as menuRow) {
+  <div
+    #actionsPortal
+    class="dg-actions-dropdown dg-actions-dropdown-portal"
+    role="menu"
+    [ngStyle]="actionsMenuStyle()"
+    (click)="$event.stopPropagation()"
+  >
+    @for (item of actionsMenuItems(); track item.id) {
+      <button
+        type="button"
+        role="menuitem"
+        [disabled]="isActionDisabled(item, menuRow)"
+        (click)="onAction(item, menuRow, $event)"
+      >
+        <span class="dg-action-icon">
+          <i [class]="actionIcon(item, menuRow)"></i>
+        </span>
+        {{ actionLabel(item, menuRow) }}
+      </button>
+    }
+  </div>
+}
+
 <ng-template #cellContent let-row let-column="column">
   @if ((column.cellType || 'text') === 'avatar') {
     <div class="dg-avatar-cell">
@@ -377,30 +382,10 @@
       type="button"
       class="dg-menu-dots"
       aria-label="Row actions"
-      (click)="toggleActionsMenu(row, $event)"
+      [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
+      (click)="toggleActionsMenu(row, $event, 'all')"
     >
       <i class="fa-solid fa-ellipsis-vertical"></i>
     </button>
-
-    @if (openActionsMenuId() === rowId(row)) {
-      <div
-        class="dg-actions-dropdown"
-        [ngStyle]="actionsMenuStyle()"
-        (click)="$event.stopPropagation()"
-      >
-        @for (item of visibleActions(row); track item.id) {
-          <button
-            type="button"
-            [disabled]="isActionDisabled(item, row)"
-            (click)="onAction(item, row, $event)"
-          >
-            <span class="dg-action-icon">
-              <i [class]="actionIcon(item, row)"></i>
-            </span>
-            {{ actionLabel(item, row) }}
-          </button>
-        }
-      </div>
-    }
   </div>
 </ng-template>

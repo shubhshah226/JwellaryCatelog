@@ -1,11 +1,11 @@
-.public-home {
+﻿.public-home {
   --store-primary: #c9a227;
-  --gold: #c9a227;
+  --gold: var(--store-primary, #c9a227);
   --ink: #1c1917;
   --muted: #6b6560;
   --cream: #f6f1e8;
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: var(--public-font-display, 'Fraunces', Georgia, serif);
+  --font-body: var(--public-font, 'Figtree', system-ui, sans-serif);
   min-height: 100svh;
   background: #fff;
   color: var(--ink);
@@ -30,7 +30,7 @@
   width: 48px;
   height: 48px;
   border: 2px solid rgba(201, 162, 39, 0.2);
-  border-top-color: #c9a227;
+  border-top-color: var(--store-primary, #c9a227);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
@@ -393,7 +393,7 @@
 }
 
 .cat-fallback {
-  color: #c9a227;
+  color: var(--store-primary, #c9a227);
   font-size: 1.4rem;
 }
 
@@ -465,7 +465,7 @@
 }
 
 .bridal-links a:hover {
-  border-bottom-color: #c9a227;
+  border-bottom-color: var(--store-primary, #c9a227);
 }
 
 .trend-tabs {
@@ -490,7 +490,7 @@
 
 .trend-tabs button.on {
   color: #1c1917;
-  border-color: #c9a227;
+  border-color: var(--store-primary, #c9a227);
   background: rgba(201, 162, 39, 0.12);
   font-weight: 700;
 }

@@ -8,6 +8,9 @@ export interface CartProduct {
   price?: number;
   imageUrl?: string;
   sku?: string;
+  metalType?: string;
+  purity?: string;
+  weight?: number;
 }
 
 @Injectable({
@@ -45,6 +48,9 @@ export class InterestCartService {
         price: product.price,
         imageUrl: product.images?.[0] ?? product.imageUrl,
         sku: product.sku,
+        metalType: product.metalType,
+        purity: product.purity,
+        weight: product.weight,
       },
     ];
     this.persist(next);

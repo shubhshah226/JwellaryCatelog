@@ -142,6 +142,7 @@
   @if (openActionsMenuId(); as roleId) {
     @if (getActiveRole(roleId); as role) {
       <div
+        #actionsPortal
         class="actions-dropdown actions-dropdown-fixed"
         [style.top.px]="menuPosition()?.top"
         [style.left.px]="menuPosition()?.left"

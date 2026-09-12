@@ -1,10 +1,14 @@
 import { NgStyle, NgTemplateOutlet } from '@angular/common';
 import {
+  AfterViewChecked,
   Component,
   ContentChildren,
+  ElementRef,
   HostListener,
+  OnDestroy,
   OnInit,
   QueryList,
+  ViewChild,
   computed,
   input,
   output,
@@ -31,7 +35,7 @@ import {
   templateUrl: './data-grid.html',
   styleUrl: './data-grid.css',
 })
-export class DataGridComponent<T = unknown> implements OnInit {
+export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterViewChecked {
   readonly rows = input<T[]>([]);
   readonly config = input.required<DataGridConfig<T>>();
 
@@ -44,15 +48,26 @@ export class DataGridComponent<T = unknown> implements OnInit {
   @ContentChildren(DataGridCellDirective)
   cellTemplates!: QueryList<DataGridCellDirective>;
 
+  @ViewChild('actionsPortal')
+  private actionsPortal?: ElementRef<HTMLElement>;
+
   readonly draftFilters = signal<Record<string, string>>({});
   readonly appliedFilters = signal<Record<string, string>>({});
   readonly currentPage = signal(1);
   readonly rowsPerPage = signal(10);
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly openActionsMenuId = signal<string | null>(null);
+  readonly actionsMenuRow = signal<T | null>(null);
+  readonly actionsMenuMode = signal<'all' | 'secondary'>('all');
   readonly actionsMenuStyle = signal<Record<string, string>>({});
   readonly sortField = signal<string | null>(null);
   readonly sortDirection = signal<DataGridSortDirection>('asc');
+  private portalPinnedToBody = false;
+  private readonly onAnyScroll = (): void => {
+    if (this.openActionsMenuId()) {
+      this.closeActionsMenu();
+    }
+  };
 
   readonly filteredRows = computed(() => {
     const rows = this.rows();
@@ -188,19 +203,45 @@ export class DataGridComponent<T = unknown> implements OnInit {
     return count;
   });
 
+  readonly actionsMenuItems = computed(() => {
+    const row = this.actionsMenuRow();
+    if (!row) {
+      return [] as DataGridAction<T>[];
+    }
+    return this.actionsMenuMode() === 'secondary'
+      ? this.secondaryCardActions(row)
+      : this.visibleActions(row);
+  });
+
   ngOnInit(): void {
     const defaultSize = this.config().defaultPageSize ?? 10;
     this.rowsPerPage.set(defaultSize);
     this.ensureFilterDefaults(true);
+    document.addEventListener('scroll', this.onAnyScroll, true);
   }
 
-  @HostListener('document:click')
-  onDocumentClick(): void {
+  ngOnDestroy(): void {
+    document.removeEventListener('scroll', this.onAnyScroll, true);
+    this.detachActionsPortal();
+  }
+
+  ngAfterViewChecked(): void {
+    this.pinActionsPortalToBody();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest('.dg-actions-dropdown-portal') ||
+      target?.closest('.dg-menu-dots')
+    ) {
+      return;
+    }
     this.closeActionsMenu();
   }
 
   @HostListener('window:resize')
-  @HostListener('window:scroll')
   onViewportChange(): void {
     if (this.openActionsMenuId()) {
       this.closeActionsMenu();
@@ -302,45 +343,93 @@ export class DataGridComponent<T = unknown> implements OnInit {
     return pageIds.length > 0 && pageIds.every((id) => this.selectedIds().has(id));
   }
 
-  toggleActionsMenu(row: T, event: Event): void {
+  toggleActionsMenu(row: T, event: Event, mode: 'all' | 'secondary' = 'all'): void {
+    event.preventDefault();
     event.stopPropagation();
     const id = this.rowId(row);
-    if (this.openActionsMenuId() === id) {
+    if (this.openActionsMenuId() === id && this.actionsMenuMode() === mode) {
+      this.closeActionsMenu();
+      return;
+    }
+
+    const items =
+      mode === 'secondary' ? this.secondaryCardActions(row) : this.visibleActions(row);
+    if (!items.length) {
       this.closeActionsMenu();
       return;
     }
 
     const target = event.currentTarget as HTMLElement | null;
     const rect = target?.getBoundingClientRect();
+    this.actionsMenuMode.set(mode);
+    this.actionsMenuRow.set(row);
+    this.openActionsMenuId.set(id);
+
     if (!rect) {
-      this.openActionsMenuId.set(id);
+      this.actionsMenuStyle.set({
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: '5000',
+      });
       return;
     }
 
-    const menuWidth = 180;
-    const estimatedHeight = Math.max(44, this.visibleActions(row).length * 42 + 8);
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUp = spaceBelow < estimatedHeight + 12 && rect.top > estimatedHeight;
+    const menuWidth = 196;
+    const estimatedHeight = Math.min(
+      window.innerHeight - 16,
+      Math.max(48, items.length * 44 + 10)
+    );
+    const gap = 6;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+
+    let top = openUp ? rect.top - estimatedHeight - gap : rect.bottom + gap;
+    top = Math.min(Math.max(8, top), Math.max(8, window.innerHeight - estimatedHeight - 8));
 
     const left = Math.min(
       Math.max(8, rect.right - menuWidth),
-      window.innerWidth - menuWidth - 8
+      Math.max(8, window.innerWidth - menuWidth - 8)
     );
-    const top = openUp ? rect.top - estimatedHeight - 6 : rect.bottom + 6;
 
     this.actionsMenuStyle.set({
       position: 'fixed',
-      top: `${Math.max(8, top)}px`,
+      top: `${top}px`,
       left: `${left}px`,
       right: 'auto',
-      zIndex: '2000',
+      bottom: 'auto',
+      zIndex: '5000',
+      maxHeight: `${Math.min(estimatedHeight, window.innerHeight - 16)}px`,
     });
-    this.openActionsMenuId.set(id);
   }
 
   closeActionsMenu(): void {
+    this.detachActionsPortal();
     this.openActionsMenuId.set(null);
+    this.actionsMenuRow.set(null);
+    this.actionsMenuMode.set('all');
     this.actionsMenuStyle.set({});
+  }
+
+  private pinActionsPortalToBody(): void {
+    const el = this.actionsPortal?.nativeElement;
+    if (!el || !this.openActionsMenuId()) {
+      return;
+    }
+    if (el.parentElement !== document.body) {
+      document.body.appendChild(el);
+      this.portalPinnedToBody = true;
+    }
+  }
+
+  private detachActionsPortal(): void {
+    const el = this.actionsPortal?.nativeElement;
+    if (this.portalPinnedToBody && el?.parentElement === document.body) {
+      el.remove();
+    }
+    this.portalPinnedToBody = false;
   }
 
   visibleActions(row: T): DataGridAction<T>[] {

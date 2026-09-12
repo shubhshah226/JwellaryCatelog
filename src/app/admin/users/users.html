@@ -168,6 +168,7 @@
   @if (openActionsMenuId(); as userId) {
     @if (getActiveUser(userId); as user) {
       <div
+        #actionsPortal
         class="actions-dropdown actions-dropdown-fixed"
         [style.top.px]="menuPosition()?.top"
         [style.left.px]="menuPosition()?.left"

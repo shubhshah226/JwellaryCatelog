@@ -11,15 +11,6 @@
 
       <div class="pvm-layout">
         <section class="pvm-visual">
-          <div class="pvm-brand-row">
-            <p class="pvm-brand">{{ vendorName() || 'Jewellery' }}</p>
-            @if (contactPhone()) {
-              <a class="pvm-tagline" [href]="'tel:' + contactPhone()">{{ contactPhone() }}</a>
-            } @else {
-              <p class="pvm-tagline">Designs shared for you</p>
-            }
-          </div>
-
           <div class="pvm-gallery-frame">
             <div #carouselTrack class="pvm-carousel" (scroll)="onCarouselScroll()">
               @if (displayImages().length) {
@@ -42,14 +33,16 @@
               <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image">
                 <i class="fa-solid fa-chevron-right"></i>
               </button>
+              <div class="pvm-dots" aria-hidden="true">
+                @for (img of displayImages(); track $index) {
+                  <span class="dot" [class.active]="activeImageIndex() === $index"></span>
+                }
+              </div>
             }
           </div>
 
           @if (displayImages().length > 1) {
             <div class="pvm-thumbs">
-              <button type="button" class="pvm-thumb-nav" (click)="prevImage()" aria-label="Previous">
-                <i class="fa-solid fa-chevron-left"></i>
-              </button>
               @for (img of displayImages(); track $index) {
                 <button
                   type="button"
@@ -60,84 +53,85 @@
                   <img [src]="img" [alt]="item.name + ' view ' + ($index + 1)" />
                 </button>
               }
-              <button type="button" class="pvm-thumb-nav" (click)="nextImage()" aria-label="Next">
-                <i class="fa-solid fa-chevron-right"></i>
-              </button>
             </div>
           }
         </section>
 
         <section class="pvm-content">
-          <div class="pvm-content-top">
+          <div class="pvm-scroll">
+            <p class="pvm-vendor">{{ vendorName() || 'Jewellery' }}</p>
             @if (item.category) {
               <span class="pvm-category">{{ item.category }}</span>
             }
-          </div>
+            <h2>{{ item.name }}</h2>
+            <p class="pvm-code">Code {{ skuLabel(item) }}</p>
 
-          <h2>{{ item.name }}</h2>
-          <p class="pvm-code">Product Code {{ skuLabel(item) }}</p>
-
-          <div class="pvm-details">
             @if (hasPrice(item)) {
-              <p class="pvm-price">{{ priceLabel(item) }}</p>
-              @if (item.isSpecialPrice && item.listPrice) {
-                <p class="pvm-list-price">Catalog {{ formatListRs(item.listPrice) }}</p>
-              }
+              <div class="pvm-price-block">
+                <p class="pvm-price">{{ priceLabel(item) }}</p>
+                @if (item.isSpecialPrice && item.listPrice) {
+                  <p class="pvm-list-price">Catalog {{ formatListRs(item.listPrice) }}</p>
+                }
+              </div>
             }
 
             @if (item.description) {
               <p class="pvm-desc">{{ item.description }}</p>
             }
 
-            <div class="pvm-specs">
-              @if (item.metalType) {
-                <div class="spec"><span>Metal</span><strong>{{ item.metalType }}</strong></div>
-              }
-              @if (item.purity) {
-                <div class="spec"><span>Purity</span><strong>{{ item.purity }}</strong></div>
-              }
-              @if (item.weight) {
-                <div class="spec"><span>Weight</span><strong>{{ item.weight }} g</strong></div>
-              }
-              @if (item.sku) {
-                <div class="spec"><span>SKU</span><strong>{{ item.sku }}</strong></div>
-              }
-            </div>
+            @if (item.metalType || item.purity || item.weight || item.sku) {
+              <div class="pvm-specs">
+                @if (item.metalType) {
+                  <div class="spec"><span>Metal</span><strong>{{ item.metalType }}</strong></div>
+                }
+                @if (item.purity) {
+                  <div class="spec"><span>Purity</span><strong>{{ item.purity }}</strong></div>
+                }
+                @if (item.weight) {
+                  <div class="spec"><span>Weight</span><strong>{{ item.weight }} g</strong></div>
+                }
+                @if (item.sku) {
+                  <div class="spec"><span>SKU</span><strong>{{ item.sku }}</strong></div>
+                }
+              </div>
+            }
 
             @if (justAdded() || isInCart()) {
               <div class="pvm-success">
-                <i class="fa-solid fa-gem"></i>
-                <p>{{ successMessage() || 'This piece is in your interest list.' }}</p>
-                <button type="button" class="pvm-btn gold" (click)="goToCart()">
-                  View Interest List ({{ interestCart.count() }})
-                </button>
-                @if (!isInCart()) {
-                  <button type="button" class="pvm-btn outline" (click)="addToCart()">
-                    Add to Interest List
+                <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                <div>
+                  <p>{{ successMessage() || 'Saved in your interest list.' }}</p>
+                  <button type="button" class="pvm-text-link" (click)="goToCart()">
+                    Open interest list ({{ interestCart.count() }})
                   </button>
-                }
+                </div>
               </div>
-            } @else {
-              <button type="button" class="pvm-btn gold" (click)="addToCart()">
-                + Add to Interest List
-              </button>
-              <p class="pvm-action-hint">
-                Add multiple pieces, then send one interest from your cart.
-              </p>
-              @if (errorMessage()) {
-                <p class="pvm-error">{{ errorMessage() }}</p>
-              }
             }
           </div>
 
-          @if (contactPhone()) {
-            <div class="pvm-trust">
-              <div class="trust-item">
-                <i class="fa-solid fa-phone"></i>
-                <a [href]="'tel:' + contactPhone()">Call {{ contactPhone() }}</a>
-              </div>
-            </div>
-          }
+          <div class="pvm-actions">
+            @if (!isInCart()) {
+              <button type="button" class="pvm-btn primary" (click)="addToCart()">
+                <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                Add to interest list
+              </button>
+            } @else {
+              <button type="button" class="pvm-btn primary" (click)="goToCart()">
+                <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                View interest list
+              </button>
+            }
+            @if (contactPhone()) {
+              <a class="pvm-btn ghost" [href]="'tel:' + contactPhone()">
+                <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                Call jeweller
+              </a>
+            }
+            @if (errorMessage()) {
+              <p class="pvm-error">{{ errorMessage() }}</p>
+            }
+            <p class="pvm-hint">Save several pieces, then send one enquiry from your list.</p>
+          </div>
         </section>
       </div>
     </div>

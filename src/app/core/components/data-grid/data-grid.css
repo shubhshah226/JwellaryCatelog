@@ -105,6 +105,7 @@
 
 .dg-table-wrap {
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 table {
@@ -244,14 +245,21 @@ th {
 }
 
 .dg-actions-dropdown {
-  position: fixed;
-  min-width: 160px;
+  min-width: 180px;
   background: var(--app-surface);
   border: 1px solid var(--app-border-strong);
   border-radius: 10px;
   box-shadow: 0 12px 32px var(--app-shadow);
-  z-index: 2000;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dg-actions-dropdown-portal {
+  position: fixed;
+  z-index: 5000;
+  max-height: min(70vh, calc(100vh - 16px));
 }
 
 .dg-actions-dropdown button {

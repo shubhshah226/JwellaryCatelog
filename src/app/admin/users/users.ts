@@ -1,4 +1,15 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 import { VendorService } from '../../dashboard/services/vendor.service';
@@ -20,9 +31,12 @@ type DrawerMode = 'add' | 'edit';
   templateUrl: './users.html',
   styleUrl: './users.css',
 })
-export class AdminUsers implements OnInit {
+export class AdminUsers implements OnInit, OnDestroy, AfterViewChecked {
   private readonly userService = inject(UserService);
   private readonly vendorService = inject(VendorService);
+
+  @ViewChild('actionsPortal')
+  private actionsPortal?: ElementRef<HTMLElement>;
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
@@ -39,6 +53,12 @@ export class AdminUsers implements OnInit {
   readonly sortDirection = signal<SortDirection>('asc');
   readonly searchQuery = signal('');
   readonly roleFilter = signal('all');
+  private portalPinnedToBody = false;
+  private readonly onAnyScroll = (): void => {
+    if (this.openActionsMenuId()) {
+      this.closeActionsMenu();
+    }
+  };
 
   userForm: UserFormData = createEmptyUserForm();
 
@@ -75,6 +95,7 @@ export class AdminUsers implements OnInit {
   });
 
   ngOnInit(): void {
+    document.addEventListener('scroll', this.onAnyScroll, true);
     this.userService.getUsers().subscribe({
       next: (users) => {
         this.allUsers.set(users);
@@ -89,6 +110,15 @@ export class AdminUsers implements OnInit {
     this.vendorService.getVendorsData().subscribe({
       next: ({ vendors }) => this.vendors.set(vendors),
     });
+  }
+
+  ngAfterViewChecked(): void {
+    this.pinActionsPortalToBody();
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('scroll', this.onAnyScroll, true);
+    this.detachActionsPortal();
   }
 
   @HostListener('document:keydown.escape')
@@ -110,8 +140,28 @@ export class AdminUsers implements OnInit {
   }
 
   closeActionsMenu(): void {
+    this.detachActionsPortal();
     this.openActionsMenuId.set(null);
     this.menuPosition.set(null);
+  }
+
+  private pinActionsPortalToBody(): void {
+    const el = this.actionsPortal?.nativeElement;
+    if (!el || !this.openActionsMenuId()) {
+      return;
+    }
+    if (el.parentElement !== document.body) {
+      document.body.appendChild(el);
+      this.portalPinnedToBody = true;
+    }
+  }
+
+  private detachActionsPortal(): void {
+    const el = this.actionsPortal?.nativeElement;
+    if (this.portalPinnedToBody && el?.parentElement === document.body) {
+      el.remove();
+    }
+    this.portalPinnedToBody = false;
   }
 
   getActiveUser(userId: number): AppUser | undefined {
@@ -159,18 +209,18 @@ export class AdminUsers implements OnInit {
 
     const button = event.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
-    const menuWidth = 140;
-    const menuHeight = 92;
+    const menuWidth = 160;
+    const menuHeight = 104;
     const gap = 6;
 
     let top = rect.bottom + gap;
     if (top + menuHeight > window.innerHeight - 8) {
-      top = rect.top - menuHeight - gap;
+      top = Math.max(8, rect.top - menuHeight - gap);
     }
 
     this.menuPosition.set({
-      top: Math.max(8, top),
-      left: Math.max(8, rect.right - menuWidth),
+      top: Math.max(8, Math.min(top, window.innerHeight - menuHeight - 8)),
+      left: Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)),
     });
     this.openActionsMenuId.set(userId);
   }
