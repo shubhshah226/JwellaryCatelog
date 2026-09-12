@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, of, throwError } from 'rxjs';
+import { Observable, map, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiHttpService } from '../../core/api/api-http.service';
 import { AuthService } from '../../auth/services/auth.service';
@@ -415,7 +415,7 @@ export class VendorDataService {
         if (!token) {
           return '';
         }
-        const base = (environment.apiUrl || environment.apiBaseUrl || '').replace(/\/$/, '');
+        const base = (environment.apiUrl || '').replace(/\/$/, '');
         const url = `${base}/public/businessLogo/${encodeURIComponent(token)}`;
         return cacheBust ? `${url}?t=${Date.now()}` : url;
       })
@@ -557,10 +557,6 @@ export class VendorDataService {
       catalogExpiryDays: profile.catalogExpiryDays ?? undefined,
       priceVisibleDefault: profile.priceVisibleDefault ?? true,
     };
-  }
-
-  getVendorUsers(): Observable<never[]> {
-    return of([]);
   }
 
   filterCatalogs(items: Catalog[], search: string, status: string): Catalog[] {

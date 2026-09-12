@@ -83,12 +83,12 @@ export const routes: Routes = [
     ],
   },
 
-  // Vendor routes
+  // Owner (tenant) routes
   {
     path: 'vendor',
     loadComponent: () =>
       import('./dashboard/layout/dashboard-layout').then((m) => m.DashboardLayout),
-    canActivate: [roleGuard('vendor')],
+    canActivate: [roleGuard('owner')],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       {

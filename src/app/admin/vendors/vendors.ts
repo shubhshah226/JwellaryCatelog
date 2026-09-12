@@ -183,12 +183,7 @@ export class Vendors implements OnInit {
         this.stats.set(stats);
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toastService.error(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load vendors. Please ensure the API is running on port 8400.'
-        );
+      error: () => {
         this.errorMessage.set('Unable to load vendors.');
         this.isLoading.set(false);
       },
@@ -315,11 +310,8 @@ export class Vendors implements OnInit {
               : 'Vendor set to inactive.')
         );
       },
-      error: (err: unknown) => {
+      error: () => {
         this.statusUpdatingId.set(null);
-        const message =
-          err instanceof Error ? err.message : 'Unable to update vendor status.';
-        this.toastService.error(message);
       },
     });
   }
@@ -373,11 +365,8 @@ export class Vendors implements OnInit {
         });
         this.toastService.success(result.message || 'Owner password reset successfully.');
       },
-      error: (err: unknown) => {
+      error: () => {
         this.isResettingPassword.set(false);
-        const message =
-          err instanceof Error ? err.message : 'Unable to reset owner password.';
-        this.toastService.error(message);
       },
     });
   }
@@ -420,9 +409,8 @@ export class Vendors implements OnInit {
 
       this.vendorService.updateVendor(existingVendor, this.vendorForm).subscribe({
         next: (updatedVendor) => this.handleVendorSaved(updatedVendor),
-        error: (err: Error) => {
+        error: () => {
           this.isSubmitting.set(false);
-          this.toastService.error(err.message || 'Failed to update vendor. Please try again.');
         },
       });
 
@@ -438,9 +426,8 @@ export class Vendors implements OnInit {
           this.createdCredentials.set(loginCredentials);
         }
       },
-      error: (err: Error) => {
+      error: () => {
         this.isSubmitting.set(false);
-        this.toastService.error(err.message || 'Failed to add vendor. Please try again.');
       },
     });
   }

@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Catalog } from '../../dashboard/models/dashboard.model';
-import { ApiClientError } from '../../core/api/api.types';
 import { DataGridComponent } from '../../core/components/data-grid/data-grid';
 import {
   DataGridActionEvent,
@@ -142,14 +141,7 @@ export class VendorCatalogs implements OnInit {
         next: (catalogs) => {
           this.allCatalogs.set(catalogs);
         },
-        error: (err: unknown) => {
-          const detail =
-            err instanceof ApiClientError
-              ? err.message
-              : err instanceof Error
-                ? err.message
-                : 'Unable to load catalogs.';
-          this.toast.error(detail);
+        error: () => {
           this.errorMessage.set('Unable to load catalogs.');
         },
       });
@@ -203,11 +195,6 @@ export class VendorCatalogs implements OnInit {
           this.toast.success('Share link copied.')
         );
       },
-      error: (err: unknown) => {
-        this.toast.error(
-          err instanceof ApiClientError ? err.message : 'Failed to get share link.'
-        );
-      },
     });
   }
 
@@ -227,11 +214,6 @@ export class VendorCatalogs implements OnInit {
           )
         );
         this.toast.success('Catalog revoked.');
-      },
-      error: (err: unknown) => {
-        this.toast.error(
-          err instanceof ApiClientError ? err.message : 'Failed to revoke catalog.'
-        );
       },
     });
   }

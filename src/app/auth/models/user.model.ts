@@ -1,4 +1,4 @@
-export type UserRole = 'superadmin' | 'vendor' | 'customer';
+export type UserRole = 'superadmin' | 'owner' | 'customer';
 
 export interface AuthUser {
   id: string;
@@ -8,7 +8,7 @@ export interface AuthUser {
   username?: string;
   email: string;
   role: UserRole;
-  /** API tenantId for owner/vendor */
+  /** API tenantId for owner */
   tenantId?: string | null;
   vendorId?: string | null;
   status?: string;

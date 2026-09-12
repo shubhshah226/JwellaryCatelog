@@ -1,3 +1,8 @@
+/**
+ * Change-password page for authenticated users.
+ * Validates password rules client-side, then calls AuthService;
+ * API failures are toasted by ApiHttpService (no duplicate toast here).
+ */
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../core/services/toast.service';
@@ -61,13 +66,8 @@ export class ChangePassword {
         this.toast.success(res.message || 'Password changed successfully.');
         this.authService.forceLogout();
       },
-      error: (err: unknown) => {
+      error: () => {
         this.isSubmitting.set(false);
-        this.toast.error(
-          err instanceof Error
-            ? err.message
-            : 'Unable to change password. Please try again.'
-        );
       },
     });
   }

@@ -324,7 +324,7 @@ export class StorefrontService {
     const logoUrl = logoPath
       ? logoPath.startsWith('http')
         ? logoPath
-        : `${environment.apiBaseUrl}${logoPath}`
+        : `${environment.apiUrl}${logoPath}`
       : '';
     const config = mergeStorefrontWithDefaults(
       {
@@ -365,7 +365,7 @@ export class StorefrontService {
         ? [item.primaryImageId]
         : [];
     const images = imageIds.map(
-      (imageId) => `${environment.apiBaseUrl}/public/productImage/${token}/${imageId}/grid`
+      (imageId) => `${environment.apiUrl}/public/productImage/${token}/${imageId}/grid`
     );
     const price =
       priceVisible === false
@@ -449,7 +449,7 @@ export class StorefrontService {
     if (!url) {
       return url;
     }
-    const base = environment.apiBaseUrl.replace(/\/$/, '');
+    const base = environment.apiUrl.replace(/\/$/, '');
     if (url.startsWith(base)) {
       return url.slice(base.length) || '/';
     }

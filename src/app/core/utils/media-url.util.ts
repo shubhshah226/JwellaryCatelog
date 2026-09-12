@@ -2,7 +2,7 @@ import { environment } from '../../../environments/environment';
 
 /** Origin for static uploads (not under /api/v1). */
 function mediaOrigin(): string {
-  const base = (environment.apiBaseUrl || environment.apiUrl || '').replace(/\/$/, '');
+  const base = (environment.apiUrl || '').replace(/\/$/, '');
   return base.replace(/\/api\/v1$/i, '');
 }
 

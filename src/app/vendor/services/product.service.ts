@@ -87,7 +87,7 @@ export class ProductService {
     if (!token) {
       return '';
     }
-    const base = (environment.apiUrl || environment.apiBaseUrl || '').replace(/\/$/, '');
+    const base = (environment.apiUrl || '').replace(/\/$/, '');
     return `${base}/product/productImage/${encodeURIComponent(id)}/${size}?Token=${encodeURIComponent(token)}`;
   }
 

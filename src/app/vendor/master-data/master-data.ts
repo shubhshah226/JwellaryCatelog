@@ -1,7 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { ApiClientError } from '../../core/api/api.types';
 import { DataGridComponent } from '../../core/components/data-grid/data-grid';
 import {
   DataGridActionEvent,
@@ -244,8 +243,7 @@ export class VendorMasterData implements OnInit {
         this.colors.set(data.colors);
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(this.errMsg(err, 'Unable to load product options.'));
+      error: () => {
         this.errorMessage.set('Unable to load product options.');
         this.isLoading.set(false);
       },
@@ -297,10 +295,6 @@ export class VendorMasterData implements OnInit {
         this.removeFromList(tab, item.id);
         this.toast.success(`${TAB_META[tab].label} removed successfully.`);
       },
-      error: (err: unknown) => {
-        const message = this.errMsg(err, 'Failed to remove.');
-        this.toast.error(message);
-      },
     });
   }
 
@@ -319,15 +313,5 @@ export class VendorMasterData implements OnInit {
       default:
         this.categories.update(drop);
     }
-  }
-
-  private errMsg(err: unknown, fallback: string): string {
-    if (err instanceof ApiClientError) {
-      return err.message || fallback;
-    }
-    if (err instanceof Error) {
-      return err.message || fallback;
-    }
-    return fallback;
   }
 }

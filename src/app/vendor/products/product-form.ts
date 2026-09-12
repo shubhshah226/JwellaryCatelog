@@ -192,8 +192,7 @@ export class VendorProductForm implements OnInit {
             this.toast.success('Product updated successfully.');
             void this.router.navigateByUrl('/vendor/products');
           },
-          error: (err: Error) => {
-            this.toast.error(err.message || 'Failed to update product.');
+          error: () => {
             this.isSubmitting.set(false);
           },
         });
@@ -206,8 +205,7 @@ export class VendorProductForm implements OnInit {
         this.toast.success('Product added successfully.');
         void this.router.navigateByUrl('/vendor/products');
       },
-      error: (err: Error) => {
-        this.toast.error(err.message || 'Failed to add product.');
+      error: () => {
         this.isSubmitting.set(false);
       },
     });
@@ -366,8 +364,7 @@ export class VendorProductForm implements OnInit {
         this.existingImageCount.set(images.length);
         this.isLoading.set(false);
       },
-      error: (err: Error) => {
-        this.toast.error(err.message || 'Unable to load product.');
+      error: () => {
         this.pageError.set('Unable to load product.');
         this.isLoading.set(false);
       },

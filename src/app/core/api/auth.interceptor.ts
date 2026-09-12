@@ -6,6 +6,14 @@ import { AuthService } from '../../auth/services/auth.service';
 import { ToastService } from '../services/toast.service';
 import { ApiClientError, ApiResponse } from './api.types';
 
+/**
+ * Auth interceptor
+ * - Attaches `Token` header from the in-memory session (loaded via APP_INITIALIZER)
+ * - On 401 (HTTP or envelope status): toast + force logout
+ *
+ * Anonymous / public / logout calls skip the 401 force-logout path.
+ */
+
 let handlingUnauthorized = false;
 
 function isAnonymousAccountRequest(url: string): boolean {
@@ -43,10 +51,8 @@ function handleInvalidToken(authService: AuthService, toastService: ToastService
   }, 1500);
 }
 
-/** Attach smart-catalog `Token` header; logout + redirect on invalid token (401). */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const isApiRequest =
-    req.url.startsWith(environment.apiUrl) || req.url.startsWith(environment.apiBaseUrl);
+  const isApiRequest = req.url.startsWith(environment.apiUrl);
 
   if (!isApiRequest) {
     return next(req);
@@ -66,18 +72,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     !req.headers.has('Token') &&
     !req.headers.has('X-Customer-Session')
   ) {
-    let token = authService.getAccessToken();
-    if (!token) {
-      try {
-        const raw = localStorage.getItem(environment.storageKey) || localStorage.getItem('user');
-        if (raw) {
-          const parsed = JSON.parse(raw) as { accessToken?: string; access_token?: string };
-          token = (parsed.accessToken || parsed.access_token || '').trim() || null;
-        }
-      } catch {
-        token = null;
-      }
-    }
+    const token = authService.getAccessToken();
     if (token) {
       outbound = req.clone({
         setHeaders: { Token: token },

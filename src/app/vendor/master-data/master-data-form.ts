@@ -2,7 +2,6 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, finalize } from 'rxjs';
-import { ApiClientError } from '../../core/api/api.types';
 import { ToastService } from '../../core/services/toast.service';
 import {
   AddCategoryParamModel,
@@ -200,10 +199,6 @@ export class VendorMasterDataForm implements OnInit {
         this.toast.success(successMessage);
         this.goBack();
       },
-      error: (err: unknown) => {
-        const message = this.errMsg(err, 'Failed to save.');
-        this.toast.error(message);
-      },
     });
   }
 
@@ -272,21 +267,10 @@ export class VendorMasterDataForm implements OnInit {
         }
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(this.errMsg(err, 'Unable to load item.'));
+      error: () => {
         this.pageError.set('Unable to load item.');
         this.isLoading.set(false);
       },
     });
-  }
-
-  private errMsg(err: unknown, fallback: string): string {
-    if (err instanceof ApiClientError) {
-      return err.message || fallback;
-    }
-    if (err instanceof Error) {
-      return err.message || fallback;
-    }
-    return fallback;
   }
 }

@@ -64,8 +64,7 @@ export class VendorLeads implements OnInit {
         this.applyFilters();
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(err instanceof Error ? err.message : 'Unable to load leads.');
+      error: () => {
         this.errorMessage.set('Unable to load leads.');
         this.isLoading.set(false);
       },
@@ -140,9 +139,8 @@ export class VendorLeads implements OnInit {
         this.applyFilters();
         this.detailLoading.set(false);
       },
-      error: (err: unknown) => {
+      error: () => {
         this.detailLoading.set(false);
-        this.toast.error(err instanceof Error ? err.message : 'Unable to load lead detail.');
       },
     });
   }
@@ -168,9 +166,8 @@ export class VendorLeads implements OnInit {
         this.statusSaving.set(false);
         this.toast.success(`Lead marked as ${this.formatStatus(status)}.`);
       },
-      error: (err: unknown) => {
+      error: () => {
         this.statusSaving.set(false);
-        this.toast.error(err instanceof Error ? err.message : 'Unable to update status.');
       },
     });
   }

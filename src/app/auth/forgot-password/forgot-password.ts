@@ -52,11 +52,6 @@ export class ForgotPassword {
               'If that email is registered, a reset link has been sent to it.'
           );
         },
-        error: (err: unknown) => {
-          this.toast.error(
-            err instanceof Error ? err.message : 'Unable to send reset link.'
-          );
-        },
       });
   }
 }

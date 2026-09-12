@@ -39,7 +39,7 @@ export function normalizeAppRole(raw: string | null | undefined): UserRole | nul
     return 'superadmin';
   }
   if (value === 'owner' || value === 'vendor' || value === 'jeweller' || value === 'seller') {
-    return 'vendor';
+    return 'owner';
   }
   if (value === 'customer') {
     return 'customer';

@@ -2,15 +2,31 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ToastService } from '../services/toast.service';
 import { ApiClientError, ApiResponse } from './api.types';
 
 export type QueryParams = Record<string, string | number | boolean | null | undefined>;
 
+/**
+ * Shared HTTP helper for the jewelry catalog API.
+ *
+ * - Prefixes paths with `environment.apiUrl`
+ * - Unwraps envelope `{ status, data, exceptions }`
+ * - Converts failures into `ApiClientError`
+ * - Shows a toast for API errors automatically (unless skipped)
+ *
+ * Opt out of auto toast on a call:
+ *   headers: new HttpHeaders({ 'X-Skip-Error-Toast': 'true' })
+ *
+ * Components should still handle `error:` for UI state (stop loading, etc.),
+ * but they do NOT need to call `toast.error` for normal API failures.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class ApiHttpService {
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
   readonly baseUrl = environment.apiUrl;
 
   get<T>(path: string, params?: QueryParams, headers?: HttpHeaders): Observable<T> {
@@ -29,7 +45,7 @@ export class ApiHttpService {
         headers: reqHeaders,
         responseType: 'blob',
       })
-      .pipe(catchError((err) => throwError(() => this.toApiError(err))));
+      .pipe(catchError((err) => this.fail(err, reqHeaders)));
   }
 
   getWithMeta<T>(
@@ -38,7 +54,8 @@ export class ApiHttpService {
     headers?: HttpHeaders
   ): Observable<{ data: T; meta?: Record<string, unknown> }> {
     return this.rawRequest<T>('GET', path, undefined, params, headers).pipe(
-      map((res) => ({ data: this.unwrap(res), meta: undefined }))
+      map((res) => ({ data: this.unwrap(res), meta: undefined })),
+      catchError((err) => this.fail(err, headers))
     );
   }
 
@@ -64,7 +81,7 @@ export class ApiHttpService {
       .post<ApiResponse<T>>(this.url(path), formData, { headers })
       .pipe(
         map((res) => this.unwrap(res)),
-        catchError((err) => throwError(() => this.toApiError(err)))
+        catchError((err) => this.fail(err, headers))
       );
   }
 
@@ -76,7 +93,8 @@ export class ApiHttpService {
     headers?: HttpHeaders
   ): Observable<T> {
     return this.rawRequest<T>(method, path, body, params, headers).pipe(
-      map((res) => this.unwrap(res))
+      map((res) => this.unwrap(res)),
+      catchError((err) => this.fail(err, headers))
     );
   }
 
@@ -87,13 +105,11 @@ export class ApiHttpService {
     params?: QueryParams,
     headers?: HttpHeaders
   ): Observable<ApiResponse<T>> {
-    return this.http
-      .request<ApiResponse<T>>(method, this.url(path), {
-        body,
-        params: this.toParams(params),
-        headers,
-      })
-      .pipe(catchError((err) => throwError(() => this.toApiError(err))));
+    return this.http.request<ApiResponse<T>>(method, this.url(path), {
+      body,
+      params: this.toParams(params),
+      headers,
+    });
   }
 
   private url(path: string): string {
@@ -117,7 +133,10 @@ export class ApiHttpService {
     return httpParams;
   }
 
-  /** New API envelope: { exceptions, data, status } */
+  /**
+   * New API envelope: { exceptions, data, status }
+   * status 200 → return data; otherwise throw ApiClientError with API message.
+   */
   private unwrap<T>(res: ApiResponse<T>): T {
     if (!res || typeof res !== 'object') {
       throw new ApiClientError('API_ERROR', 'Empty API response', 500);
@@ -163,6 +182,25 @@ export class ApiHttpService {
     return null;
   }
 
+  /** Normalize any failure, toast once (unless skipped / 401), then rethrow. */
+  private fail(err: unknown, headers?: HttpHeaders): Observable<never> {
+    const apiErr = this.toApiError(err);
+    this.maybeToast(apiErr, headers);
+    return throwError(() => apiErr);
+  }
+
+  private maybeToast(err: ApiClientError, headers?: HttpHeaders): void {
+    // Caller opted out (custom UI handling).
+    if (headers?.get('X-Skip-Error-Toast') === 'true') {
+      return;
+    }
+    // 401 is handled by authInterceptor (toast + force logout).
+    if (err.status === 401) {
+      return;
+    }
+    this.toast.error(err.message || 'Request failed');
+  }
+
   private toApiError(err: unknown): ApiClientError {
     if (err instanceof ApiClientError) {
       return err;
@@ -181,6 +219,9 @@ export class ApiHttpService {
         (typeof payload === 'string' && payload) || err.message || 'Unable to reach the API server.',
         err.status || 0
       );
+    }
+    if (err instanceof Error && err.message) {
+      return new ApiClientError('UNKNOWN', err.message);
     }
     return new ApiClientError('UNKNOWN', 'Unexpected error');
   }

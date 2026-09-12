@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, from, map, switchMap, throwError } from 'rxjs';
 import { ApiClientError } from '../../core/api/api.types';
 import { ApiHttpService } from '../../core/api/api-http.service';
+import { CryptoStorageService } from '../../core/services/crypto-storage.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { getRoleFromToken, normalizeAppRole } from '../../core/utils/jwt.util';
@@ -20,11 +21,15 @@ import {
   UserProfileApiPayload,
   UserRole,
 } from '../models/user.model';
-import { environment } from '../../../environments/environment';
 
-/** Plain localStorage key used by login (decrypted for now). */
-const USER_STORAGE_KEY = 'user';
-
+/**
+ * Authentication + session lifecycle.
+ *
+ * - Login / logout / password APIs
+ * - Keeps an in-memory `session` (token + user role)
+ * - Persists the login payload encrypted via CryptoStorageService
+ * - Maps API roles to app roles: `superadmin` | `owner`
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -33,24 +38,33 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly toast = inject(ToastService);
+  private readonly cryptoStorage = inject(CryptoStorageService);
 
+  /** Current signed-in session (memory). Null when logged out. */
   private session: AuthSession | null = null;
   private sessionLoaded = false;
   private sessionLoadPromise: Promise<void> | null = null;
 
-  /** Login API — returns unwrapped `data` (LoginResponse). Login component stays unchanged. */
+  /**
+   * POST /account/login
+   * On success: builds session in memory and encrypts it to localStorage.
+   */
   login(loginParamModel: LoginParamModel): Observable<LoginResponse> {
     return this.api.post<LoginApiPayload>('/account/login', loginParamModel).pipe(
-      map((res) => {
-        const normalized = this.normalizeLoginPayload(res);
-        if (normalized.accessToken) {
-          this.session = this.createSessionFromLogin(normalized);
-          this.sessionLoaded = true;
+      map((res) => this.normalizeLoginPayload(res)),
+      switchMap((normalized) => {
+        if (!normalized.accessToken) {
+          const message = normalized.message || 'Login failed';
+          this.toast.error(message);
+          return throwError(() => new Error(message));
         }
-        return normalized;
+        this.session = this.createSessionFromLogin(normalized);
+        this.sessionLoaded = true;
+        // Persist encrypted; ignore storage failures for navigation.
+        return from(this.cryptoStorage.setJson(normalized)).pipe(map(() => normalized));
       }),
       catchError((err: unknown) => {
-        if (err instanceof ApiClientError) {
+        if (err instanceof ApiClientError || err instanceof Error) {
           return throwError(() => new Error(err.message || 'Login failed'));
         }
         return throwError(() => new Error('Unable to connect to the API server.'));
@@ -58,7 +72,7 @@ export class AuthService {
     );
   }
 
-  /** POST /account/changePassword — body is ChangePasswordParamModel. */
+  /** POST /account/changePassword */
   changePassword(paramModel: ChangePasswordParamModel): Observable<AccountActionResponse> {
     return this.api.post<AccountActionResponse>('/account/changePassword', paramModel).pipe(
       map((res) => {
@@ -82,7 +96,7 @@ export class AuthService {
     );
   }
 
-  /** POST /account/forgotPassword — always succeeds with a generic message. */
+  /** POST /account/forgotPassword */
   forgotPassword(paramModel: ForgotPasswordParamModel): Observable<AccountActionResponse> {
     return this.api.post<AccountActionResponse>('/account/forgotPassword', paramModel).pipe(
       map((res) => {
@@ -102,7 +116,7 @@ export class AuthService {
     );
   }
 
-  /** POST /account/resetPassword — token from email link + new password. */
+  /** POST /account/resetPassword */
   resetPassword(paramModel: ResetPasswordParamModel): Observable<AccountActionResponse> {
     return this.api.post<AccountActionResponse>('/account/resetPassword', paramModel).pipe(
       map((res) => {
@@ -126,7 +140,7 @@ export class AuthService {
     );
   }
 
-  /** POST /account/userProfile — current logged-in user. */
+  /** POST /account/userProfile — current logged-in user details. */
   getUserProfile(): Observable<UserProfile> {
     return this.api.post<UserProfileApiPayload>('/account/userProfile', {}).pipe(
       map((res) => this.normalizeUserProfile(res)),
@@ -165,6 +179,7 @@ export class AuthService {
     return profile;
   }
 
+  /** Wait until encrypted session has been loaded (used by route guards + APP_INITIALIZER). */
   async ensureSessionLoaded(): Promise<void> {
     if (this.sessionLoaded) {
       return;
@@ -176,21 +191,19 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    this.hydrateFromStorageIfNeeded();
     return this.session !== null && !!this.session.token;
   }
 
   getSession(): AuthSession | null {
-    this.hydrateFromStorageIfNeeded();
     return this.session;
   }
 
   getAccessToken(): string | null {
-    return this.getSession()?.token ?? null;
+    return this.session?.token ?? null;
   }
 
   getRole(): UserRole | null {
-    return this.getSession()?.user.role ?? null;
+    return this.session?.user.role ?? null;
   }
 
   getDashboardRoute(): string {
@@ -230,54 +243,32 @@ export class AuthService {
   private clearLocalSession(): void {
     this.session = null;
     this.sessionLoaded = true;
-    localStorage.removeItem(USER_STORAGE_KEY);
-    localStorage.removeItem(environment.storageKey);
+    this.cryptoStorage.clear();
     this.themeService.resetToDark();
   }
 
-  private hydrateFromStorageIfNeeded(): void {
-    if (this.session?.token) {
-      return;
-    }
-    const stored = this.readStoredLogin();
-    if (stored?.accessToken) {
-      try {
-        this.session = this.createSessionFromLogin(stored);
-        this.sessionLoaded = true;
-      } catch {
-        this.session = null;
-      }
-    }
-  }
-
+  /** Decrypt session from localStorage into memory. */
   private async loadSession(): Promise<void> {
-    const stored = this.readStoredLogin();
-    if (stored?.accessToken) {
-      try {
-        this.session = this.createSessionFromLogin(stored);
-      } catch {
+    try {
+      const stored = await this.cryptoStorage.getJson<unknown>();
+      if (stored) {
+        const normalized = this.normalizeLoginPayload(stored);
+        if (normalized.accessToken) {
+          this.session = this.createSessionFromLogin(normalized);
+        } else {
+          this.session = null;
+        }
+      } else {
         this.session = null;
       }
-    } else {
+    } catch {
       this.session = null;
+      this.cryptoStorage.clear();
     }
     this.sessionLoaded = true;
   }
 
-  private readStoredLogin(): LoginResponse | null {
-    const raw = localStorage.getItem(USER_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    try {
-      return this.normalizeLoginPayload(JSON.parse(raw));
-    } catch {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      return null;
-    }
-  }
-
-  /** Accept camelCase or snake_case login payloads from API / localStorage. */
+  /** Accept camelCase or snake_case login payloads from API / storage. */
   normalizeLoginPayload(raw: unknown): LoginResponse {
     const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
     const pick = (...keys: string[]): unknown => {
@@ -303,10 +294,11 @@ export class AuthService {
     };
   }
 
+  /** Build in-memory session from login payload; role from JWT or userRole field. */
   private createSessionFromLogin(data: LoginResponse): AuthSession {
     const token = (data.accessToken || '').trim();
     const role = getRoleFromToken(token) ?? normalizeAppRole(data.userRole);
-    if (!token || (role !== 'superadmin' && role !== 'vendor')) {
+    if (!token || (role !== 'superadmin' && role !== 'owner')) {
       throw new Error('Invalid user role');
     }
 

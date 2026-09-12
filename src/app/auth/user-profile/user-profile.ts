@@ -1,6 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ToastService } from '../../core/services/toast.service';
 import { formatInIndia } from '../../core/utils/date-time.util';
 import { AuthService } from '../services/auth.service';
 import { UserProfile } from '../models/user.model';
@@ -13,7 +12,6 @@ import { UserProfile } from '../models/user.model';
 })
 export class UserProfilePage implements OnInit {
   private readonly authService = inject(AuthService);
-  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
   /** Static page state only — API detail goes to toast. */
@@ -33,10 +31,7 @@ export class UserProfilePage implements OnInit {
         this.profile.set(profile);
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(
-          err instanceof Error ? err.message : 'Unable to load user profile.'
-        );
+      error: () => {
         this.loadFailed.set(true);
         this.isLoading.set(false);
       },
@@ -47,10 +42,10 @@ export class UserProfilePage implements OnInit {
     if (!role) {
       return '—';
     }
-    if (role === 'superadmin') {
+    if (role === 'superadmin' || role === 'admin') {
       return 'Super Admin';
     }
-    if (role === 'owner') {
+    if (role === 'owner' || role === 'vendor') {
       return 'Owner';
     }
     return role;

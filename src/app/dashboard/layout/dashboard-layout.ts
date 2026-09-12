@@ -80,7 +80,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   readonly user = this.authService.getSession()?.user;
   readonly isAdmin = this.user?.role === 'superadmin';
   readonly baseRoute = this.isAdmin ? '/superAdmin' : '/vendor';
-  readonly roleLabel = this.isAdmin ? 'Super Admin' : 'Vendor';
+  readonly roleLabel = this.isAdmin ? 'Super Admin' : 'Owner';
 
   readonly adminNavItems: NavItem[] = [
     { label: 'Dashboard', route: '/superAdmin/dashboard', icon: 'dashboard' },

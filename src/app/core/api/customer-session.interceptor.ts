@@ -5,8 +5,7 @@ import { CustomerAuthService } from '../../storefront/services/customer-auth.ser
 
 /** Attach OTP session so public product APIs can reveal prices after verify. */
 export const customerSessionInterceptor: HttpInterceptorFn = (req, next) => {
-  const isApiRequest =
-    req.url.startsWith(environment.apiUrl) || req.url.startsWith(environment.apiBaseUrl);
+  const isApiRequest = req.url.startsWith(environment.apiUrl);
 
   if (!isApiRequest || req.headers.has('X-Customer-Session')) {
     return next(req);

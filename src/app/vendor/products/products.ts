@@ -260,8 +260,7 @@ export class VendorProducts implements OnInit {
         next: (products) => {
           this.allProducts.set(products);
         },
-        error: (err: Error) => {
-          this.toast.error(err.message || 'Unable to load products.');
+        error: () => {
           this.errorMessage.set('Unable to load products.');
         },
       });
@@ -324,7 +323,6 @@ export class VendorProducts implements OnInit {
         );
         this.toast.success(`Stock updated to ${this.stockLabel(stockStatus)}.`);
       },
-      error: (err: Error) => this.toast.error(err.message || 'Failed to update stock.'),
     });
   }
 
@@ -336,7 +334,6 @@ export class VendorProducts implements OnInit {
         );
         this.toast.success(status === 'active' ? 'Product activated.' : 'Product set inactive.');
       },
-      error: (err: Error) => this.toast.error(err.message || 'Failed to update status.'),
     });
   }
 
@@ -352,7 +349,6 @@ export class VendorProducts implements OnInit {
         this.selectedIds.set(ids);
         this.toast.success('Product deleted.');
       },
-      error: (err: Error) => this.toast.error(err.message || 'Failed to delete product.'),
     });
   }
 

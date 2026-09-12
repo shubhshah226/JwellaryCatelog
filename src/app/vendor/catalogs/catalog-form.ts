@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Product } from '../../dashboard/models/dashboard.model';
-import { ApiClientError } from '../../core/api/api.types';
 import { resolveShareUrl } from '../../core/utils/store-code.util';
 import { ToastService } from '../../core/services/toast.service';
 import { ProductService } from '../services/product.service';
@@ -235,8 +234,7 @@ export class VendorCatalogForm implements OnInit {
             this.toast.success('Catalog updated.');
             this.goBack();
           },
-          error: (err: unknown) => {
-            this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
+          error: () => {
             this.isSubmitting.set(false);
           },
         });
@@ -256,8 +254,7 @@ export class VendorCatalogForm implements OnInit {
         );
         this.goBack();
       },
-      error: (err: unknown) => {
-        this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
+      error: () => {
         this.isSubmitting.set(false);
       },
     });
@@ -356,8 +353,7 @@ export class VendorCatalogForm implements OnInit {
         this.isLoading.set(false);
         this.loadingProducts.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(this.errMsg(err, 'Unable to load catalog.'));
+      error: () => {
         this.pageError.set('Unable to load catalog.');
         this.isLoading.set(false);
         this.loadingProducts.set(false);
@@ -406,11 +402,5 @@ export class VendorCatalogForm implements OnInit {
       imageUrl:
         p.imageUrl || this.productService.panelImageUrl(p.primaryImageId, 'grid') || '',
     }));
-  }
-
-  private errMsg(err: unknown, fallback: string): string {
-    if (err instanceof ApiClientError) return err.message;
-    if (err instanceof Error) return err.message;
-    return fallback;
   }
 }

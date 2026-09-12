@@ -1,7 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ToastService } from '../../../core/services/toast.service';
 import { ProductViewerModal } from '../../components/product-viewer-modal/product-viewer-modal';
 import { PublicProduct, PublicStoreContext } from '../../models/storefront.model';
 import { CartProduct, InterestCartService } from '../../services/interest-cart.service';
@@ -19,7 +18,6 @@ export class PublicInterestCart implements OnInit {
   private readonly storefrontService = inject(StorefrontService);
   private readonly cart = inject(InterestCartService);
   private readonly leadService = inject(LeadService);
-  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
   readonly notFound = signal(false);
@@ -206,12 +204,7 @@ export class PublicInterestCart implements OnInit {
           );
           this.isSubmitting.set(false);
         },
-        error: (err: unknown) => {
-          this.toast.error(
-            err instanceof Error
-              ? err.message
-              : 'Could not submit your interest. Please try again.'
-          );
+        error: () => {
           this.isSubmitting.set(false);
         },
       });

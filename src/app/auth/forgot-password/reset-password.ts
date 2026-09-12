@@ -86,11 +86,6 @@ export class ResetPassword implements OnInit {
           this.toast.success(res.message || 'Password reset. Please log in.');
           void this.router.navigate(['/login']);
         },
-        error: (err: unknown) => {
-          this.toast.error(
-            err instanceof Error ? err.message : 'Unable to reset password.'
-          );
-        },
       });
   }
 }

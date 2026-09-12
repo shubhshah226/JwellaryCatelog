@@ -1,3 +1,7 @@
+/**
+ * Route guards for auth flows: redirect logged-in users away from login,
+ * require a session for protected routes, and enforce role-specific access.
+ */
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';

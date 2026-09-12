@@ -1,12 +1,17 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ToastService } from '../../core/services/toast.service';
 import { LoginParamModel, LoginResponse } from '../models/user.model';
 import { AuthService } from '../services/auth.service';
 
+/**
+ * Login page (`/login`).
+ * - Client validation messages stay inline (`errorMessage`)
+ * - API errors are toasted centrally by ApiHttpService
+ * - On success, AuthService encrypts the session; we navigate to the role dashboard
+ */
 @Component({
   selector: 'app-login',
   imports: [FormsModule, RouterLink],
@@ -15,8 +20,6 @@ import { AuthService } from '../services/auth.service';
 })
 export class Login {
   private readonly authService = inject(AuthService);
-  private readonly toastService = inject(ToastService);
-  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   email = '';
@@ -54,26 +57,11 @@ export class Login {
       )
       .subscribe({
         next: (response) => {
-          if (response.accessToken != null && response.accessToken !== '') {
-            this.userLoginResponse = response;
-            localStorage.setItem('user', JSON.stringify(this.userLoginResponse));
-            if (this.userLoginResponse.userRole == 'superadmin') {
-              void this.router.navigate(['superAdmin/dashboard']);
-            } else if (
-              this.userLoginResponse.userRole == 'owner' ||
-              this.userLoginResponse.userRole == 'vendor'
-            ) {
-              void this.router.navigate(['vendor/dashboard']);
-            }
-          } else {
-            this.toastService.error(response.message || 'Login failed');
-          }
+          this.userLoginResponse = response;
+          this.authService.redirectToDashboard();
         },
-        error: (err: unknown) => {
-          this.toastService.error(
-            err instanceof Error ? err.message : 'Unable to connect to the API server.'
-          );
-        },
+        // API errors are toasted by ApiHttpService; finalize clears loading.
+        error: () => undefined,
       });
   }
 }

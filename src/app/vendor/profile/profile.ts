@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { ApiClientError } from '../../core/api/api.types';
 import { ToastService } from '../../core/services/toast.service';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 import { VendorDataService } from '../services/vendor-data.service';
@@ -64,8 +63,7 @@ export class VendorProfile implements OnInit, OnDestroy {
         this.loadLogoPreview(this.storedLogoUri);
         this.isLoading.set(false);
       },
-      error: (err: unknown) => {
-        this.toast.error(this.errMsg(err, 'Unable to load business profile. Please try again.'));
+      error: () => {
         this.errorMessage.set('Unable to load business profile.');
         this.isLoading.set(false);
       },
@@ -191,10 +189,6 @@ export class VendorProfile implements OnInit, OnDestroy {
           }
           this.toast.success('Business profile updated successfully.');
         },
-        error: (err: unknown) => {
-          const message = this.errMsg(err, 'Failed to update business profile.');
-          this.toast.error(message);
-        },
       });
   }
 
@@ -274,15 +268,5 @@ export class VendorProfile implements OnInit, OnDestroy {
       hex = `#${r}${r}${g}${g}${b}${b}`;
     }
     return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toUpperCase() : '';
-  }
-
-  private errMsg(err: unknown, fallback: string): string {
-    if (err instanceof ApiClientError) {
-      return err.message || fallback;
-    }
-    if (err instanceof Error) {
-      return err.message || fallback;
-    }
-    return fallback;
   }
 }

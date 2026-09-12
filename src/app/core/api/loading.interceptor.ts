@@ -1,3 +1,7 @@
+/**
+ * HTTP interceptor that shows the global loader for in-flight API calls
+ * (matching environment.apiUrl or /api/v1). Skip with header X-Skip-Loader: true.
+ */
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { finalize } from 'rxjs';
@@ -5,8 +9,8 @@ import { environment } from '../../../environments/environment';
 import { LoadingService } from '../services/loading.service';
 
 function isApiRequest(url: string): boolean {
-  const bases = [environment.apiUrl, environment.apiBaseUrl].filter(Boolean);
-  if (bases.some((base) => !!base && (url === base || url.startsWith(base)))) {
+  const base = environment.apiUrl;
+  if (base && (url === base || url.startsWith(base))) {
     return true;
   }
 
