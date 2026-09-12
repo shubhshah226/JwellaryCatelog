@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, throwError } from 'rxjs';
+import { Observable, catchError, concatMap, from, map, of, switchMap, throwError, toArray } from 'rxjs';
 import { ApiClientError } from '../../core/api/api.types';
 import { ApiHttpService } from '../../core/api/api-http.service';
+import { AuthService } from '../../auth/services/auth.service';
 import { environment } from '../../../environments/environment';
 import { Product, ProductFormData, ProductStatus } from '../../dashboard/models/dashboard.model';
 
@@ -24,6 +25,7 @@ interface ApiProductListItem {
   collectionName?: string | null;
   primaryImageId?: string | null;
   imageCount?: number | null;
+  description?: string | null;
 }
 
 interface ApiProductListResponse {
@@ -31,11 +33,63 @@ interface ApiProductListResponse {
   totalCount?: number;
 }
 
+interface ApiProductImage {
+  imageId?: string;
+  productId?: string;
+  isPrimary?: boolean;
+  sortOrder?: number | null;
+}
+
+interface ApiProductDetailResponse {
+  product?: ApiProductListItem & {
+    description?: string | null;
+    netWeight?: number | null;
+  };
+  images?: ApiProductImage[];
+  message?: string | null;
+}
+
+interface ProductActionResponse {
+  success?: boolean;
+  productId?: string;
+  skuCode?: string;
+  name?: string;
+  imageIds?: string[];
+  message?: string | null;
+}
+
+/** Existing saved photo (ids only — panel has no authenticated image stream). */
+export interface ProductExistingImage {
+  imageId: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
+export interface ProductDetail {
+  product: Product;
+  images: ProductExistingImage[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class ProductService {
   private readonly api = inject(ApiHttpService);
+  private readonly auth = inject(AuthService);
+
+  /** Authenticated panel image URL for <img src> (Token as query). */
+  panelImageUrl(imageId: string | null | undefined, size: 'grid' | 'full' = 'grid'): string {
+    const id = (imageId || '').trim();
+    if (!id) {
+      return '';
+    }
+    const token = this.auth.getAccessToken();
+    if (!token) {
+      return '';
+    }
+    const base = (environment.apiUrl || environment.apiBaseUrl || '').replace(/\/$/, '');
+    return `${base}/product/productImage/${encodeURIComponent(id)}/${size}?Token=${encodeURIComponent(token)}`;
+  }
 
   getVendorProducts(): Observable<Product[]> {
     return this.api
@@ -45,125 +99,275 @@ export class ProductService {
         pageSize: null,
         pageOffset: null,
       })
-      .pipe(map((res) => (res?.products ?? []).map((p) => this.normalizeListItem(p))));
+      .pipe(
+        map((res) => (res?.products ?? []).map((p) => this.normalizeListItem(p))),
+        catchError((err: unknown) => this.mapHttpError(err, 'Failed to load products.'))
+      );
   }
 
-  createProduct(form: ProductFormData, _existing: Product[]): Observable<Product> {
-    const formData = new FormData();
-    const productJson = {
-      skuCode: form.sku.trim() || `SKU-${Date.now()}`,
-      name: form.name.trim(),
-      description: form.description.trim() || null,
-      categoryName: form.category.trim() || null,
-      grossWeight: this.parseWeight(form.weight) ?? 0,
-      price: form.price == null || form.price === ('' as unknown) ? null : Number(form.price),
-      stockStatus: this.toApiStockStatus(form.status),
-      status: 'active',
-    };
-    formData.append('product', JSON.stringify(productJson));
+  getProductDetail(productId: string): Observable<ProductDetail> {
+    return this.api
+      .post<ApiProductDetailResponse>('/product/productDetail', { productId })
+      .pipe(
+        map((res) => {
+          if (!res?.product?.productId) {
+            throw new Error(res?.message || 'Product not found.');
+          }
+          const images = [...(res.images ?? [])]
+            .map((img, index) => ({
+              imageId: String(img.imageId || ''),
+              isPrimary: !!img.isPrimary,
+              sortOrder: img.sortOrder ?? index,
+            }))
+            .filter((img) => !!img.imageId)
+            .sort((a, b) => {
+              if (a.isPrimary !== b.isPrimary) {
+                return a.isPrimary ? -1 : 1;
+              }
+              return a.sortOrder - b.sortOrder;
+            });
+          return {
+            product: this.normalizeListItem({
+              ...res.product,
+              primaryImageId: images.find((i) => i.isPrimary)?.imageId || images[0]?.imageId,
+              description: res.product.description,
+            }),
+            images,
+          };
+        }),
+        catchError((err: unknown) => this.mapHttpError(err, 'Failed to load product.'))
+      );
+  }
+
+  createProduct(form: ProductFormData): Observable<Product> {
+    const weight = this.parseWeight(form.weight);
+    if (weight == null || weight <= 0) {
+      return throwError(() => new Error('Weight in grams is required.'));
+    }
+    const skuCode = form.sku.trim();
+    if (!skuCode) {
+      return throwError(() => new Error('Product code (SKU) is required.'));
+    }
+    if (!form.categoryId && !form.category.trim()) {
+      return throwError(() => new Error('Please select a category.'));
+    }
 
     const files = this.collectImageFiles(form);
     if (!files.length) {
       return throwError(() => new Error('Please add at least one product image.'));
     }
+
+    const productJson = this.buildWritePayload(form, weight, skuCode);
+    const formData = new FormData();
+    formData.append('product', JSON.stringify(productJson));
     for (const file of files) {
       formData.append('images', file, file.name);
     }
 
-    return this.api.postFormData<{ product?: ApiProductListItem; productId?: string }>(
-      '/product/addProduct',
-      formData
-    ).pipe(
+    return this.api.postFormData<ProductActionResponse>('/product/addProduct', formData).pipe(
       map((res) => {
-        const productId = res?.productId || res?.product?.productId;
+        this.assertSuccess(res, 'Failed to add product.');
         return this.normalizeListItem({
-          productId,
-          name: form.name.trim(),
-          skuCode: productJson.skuCode,
+          productId: res.productId,
+          name: res.name || form.name.trim(),
+          skuCode: res.skuCode || skuCode,
+          categoryId: form.categoryId || undefined,
           categoryName: form.category,
-          grossWeight: productJson.grossWeight,
+          metalTypeId: form.metalTypeId,
+          metalType: form.metalType || null,
+          purityId: form.purityId,
+          purity: form.purity || null,
+          colorId: form.colorId,
+          color: form.color || null,
+          grossWeight: weight,
           price: productJson.price,
           stockStatus: productJson.stockStatus,
           status: 'active',
-          metalType: form.metalType || null,
-          purity: form.purity || null,
-          color: form.color || null,
+          description: form.description.trim() || null,
         });
       }),
-      catchError((err: unknown) => {
-        if (err instanceof ApiClientError) {
-          return throwError(() => new Error(err.message || 'Failed to add product.'));
-        }
-        return throwError(() => new Error('Unable to connect to the API server.'));
+      catchError((err: unknown) => this.mapHttpError(err, 'Failed to add product.'))
+    );
+  }
+
+  /**
+   * Full-object field update. Pass `newImageFiles` to append photos after save.
+   * Pass `removedImageIds` to delete existing photos (API refuses deleting the last one).
+   * Pass `primaryImageId` to set cover when it is an existing image id.
+   */
+  updateProduct(
+    productId: string,
+    form: ProductFormData,
+    opts?: {
+      newImageFiles?: File[];
+      removedImageIds?: string[];
+      primaryImageId?: string | null;
+      /** When cover is a newly uploaded file, set the first uploaded id as primary. */
+      preferFirstNewAsPrimary?: boolean;
+    }
+  ): Observable<Product> {
+    const weight = this.parseWeight(form.weight);
+    if (weight == null || weight <= 0) {
+      return throwError(() => new Error('Weight in grams is required.'));
+    }
+    if (!form.categoryId && !form.category.trim()) {
+      return throwError(() => new Error('Please select a category.'));
+    }
+
+    const fields = this.buildWritePayload(form, weight, null);
+    const payload = { productId, ...fields };
+
+    return this.api.post<ProductActionResponse>('/product/updateProduct', payload).pipe(
+      switchMap((res) => {
+        this.assertSuccess(res, 'Failed to update product.');
+        const files = opts?.newImageFiles ?? [];
+        const upload$ =
+          files.length === 0
+            ? of({ action: res, newIds: [] as string[] })
+            : this.uploadImages(productId, files).pipe(
+                map((uploadRes) => ({
+                  action: res,
+                  newIds: (uploadRes.imageIds ?? []).map(String),
+                }))
+              );
+        return upload$.pipe(
+          switchMap(({ action, newIds }) => {
+            const removed = opts?.removedImageIds ?? [];
+            if (!removed.length) {
+              return of({ action, newIds });
+            }
+            return from(removed).pipe(
+              concatMap((imageId) => this.deleteImage(imageId)),
+              toArray(),
+              map(() => ({ action, newIds }))
+            );
+          }),
+          switchMap(({ action, newIds }) => {
+            let primaryId = opts?.primaryImageId || null;
+            if (!primaryId && opts?.preferFirstNewAsPrimary && newIds[0]) {
+              primaryId = newIds[0];
+            }
+            if (!primaryId) {
+              return of(action);
+            }
+            return this.setPrimaryImage(primaryId).pipe(map(() => action));
+          })
+        );
+      }),
+      map((res) =>
+        this.normalizeListItem({
+          productId: res.productId || productId,
+          name: res.name || form.name.trim(),
+          skuCode: form.sku.trim() || res.skuCode,
+          categoryId: form.categoryId || undefined,
+          categoryName: form.category,
+          metalTypeId: form.metalTypeId,
+          metalType: form.metalType || null,
+          purityId: form.purityId,
+          purity: form.purity || null,
+          colorId: form.colorId,
+          color: form.color || null,
+          grossWeight: weight,
+          price: fields.price,
+          stockStatus: fields.stockStatus,
+          status: 'active',
+          description: form.description.trim() || null,
+        })
+      ),
+      catchError((err: unknown) => this.mapHttpError(err, 'Failed to update product.'))
+    );
+  }
+
+  deleteProduct(productId: string): Observable<void> {
+    return this.api.post<ProductActionResponse>('/product/deleteProduct', { productId }).pipe(
+      map((res) => {
+        this.assertSuccess(res, 'Failed to delete product.');
+      }),
+      catchError((err: unknown) => this.mapHttpError(err, 'Failed to delete product.'))
+    );
+  }
+
+  /** POST /product/updateProductStatus — active | inactive */
+  updateProductStatus(
+    productIds: string[],
+    status: 'active' | 'inactive'
+  ): Observable<ProductActionResponse> {
+    return this.api
+      .post<ProductActionResponse>('/product/updateProductStatus', { productIds, status })
+      .pipe(
+        map((res) => {
+          this.assertSuccess(res, 'Failed to update product status.');
+          return res;
+        }),
+        catchError((err: unknown) => this.mapHttpError(err, 'Failed to update product status.'))
+      );
+  }
+
+  /** POST /product/updateStockStatus — in_stock | out_of_stock | make_to_order */
+  updateStockStatus(
+    productIds: string[],
+    stockStatus: 'in_stock' | 'out_of_stock' | 'make_to_order'
+  ): Observable<ProductActionResponse> {
+    return this.api
+      .post<ProductActionResponse>('/product/updateStockStatus', { productIds, stockStatus })
+      .pipe(
+        map((res) => {
+          this.assertSuccess(res, 'Failed to update stock status.');
+          return res;
+        }),
+        catchError((err: unknown) => this.mapHttpError(err, 'Failed to update stock status.'))
+      );
+  }
+
+  uploadImages(productId: string, files: File[]): Observable<ProductActionResponse> {
+    const formData = new FormData();
+    formData.append('productId', productId);
+    for (const file of files) {
+      formData.append('images', file, file.name);
+    }
+    return this.api.postFormData<ProductActionResponse>('/product/uploadImages', formData).pipe(
+      map((res) => {
+        this.assertSuccess(res, 'Failed to upload images.');
+        return res;
       })
     );
   }
 
-  updateProduct(product: Product, form: ProductFormData): Observable<Product> {
-    return this.api
-      .post<unknown>('/product/updateProduct', {
-        productId: product.id,
-        skuCode: form.sku.trim() || product.sku,
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        categoryName: form.category.trim() || null,
-        grossWeight: this.parseWeight(form.weight),
-        price: form.price == null ? null : Number(form.price),
-        stockStatus: this.toApiStockStatus(form.status),
-        status: form.status === 'inactive' ? 'inactive' : 'active',
+  deleteImage(imageId: string): Observable<void> {
+    return this.api.post<ProductActionResponse>('/product/deleteImage', { imageId }).pipe(
+      map((res) => {
+        this.assertSuccess(res, 'Failed to remove image.');
       })
-      .pipe(
-        map(() => ({
-          ...product,
-          name: form.name.trim(),
-          category: form.category,
-          description: form.description.trim(),
-          price: form.price,
-          metalType: form.metalType,
-          weight: form.weight,
-          purity: form.purity,
-          sku: form.sku.trim(),
-          color: form.color,
-          status: this.normalizeStatus(form.status),
-          stockStatus: this.toApiStockStatus(form.status),
-        })),
-        catchError((err: unknown) => {
-          if (err instanceof ApiClientError) {
-            return throwError(() => new Error(err.message || 'Failed to update product.'));
-          }
-          return throwError(() => new Error('Unable to connect to the API server.'));
-        })
-      );
+    );
   }
 
-  deleteProduct(productId: string): Observable<void> {
-    return this.api.post<void>('/product/deleteProduct', { productId });
+  setPrimaryImage(imageId: string): Observable<void> {
+    return this.api.post<ProductActionResponse>('/product/setPrimaryImage', { imageId }).pipe(
+      map((res) => {
+        this.assertSuccess(res, 'Failed to set cover image.');
+      })
+    );
   }
 
   mapToForm(product: Product): ProductFormData {
-    const all =
-      product.images?.length
-        ? [...product.images]
-        : product.imageUrl
-          ? [product.imageUrl]
-          : [];
-    const cover = all[0] ?? '';
-    const gallery = all.slice(1);
-
     return {
       name: product.name,
       category: product.category,
+      categoryId: product.categoryId ?? null,
       catalogId: product.catalogId ?? null,
       description: product.description ?? '',
       price: product.price ?? null,
-      imageUrl: cover,
-      galleryImages: gallery,
-      images: all,
+      imageUrl: '',
+      galleryImages: [],
+      images: [],
       metalType: product.metalType ?? '',
+      metalTypeId: product.metalTypeId ?? null,
       weight: product.weight ?? '',
       purity: product.purity ?? '',
+      purityId: product.purityId ?? null,
       sku: product.sku ?? '',
       color: product.color ?? '',
+      colorId: product.colorId ?? null,
       status: this.normalizeStatus(product.status || product.stockStatus),
     };
   }
@@ -224,15 +428,83 @@ export class ProductService {
     return 'In Stock';
   }
 
+  collectImageFiles(form: ProductFormData): File[] {
+    const urls = [
+      form.imageUrl,
+      ...(form.galleryImages ?? []),
+      ...(form.images ?? []),
+    ].filter(Boolean);
+    const unique = [...new Set(urls)];
+    const files: File[] = [];
+    let index = 0;
+    for (const url of unique) {
+      const file = this.dataUrlToFile(url, `product-${index++}.jpg`);
+      if (file) {
+        files.push(file);
+      }
+    }
+    return files;
+  }
+
+  private buildWritePayload(
+    form: ProductFormData,
+    grossWeight: number,
+    skuCode: string | null
+  ): {
+    name: string | null;
+    description: string | null;
+    categoryId: string | null;
+    categoryName: string | null;
+    metalTypeId: string | null;
+    purityId: string | null;
+    colorId: string | null;
+    grossWeight: number;
+    price: number | null;
+    stockStatus: string;
+    skuCode?: string;
+  } {
+    const payload: {
+      name: string | null;
+      description: string | null;
+      categoryId: string | null;
+      categoryName: string | null;
+      metalTypeId: string | null;
+      purityId: string | null;
+      colorId: string | null;
+      grossWeight: number;
+      price: number | null;
+      stockStatus: string;
+      skuCode?: string;
+    } = {
+      name: form.name.trim() || null,
+      description: form.description.trim() || null,
+      categoryId: form.categoryId || null,
+      categoryName: form.categoryId ? null : form.category.trim() || null,
+      metalTypeId: form.metalTypeId || null,
+      purityId: form.purityId || null,
+      colorId: form.colorId || null,
+      grossWeight,
+      price: form.price == null || Number.isNaN(Number(form.price)) ? null : Number(form.price),
+      stockStatus: this.toApiStockStatus(form.status),
+    };
+    if (skuCode != null) {
+      payload.skuCode = skuCode;
+    }
+    return payload;
+  }
+
   private normalizeListItem(product: ApiProductListItem): Product {
-    const imageUrl = product.primaryImageId
-      ? `${environment.apiBaseUrl}/public/productImage/pending/${product.primaryImageId}/grid`
-      : '';
+    const accountStatus =
+      (product.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+    const stockRaw = product.stockStatus || 'in_stock';
+    const primaryImageId = product.primaryImageId ? String(product.primaryImageId) : null;
+    const imageUrl = this.panelImageUrl(primaryImageId, 'grid');
     return {
       id: String(product.productId || ''),
       name: product.name || '',
       category: product.categoryName || '',
       categoryId: product.categoryId || null,
+      description: product.description || '',
       price: product.price == null ? null : Number(product.price),
       metalType: product.metalType || '',
       metalTypeId: product.metalTypeId || null,
@@ -242,8 +514,11 @@ export class ProductService {
       sku: product.skuCode || '',
       color: product.color || '',
       colorId: product.colorId || null,
-      status: this.normalizeStatus(product.stockStatus || product.status),
-      stockStatus: product.stockStatus || '',
+      status: this.normalizeStatus(stockRaw),
+      stockStatus: stockRaw,
+      accountStatus,
+      imageCount: product.imageCount ?? 0,
+      primaryImageId,
       imageUrl,
       images: imageUrl ? [imageUrl] : [],
     };
@@ -289,24 +564,6 @@ export class ProductService {
     return Number.isFinite(value) ? value : null;
   }
 
-  private collectImageFiles(form: ProductFormData): File[] {
-    const urls = [
-      form.imageUrl,
-      ...(form.galleryImages ?? []),
-      ...(form.images ?? []),
-    ].filter(Boolean);
-    const unique = [...new Set(urls)];
-    const files: File[] = [];
-    let index = 0;
-    for (const url of unique) {
-      const file = this.dataUrlToFile(url, `product-${index++}.jpg`);
-      if (file) {
-        files.push(file);
-      }
-    }
-    return files;
-  }
-
   private dataUrlToFile(url: string, filename: string): File | null {
     if (!url?.startsWith('data:')) {
       return null;
@@ -323,5 +580,21 @@ export class ProductService {
       bytes[i] = binary.charCodeAt(i);
     }
     return new File([bytes], filename, { type: mime });
+  }
+
+  private assertSuccess(res: ProductActionResponse | null | undefined, fallback: string): void {
+    if (res && res.success === false) {
+      throw new Error(res.message || fallback);
+    }
+  }
+
+  private mapHttpError(err: unknown, fallback: string): Observable<never> {
+    if (err instanceof Error && !(err instanceof ApiClientError)) {
+      return throwError(() => err);
+    }
+    if (err instanceof ApiClientError) {
+      return throwError(() => new Error(err.message || fallback));
+    }
+    return throwError(() => new Error(fallback));
   }
 }

@@ -122,7 +122,16 @@ export const routes: Routes = [
     ],
   },
 
-  // Public storefront routes — /:storeCode/...
+  // Public shared catalog — matches API: {publicBaseUrl}/c/{token}
+  {
+    path: 'c/:token',
+    loadComponent: () =>
+      import('./storefront/pages/public-products/public-products').then(
+        (m) => m.PublicProducts
+      ),
+  },
+
+  // Legacy public storefront routes — /:storeCode/...
   {
     path: ':storeCode',
     children: [
@@ -139,6 +148,7 @@ export const routes: Routes = [
           ),
       },
       {
+        // Legacy /:storeCode/c/:token — same page as /c/:token
         path: 'c/:shortCode',
         loadComponent: () =>
           import('./storefront/pages/public-products/public-products').then(

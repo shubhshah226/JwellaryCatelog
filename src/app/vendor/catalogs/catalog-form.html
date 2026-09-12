@@ -17,9 +17,21 @@
       </button>
       <div class="mf-title">
         <h2>{{ mode() === 'edit' ? 'Edit Catalog' : 'Add Catalog' }}</h2>
-        <p>Select products for this catalog. The share link always shows the current list.</p>
+        <p>
+          @if (mode() === 'add') {
+            Pick products to include, then save to get a shareable link.
+          } @else {
+            Add or remove products, then save. Keep at least one product selected.
+          }
+        </p>
       </div>
     </div>
+
+    @if (isRevoked()) {
+      <div class="inline-error">
+        This catalog is revoked. Create a new catalog instead of editing.
+      </div>
+    }
 
     <form class="mf-form" (ngSubmit)="submit()">
       <section class="mf-card">
@@ -34,28 +46,105 @@
               placeholder="e.g. Catalog for Shubh"
               required
               autofocus
+              [disabled]="isRevoked()"
             />
           </label>
 
-          <label class="form-field form-field-status">
-            <span>Status</span>
-            <select [(ngModel)]="formStatus" name="catalogStatus">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          <label class="form-field">
+            <span>Customer name</span>
+            <input
+              type="text"
+              [(ngModel)]="formCustomerName"
+              name="customerName"
+              placeholder="Optional"
+              [disabled]="isRevoked()"
+            />
           </label>
+
+          <label class="form-field">
+            <span>Customer phone</span>
+            <input
+              type="text"
+              [(ngModel)]="formCustomerPhone"
+              name="customerPhone"
+              placeholder="Optional WhatsApp number"
+              [disabled]="isRevoked()"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section class="mf-card">
+        <h3 class="card-title">Share options</h3>
+        <div class="form-row details-row">
+          <div class="toggle-field form-field-span2">
+            <div class="toggle-copy">
+              <span class="toggle-title">Show prices</span>
+              <span class="toggle-desc">When on, product prices are visible on the shared catalog link.</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                name="formPriceVisible"
+                [(ngModel)]="formPriceVisible"
+                [disabled]="isRevoked()"
+              />
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          <div class="toggle-field form-field-span2">
+            <div class="toggle-copy">
+              <span class="toggle-title">Never expires</span>
+              <span class="toggle-desc">Keep the share link active until you revoke it.</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                name="formNeverExpires"
+                [ngModel]="formNeverExpires"
+                (ngModelChange)="onNeverExpiresChange($event)"
+                [disabled]="isRevoked()"
+              />
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          @if (!formNeverExpires) {
+            <label class="form-field">
+              <span>Expiry (days) <em>*</em></span>
+              <input
+                type="number"
+                name="formExpiryDays"
+                min="1"
+                [(ngModel)]="formExpiryDays"
+                placeholder="e.g. 30"
+                [disabled]="isRevoked()"
+              />
+              <small class="field-hint">Defaults from Business Profile catalog expiry.</small>
+            </label>
+          }
         </div>
       </section>
 
       <section class="mf-card">
         <div class="products-head">
           <div>
-            <h3 class="card-title">Products</h3>
-            <p class="card-sub">{{ selectedCount() }} selected</p>
+            <h3 class="card-title">Products <em>*</em></h3>
+            <p class="card-sub">
+              {{ selectedCount() }} selected
+              @if (mode() === 'edit' && initialProductIds().size) {
+                · {{ initialProductIds().size }} already on catalog
+              }
+            </p>
           </div>
           <div class="picker-actions">
-            <button type="button" class="link-btn" (click)="selectAllFiltered()">Select visible</button>
-            <button type="button" class="link-btn" (click)="clearSelection()">Clear</button>
+            <button type="button" class="link-btn" (click)="selectAllFiltered()" [disabled]="isRevoked()">
+              Select visible
+            </button>
+            <button type="button" class="link-btn" (click)="clearSelection()" [disabled]="isRevoked()">
+              {{ mode() === 'edit' ? 'Reset' : 'Clear' }}
+            </button>
           </div>
         </div>
 
@@ -77,11 +166,15 @@
         } @else {
           <div class="product-picker-grid">
             @for (product of filteredPickerProducts(); track product.id) {
-              <label class="picker-card" [class.selected]="isProductSelected(product.id)">
+              <label
+                class="picker-card"
+                [class.selected]="isProductSelected(product.id)"
+              >
                 <input
                   type="checkbox"
                   class="picker-check"
                   [checked]="isProductSelected(product.id)"
+                  [disabled]="isRevoked()"
                   (change)="toggleProduct(product.id)"
                 />
                 <div class="picker-thumb">
@@ -94,9 +187,12 @@
                 </div>
                 <div class="picker-info">
                   <span class="picker-name">{{ product.name }}</span>
-                  <span class="picker-meta">{{ product.sku || ('#' + product.id) }}</span>
+                  <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
                   @if (product.category) {
                     <span class="picker-cat">{{ product.category }}</span>
+                  }
+                  @if (mode() === 'edit' && initialProductIds().has(productKey(product.id))) {
+                    <span class="picker-cat">On catalog</span>
                   }
                 </div>
               </label>
@@ -107,7 +203,7 @@
         }
       </section>
 
-      @if (mode() === 'edit' && shareLink() && formStatus === 'active') {
+      @if (mode() === 'edit' && shareLink() && !isRevoked()) {
         <section class="mf-card share-card">
           <div class="share-head">
             <div>
@@ -120,8 +216,6 @@
           </div>
           <code class="share-url">{{ shareLink() }}</code>
         </section>
-      } @else if (mode() === 'edit' && formStatus !== 'active') {
-        <p class="picker-hint notice">Set status to Active to enable the public share link.</p>
       }
 
       @if (formError()) {
@@ -132,8 +226,12 @@
         <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
           Cancel
         </button>
-        <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
-          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update Catalog' : 'Save Catalog') }}
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="isSubmitting() || isRevoked()"
+        >
+          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update Catalog' : 'Create Catalog') }}
         </button>
       </div>
     </form>

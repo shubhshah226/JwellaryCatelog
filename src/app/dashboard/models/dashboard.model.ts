@@ -1,5 +1,5 @@
 export type CatalogStatus = 'active' | 'inactive' | 'pending' | 'expired';
-export type EnquiryStatus = 'new' | 'in_progress' | 'responded' | 'closed';
+export type EnquiryStatus = 'new' | 'contacted' | 'closed_won' | 'closed_lost';
 
 export interface Vendor {
   id: string;
@@ -23,6 +23,8 @@ export interface Catalog {
   customerName?: string | null;
   customerPhone?: string | null;
   whatsappUrl?: string | null;
+  priceVisible?: boolean | null;
+  expiresAt?: string | null;
 }
 
 export type ProductStatus = 'in_stock' | 'out_of_stock' | 'make_to_order' | 'active' | 'inactive';
@@ -62,6 +64,8 @@ export interface Product {
   price?: number | null;
   imageUrl?: string;
   images?: string[];
+  imageCount?: number;
+  primaryImageId?: string | null;
   metalType?: string;
   metalTypeId?: string | null;
   weight?: string;
@@ -70,13 +74,17 @@ export interface Product {
   sku?: string;
   color?: string;
   colorId?: string | null;
+  /** Stock availability for catalogs */
   status?: ProductStatus;
   stockStatus?: string;
+  /** Product active/inactive (updateProductStatus) */
+  accountStatus?: 'active' | 'inactive';
 }
 
 export interface ProductFormData {
   name: string;
   category: string;
+  categoryId: string | null;
   catalogId: string | null;
   description: string;
   price: number | null;
@@ -87,10 +95,13 @@ export interface ProductFormData {
   /** Combined [cover, ...gallery] for backward helpers. */
   images: string[];
   metalType: string;
+  metalTypeId: string | null;
   weight: string;
   purity: string;
+  purityId: string | null;
   sku: string;
   color: string;
+  colorId: string | null;
   status: ProductStatus;
 }
 
@@ -98,6 +109,7 @@ export function createEmptyProductForm(): ProductFormData {
   return {
     name: '',
     category: '',
+    categoryId: null,
     catalogId: null,
     description: '',
     price: null,
@@ -105,10 +117,13 @@ export function createEmptyProductForm(): ProductFormData {
     galleryImages: [],
     images: [],
     metalType: '',
+    metalTypeId: null,
     weight: '',
     purity: '',
+    purityId: null,
     sku: '',
     color: '',
+    colorId: null,
     status: 'in_stock',
   };
 }
@@ -128,11 +143,16 @@ export interface Enquiry {
   productName?: string;
   interestType?: 'interested' | 'enquiry' | string;
   createdAt?: string;
+  updatedAt?: string;
   itemCount?: number;
   items?: LeadItem[];
   catalogId?: string;
   token?: string;
+  catalogUrl?: string;
+  catalogTitle?: string;
   totalPrice?: number;
+  pricedItemCount?: number;
+  viewCount?: number;
 }
 
 export interface LeadItem {
@@ -140,9 +160,13 @@ export interface LeadItem {
   productName: string;
   category?: string;
   price?: number;
+  priceOnRequest?: boolean;
   imageUrl?: string;
   sku?: string;
   quantity?: number;
+  metalType?: string;
+  purity?: string;
+  weight?: number;
 }
 
 export interface SaleRecord {

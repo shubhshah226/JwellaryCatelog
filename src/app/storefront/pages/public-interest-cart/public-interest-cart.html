@@ -5,8 +5,8 @@
   </div>
 } @else if (notFound()) {
   <div class="cart-state">
-    <h1>Store Not Found</h1>
-    <p>This jewellery boutique link is invalid.</p>
+    <h1>Catalog Not Found</h1>
+    <p>This catalogue link is invalid or no longer available.</p>
   </div>
 } @else if (context(); as ctx) {
   <div
@@ -18,8 +18,9 @@
       [storeCode]="ctx.storeCode"
       [vendorName]="ctx.vendor.name"
       [logoUrl]="ctx.config.logoUrl"
+      [contactPhone]="ctx.vendor.phone || ''"
+      [brandColor]="brandColor(ctx)"
       [isAvailable]="ctx.isAvailable ?? true"
-      [topBarItems]="topBarItems(ctx)"
     />
 
     <main class="cart-main">
@@ -34,22 +35,16 @@
           <span class="success-icon"><i class="fa-solid fa-circle-check"></i></span>
           <h2>Interest Sent</h2>
           <p>{{ successMessage() }}</p>
-          <p class="success-sub">They will contact you shortly on your verified number.</p>
-          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">
+          <p class="success-sub">They will contact you shortly.</p>
+          <a [routerLink]="catalogBrowseLink(ctx)" class="btn-primary">
             Continue Browsing
           </a>
-        </div>
-      } @else if (!isVerified()) {
-        <div class="cart-empty">
-          <p>Verify your mobile number to use the cart.</p>
-          <p class="hint">Tap the profile icon in the header, enter OTP, then add products from the collection.</p>
-          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">Browse Products</a>
         </div>
       } @else if (!cartCount()) {
         <div class="cart-empty">
           <p>Your interest list is empty.</p>
-          <p class="hint">Open a product, verify with OTP, then tap "Add to Interest List".</p>
-          <a [routerLink]="['/', ctx.storeCode, 'products']" class="btn-primary">
+          <p class="hint">Open a product, then tap "Add to Interest List".</p>
+          <a [routerLink]="catalogBrowseLink(ctx)" class="btn-primary">
             Browse Products
           </a>
         </div>
@@ -83,13 +78,19 @@
             <h2>Send Interest</h2>
             <p class="summary-count">{{ cartCount() }} piece{{ cartCount() === 1 ? '' : 's' }} selected</p>
 
-            @if (isVerified()) {
-              <p class="verified">Verified as {{ sessionName() }}</p>
-            } @else {
-              <p class="need-verify">
-                Verify your mobile from any product page before sending.
-              </p>
-            }
+            <label class="note-field">
+              <span>Your name <em>*</em></span>
+              <input type="text" [(ngModel)]="guestName" name="guestName" placeholder="Your name" />
+            </label>
+            <label class="note-field">
+              <span>Phone <em>*</em></span>
+              <input
+                type="tel"
+                [(ngModel)]="guestPhone"
+                name="guestPhone"
+                placeholder="WhatsApp / mobile"
+              />
+            </label>
 
             <label class="note-field">
               <span>Optional note</span>
@@ -108,7 +109,7 @@
               type="button"
               class="btn-interested"
               (click)="submitInterest()"
-              [disabled]="isSubmitting() || !isVerified()"
+              [disabled]="isSubmitting()"
             >
               {{ isSubmitting() ? 'Sending...' : "I'm Interested - Notify Jeweller" }}
             </button>

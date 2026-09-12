@@ -188,6 +188,11 @@ export interface PublicStoreContext {
   config: StorefrontConfig;
   /** Present on full store endpoints; omitted from slim share responses. */
   isAvailable?: boolean;
+  /** From fetchCatalog.catalog */
+  catalogTitle?: string;
+  customerName?: string | null;
+  currency?: string | null;
+  brandColor?: string | null;
 }
 
 export interface PublicStorefrontPage extends PublicStoreContext {

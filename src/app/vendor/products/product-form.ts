@@ -6,8 +6,13 @@ import {
   ProductFormData,
   createEmptyProductForm,
 } from '../../dashboard/models/dashboard.model';
+import { ToastService } from '../../core/services/toast.service';
 import { MasterDataItem, MasterDataService } from '../services/master-data.service';
-import { ProductService } from '../services/product.service';
+import { ProductExistingImage, ProductService } from '../services/product.service';
+
+type PhotoSlot =
+  | { kind: 'existing'; imageId: string }
+  | { kind: 'new'; dataUrl: string };
 
 @Component({
   selector: 'app-vendor-product-form',
@@ -20,6 +25,7 @@ export class VendorProductForm implements OnInit {
   private readonly router = inject(Router);
   private readonly productService = inject(ProductService);
   private readonly masterDataService = inject(MasterDataService);
+  private readonly toast = inject(ToastService);
 
   readonly mode = signal<'add' | 'edit'>('add');
   readonly productId = signal<string | null>(null);
@@ -29,18 +35,16 @@ export class VendorProductForm implements OnInit {
   readonly pageError = signal('');
   readonly categories = signal<MasterDataItem[]>([]);
   readonly metalTypes = signal<MasterDataItem[]>([]);
-  readonly coverImage = signal('');
-  readonly galleryImages = signal<string[]>([]);
+  readonly purities = signal<MasterDataItem[]>([]);
+  readonly colors = signal<MasterDataItem[]>([]);
+  readonly photoSlots = signal<PhotoSlot[]>([]);
   readonly dragPhotoIndex = signal<number | null>(null);
+  readonly existingImageCount = signal(0);
+
+  private initialExistingIds = new Set<string>();
 
   productForm: ProductFormData = createEmptyProductForm();
   readonly stockStatuses = PRODUCT_STOCK_STATUSES;
-
-  /** Ordered photos: index 0 is always cover. */
-  allPhotos(): string[] {
-    const cover = this.coverImage();
-    return cover ? [cover, ...this.galleryImages()] : [...this.galleryImages()];
-  }
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -52,9 +56,10 @@ export class VendorProductForm implements OnInit {
     this.masterDataService.getCategories().subscribe({
       next: (items) => {
         this.categories.set(items);
-        if (this.mode() === 'add' && !this.productForm.category) {
+        if (this.mode() === 'add' && !this.productForm.categoryId) {
           const first = items.find((c) => c.status === 'active');
           if (first) {
+            this.productForm.categoryId = first.id;
             this.productForm.category = first.name;
           }
         }
@@ -63,13 +68,20 @@ export class VendorProductForm implements OnInit {
     this.masterDataService.getMetalTypes().subscribe({
       next: (items) => {
         this.metalTypes.set(items);
-        if (this.mode() === 'add' && !this.productForm.metalType) {
+        if (this.mode() === 'add' && !this.productForm.metalTypeId) {
           const first = items.find((m) => m.status === 'active');
           if (first) {
+            this.productForm.metalTypeId = first.id;
             this.productForm.metalType = first.name;
           }
         }
       },
+    });
+    this.masterDataService.getPurities().subscribe({
+      next: (items) => this.purities.set(items),
+    });
+    this.masterDataService.getColors().subscribe({
+      next: (items) => this.colors.set(items),
     });
 
     if (this.mode() === 'edit' && this.productId()) {
@@ -81,21 +93,39 @@ export class VendorProductForm implements OnInit {
   }
 
   categoryOptionsForForm(): MasterDataItem[] {
-    const active = this.categories().filter((c) => c.status === 'active');
-    const current = this.productForm.category;
-    if (current && !active.some((c) => c.name === current)) {
-      return [{ id: '__legacy__', vendorId: null, name: current, status: 'active' }, ...active];
-    }
-    return active;
+    return this.optionsWithLegacy(this.categories(), this.productForm.categoryId, this.productForm.category);
   }
 
   metalOptionsForForm(): MasterDataItem[] {
-    const active = this.metalTypes().filter((m) => m.status === 'active');
-    const current = this.productForm.metalType;
-    if (current && !active.some((m) => m.name === current)) {
-      return [{ id: '__legacy__', vendorId: null, name: current, status: 'active' }, ...active];
-    }
-    return active;
+    return this.optionsWithLegacy(this.metalTypes(), this.productForm.metalTypeId, this.productForm.metalType);
+  }
+
+  purityOptionsForForm(): MasterDataItem[] {
+    return this.optionsWithLegacy(this.purities(), this.productForm.purityId, this.productForm.purity);
+  }
+
+  colorOptionsForForm(): MasterDataItem[] {
+    return this.optionsWithLegacy(this.colors(), this.productForm.colorId, this.productForm.color);
+  }
+
+  onCategoryChange(id: string): void {
+    this.productForm.categoryId = id || null;
+    this.productForm.category = this.categories().find((c) => c.id === id)?.name || '';
+  }
+
+  onMetalChange(id: string): void {
+    this.productForm.metalTypeId = id || null;
+    this.productForm.metalType = this.metalTypes().find((m) => m.id === id)?.name || '';
+  }
+
+  onPurityChange(id: string): void {
+    this.productForm.purityId = id || null;
+    this.productForm.purity = this.purities().find((p) => p.id === id)?.name || '';
+  }
+
+  onColorChange(id: string): void {
+    this.productForm.colorId = id || null;
+    this.productForm.color = this.colors().find((c) => c.id === id)?.name || '';
   }
 
   goBack(): void {
@@ -106,68 +136,82 @@ export class VendorProductForm implements OnInit {
   }
 
   submitProduct(): void {
+    this.syncNamesFromIds();
+
     if (!this.productForm.name.trim()) {
       this.formError.set('Product name is required.');
       return;
     }
-    if (!this.productForm.category) {
-      this.formError.set('Please select a category from Master Data.');
+    if (!this.productForm.categoryId && !this.productForm.category) {
+      this.formError.set('Please select a category from Product Options.');
       return;
     }
-    if (!this.productForm.metalType) {
-      this.formError.set('Please select a metal type from Master Data.');
+    if (!this.productForm.metalTypeId && !this.productForm.metalType) {
+      this.formError.set('Please select a metal type from Product Options.');
+      return;
+    }
+    if (!this.productForm.sku.trim()) {
+      this.formError.set('Product code (SKU) is required.');
+      return;
+    }
+    const weightNum = Number(String(this.productForm.weight).replace(/[^\d.]/g, ''));
+    if (!this.productForm.weight.trim() || !Number.isFinite(weightNum) || weightNum <= 0) {
+      this.formError.set('Weight in grams is required.');
       return;
     }
 
-    this.productForm.imageUrl = this.coverImage();
-    this.productForm.galleryImages = [...this.galleryImages()];
-    this.productForm.images = this.coverImage()
-      ? [this.coverImage(), ...this.galleryImages()]
-      : [...this.galleryImages()];
-
-    if (!this.productForm.imageUrl) {
+    const slots = this.photoSlots();
+    if (!slots.length) {
       this.formError.set('Please upload at least one photo (first image is the cover).');
       return;
     }
 
+    this.applyNewPhotosToForm(slots);
     this.isSubmitting.set(true);
     this.formError.set('');
 
     if (this.mode() === 'edit' && this.productId()) {
-      this.productService.getVendorProducts().subscribe({
-        next: (products) => {
-          const product = products.find((p) => p.id === this.productId());
-          if (!product) {
-            this.formError.set('Product not found.');
+      const currentExistingIds = slots
+        .filter((s): s is Extract<PhotoSlot, { kind: 'existing' }> => s.kind === 'existing')
+        .map((s) => s.imageId);
+      const removedImageIds = [...this.initialExistingIds].filter(
+        (id) => !currentExistingIds.includes(id)
+      );
+      const newImageFiles = this.productService.collectImageFiles(this.productForm);
+      const cover = slots[0];
+      const primaryImageId = cover?.kind === 'existing' ? cover.imageId : null;
+
+      this.productService
+        .updateProduct(this.productId()!, this.productForm, {
+          newImageFiles,
+          removedImageIds,
+          primaryImageId,
+          preferFirstNewAsPrimary: cover?.kind === 'new',
+        })
+        .subscribe({
+          next: () => {
             this.isSubmitting.set(false);
-            return;
-          }
-          this.productService.updateProduct(product, this.productForm).subscribe({
-            next: () => {
-              this.isSubmitting.set(false);
-              void this.router.navigateByUrl('/vendor/products');
-            },
-            error: (err: Error) => {
-              this.formError.set(err.message || 'Failed to update product.');
-              this.isSubmitting.set(false);
-            },
-          });
-        },
-        error: () => {
-          this.formError.set('Unable to load product for update.');
-          this.isSubmitting.set(false);
-        },
-      });
+            this.toast.success('Product updated successfully.');
+            void this.router.navigateByUrl('/vendor/products');
+          },
+          error: (err: Error) => {
+            this.formError.set(err.message || 'Failed to update product.');
+            this.toast.error(err.message || 'Failed to update product.');
+            this.isSubmitting.set(false);
+          },
+        });
       return;
     }
 
-    this.productService.createProduct(this.productForm, []).subscribe({
+    this.productService.createProduct(this.productForm).subscribe({
       next: () => {
         this.isSubmitting.set(false);
+        this.toast.success('Product added successfully.');
         void this.router.navigateByUrl('/vendor/products');
       },
       error: (err: Error) => {
         this.formError.set(err.message || 'Failed to add product.');
+        this.toast.error(err.message || 'Failed to add product.');
         this.isSubmitting.set(false);
       },
     });
@@ -181,8 +225,7 @@ export class VendorProductForm implements OnInit {
     }
     Array.from(files).forEach((file) => {
       this.readFileAsBase64(file, (base64) => {
-        const photos = this.allPhotos();
-        this.setPhotos([...photos, base64]);
+        this.photoSlots.update((slots) => [...slots, { kind: 'new', dataUrl: base64 }]);
         this.formError.set('');
       });
     });
@@ -190,8 +233,7 @@ export class VendorProductForm implements OnInit {
   }
 
   removePhoto(index: number): void {
-    const photos = this.allPhotos().filter((_, i) => i !== index);
-    this.setPhotos(photos);
+    this.photoSlots.update((slots) => slots.filter((_, i) => i !== index));
   }
 
   onPhotoDragStart(index: number, event: DragEvent): void {
@@ -216,10 +258,10 @@ export class VendorProductForm implements OnInit {
     if (fromIndex == null || fromIndex === toIndex) {
       return;
     }
-    const photos = [...this.allPhotos()];
+    const photos = [...this.photoSlots()];
     const [moved] = photos.splice(fromIndex, 1);
     photos.splice(toIndex, 0, moved);
-    this.setPhotos(photos);
+    this.photoSlots.set(photos);
   }
 
   onPhotoDragEnd(): void {
@@ -227,20 +269,76 @@ export class VendorProductForm implements OnInit {
   }
 
   movePhoto(fromIndex: number, toIndex: number): void {
-    const photos = [...this.allPhotos()];
+    const photos = [...this.photoSlots()];
     if (fromIndex < 0 || toIndex < 0 || fromIndex >= photos.length || toIndex >= photos.length) {
       return;
     }
     const [moved] = photos.splice(fromIndex, 1);
     photos.splice(toIndex, 0, moved);
-    this.setPhotos(photos);
+    this.photoSlots.set(photos);
   }
 
-  private setPhotos(photos: string[]): void {
-    this.coverImage.set(photos[0] ?? '');
-    this.galleryImages.set(photos.slice(1));
-    this.productForm.imageUrl = photos[0] ?? '';
-    this.productForm.galleryImages = photos.slice(1);
+  photoPreview(slot: PhotoSlot): string {
+    if (slot.kind === 'new') {
+      return slot.dataUrl;
+    }
+    return this.productService.panelImageUrl(slot.imageId, 'grid');
+  }
+
+  isExistingPhoto(slot: PhotoSlot): boolean {
+    return slot.kind === 'existing';
+  }
+
+  private applyNewPhotosToForm(slots: PhotoSlot[]): void {
+    const newUrls = slots
+      .filter((s): s is Extract<PhotoSlot, { kind: 'new' }> => s.kind === 'new')
+      .map((s) => s.dataUrl);
+    this.productForm.imageUrl = newUrls[0] ?? '';
+    this.productForm.galleryImages = newUrls.slice(1);
+    this.productForm.images = newUrls;
+  }
+
+  private syncNamesFromIds(): void {
+    if (this.productForm.categoryId) {
+      this.productForm.category =
+        this.categories().find((c) => c.id === this.productForm.categoryId)?.name ||
+        this.productForm.category;
+    }
+    if (this.productForm.metalTypeId) {
+      this.productForm.metalType =
+        this.metalTypes().find((m) => m.id === this.productForm.metalTypeId)?.name ||
+        this.productForm.metalType;
+    }
+    if (this.productForm.purityId) {
+      this.productForm.purity =
+        this.purities().find((p) => p.id === this.productForm.purityId)?.name ||
+        this.productForm.purity;
+    }
+    if (this.productForm.colorId) {
+      this.productForm.color =
+        this.colors().find((c) => c.id === this.productForm.colorId)?.name ||
+        this.productForm.color;
+    }
+  }
+
+  private optionsWithLegacy(
+    items: MasterDataItem[],
+    currentId: string | null,
+    currentName: string
+  ): MasterDataItem[] {
+    const active = items.filter((i) => i.status === 'active');
+    if (currentId && !active.some((i) => i.id === currentId)) {
+      return [
+        {
+          id: currentId,
+          vendorId: null,
+          name: currentName || 'Previously selected',
+          status: 'active',
+        },
+        ...active,
+      ];
+    }
+    return active;
   }
 
   private resetForAdd(): void {
@@ -248,31 +346,34 @@ export class VendorProductForm implements OnInit {
     const cats = this.categories().filter((c) => c.status === 'active');
     const metals = this.metalTypes().filter((m) => m.status === 'active');
     if (cats.length) {
+      this.productForm.categoryId = cats[0].id;
       this.productForm.category = cats[0].name;
     }
     if (metals.length) {
+      this.productForm.metalTypeId = metals[0].id;
       this.productForm.metalType = metals[0].name;
     }
-    this.setPhotos([]);
+    this.photoSlots.set([]);
+    this.initialExistingIds = new Set();
+    this.existingImageCount.set(0);
     this.formError.set('');
   }
 
   private loadProduct(id: string): void {
-    this.productService.getVendorProducts().subscribe({
-      next: (products) => {
-        const product = products.find((p) => p.id === id);
-        if (!product) {
-          this.pageError.set('Product not found.');
-          this.isLoading.set(false);
-          return;
-        }
+    this.productService.getProductDetail(id).subscribe({
+      next: ({ product, images }) => {
         this.productForm = this.productService.mapToForm(product);
-        this.coverImage.set(this.productForm.imageUrl || '');
-        this.galleryImages.set([...(this.productForm.galleryImages ?? [])]);
+        const slots: PhotoSlot[] = images.map((img: ProductExistingImage) => ({
+          kind: 'existing' as const,
+          imageId: img.imageId,
+        }));
+        this.photoSlots.set(slots);
+        this.initialExistingIds = new Set(images.map((i) => i.imageId));
+        this.existingImageCount.set(images.length);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.pageError.set('Unable to load product.');
+      error: (err: Error) => {
+        this.pageError.set(err.message || 'Unable to load product.');
         this.isLoading.set(false);
       },
     });
@@ -283,8 +384,8 @@ export class VendorProductForm implements OnInit {
       this.formError.set('Please select an image file.');
       return;
     }
-    if (file.size > 1_500_000) {
-      this.formError.set('Each image must be under 1.5MB.');
+    if (file.size > 5_000_000) {
+      this.formError.set('Each image must be under 5MB.');
       return;
     }
     const reader = new FileReader();

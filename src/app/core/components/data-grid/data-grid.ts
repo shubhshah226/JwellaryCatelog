@@ -494,4 +494,20 @@ export class DataGridComponent<T = unknown> implements OnInit {
   private emitSelection(): void {
     this.selectionChange.emit({ selectedIds: [...this.selectedIds()] });
   }
+
+  /** Clears row selection (e.g. after share / parent Clear). */
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+    this.emitSelection();
+  }
+
+  deselectId(id: string): void {
+    const updated = new Set(this.selectedIds());
+    if (!updated.has(id)) {
+      return;
+    }
+    updated.delete(id);
+    this.selectedIds.set(updated);
+    this.emitSelection();
+  }
 }

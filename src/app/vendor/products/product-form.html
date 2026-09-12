@@ -26,12 +26,13 @@
           </div>
 
           <div class="pfp-photos">
-            @if (allPhotos().length) {
+            @if (photoSlots().length) {
               <div class="pfp-photo-strip">
-                @for (img of allPhotos(); track $index) {
+                @for (slot of photoSlots(); track $index) {
                   <div
                     class="pfp-photo"
                     [class.cover]="$index === 0"
+                    [class.existing]="isExistingPhoto(slot)"
                     [class.dragging]="dragPhotoIndex() === $index"
                     draggable="true"
                     (dragstart)="onPhotoDragStart($index, $event)"
@@ -39,7 +40,14 @@
                     (drop)="onPhotoDrop($index, $event)"
                     (dragend)="onPhotoDragEnd()"
                   >
-                    <img [src]="img" [alt]="$index === 0 ? 'Cover' : 'Backup'" />
+                    @if (photoPreview(slot)) {
+                      <img [src]="photoPreview(slot)" [alt]="$index === 0 ? 'Cover' : 'Backup'" />
+                    } @else {
+                      <div class="pfp-photo-placeholder" aria-hidden="true">
+                        <i class="fa-solid fa-image"></i>
+                        <span>Saved</span>
+                      </div>
+                    }
                     <span class="photo-order">{{ $index + 1 }}</span>
                     <span class="primary-badge" [class.backup-badge]="$index > 0">
                       {{ $index === 0 ? 'Cover' : 'Backup' }}
@@ -62,7 +70,7 @@
                         <i class="fa-solid fa-arrow-left"></i>
                       </button>
                     }
-                    @if ($index < allPhotos().length - 1) {
+                    @if ($index < photoSlots().length - 1) {
                       <button
                         type="button"
                         class="move-img right"
@@ -84,9 +92,14 @@
 
             <label class="pfp-upload-btn">
               <i class="fa-solid fa-plus"></i>
-              {{ allPhotos().length ? 'Add more' : 'Upload photos' }}
+              {{ photoSlots().length ? 'Add more' : 'Upload photos' }}
               <input type="file" accept="image/*" multiple (change)="onPhotosSelected($event)" hidden />
             </label>
+            @if (mode() === 'edit' && existingImageCount() > 0) {
+              <small class="field-hint">
+                Drag to reorder · first photo is the cover. You can remove or add more photos.
+              </small>
+            }
           </div>
         </section>
 
@@ -105,14 +118,19 @@
 
             <label class="form-field">
               <span>Category <em>*</em></span>
-              <select [(ngModel)]="productForm.category" name="category" required>
-                <option value="" disabled>Select category</option>
-                @for (cat of categoryOptionsForForm(); track cat.id + '-' + cat.name) {
-                  <option [value]="cat.name">{{ cat.name }}</option>
+              <select
+                [ngModel]="productForm.categoryId"
+                (ngModelChange)="onCategoryChange($event)"
+                name="categoryId"
+                required
+              >
+                <option [ngValue]="null" disabled>Select category</option>
+                @for (cat of categoryOptionsForForm(); track cat.id) {
+                  <option [ngValue]="cat.id">{{ cat.name }}</option>
                 }
               </select>
               @if (!categories().length) {
-                <small class="field-hint">Add categories in Master Data first.</small>
+                <small class="field-hint">Add categories in Product Options first.</small>
               }
             </label>
 
@@ -130,41 +148,75 @@
 
             <label class="form-field">
               <span>Metal <em>*</em></span>
-              <select [(ngModel)]="productForm.metalType" name="metalType" required>
-                <option value="" disabled>Select metal</option>
-                @for (metal of metalOptionsForForm(); track metal.id + '-' + metal.name) {
-                  <option [value]="metal.name">{{ metal.name }}</option>
+              <select
+                [ngModel]="productForm.metalTypeId"
+                (ngModelChange)="onMetalChange($event)"
+                name="metalTypeId"
+                required
+              >
+                <option [ngValue]="null" disabled>Select metal</option>
+                @for (metal of metalOptionsForForm(); track metal.id) {
+                  <option [ngValue]="metal.id">{{ metal.name }}</option>
                 }
               </select>
               @if (!metalTypes().length) {
-                <small class="field-hint">Add metal types in Master Data first.</small>
+                <small class="field-hint">Add metal types in Product Options first.</small>
               }
             </label>
 
             <label class="form-field">
               <span>Purity</span>
-              <input type="text" [(ngModel)]="productForm.purity" name="purity" placeholder="e.g. 22K" />
+              <select
+                [ngModel]="productForm.purityId"
+                (ngModelChange)="onPurityChange($event)"
+                name="purityId"
+              >
+                <option [ngValue]="null">Optional</option>
+                @for (p of purityOptionsForForm(); track p.id) {
+                  <option [ngValue]="p.id">{{ p.name }}</option>
+                }
+              </select>
             </label>
 
             <label class="form-field">
-              <span>Weight (Gm)</span>
+              <span>Weight (Gm) <em>*</em></span>
               <input
                 type="text"
                 [(ngModel)]="productForm.weight"
                 name="weight"
                 inputmode="decimal"
                 placeholder="e.g. 12"
+                required
               />
             </label>
 
             <label class="form-field">
-              <span>Product Code</span>
-              <input type="text" [(ngModel)]="productForm.sku" name="sku" placeholder="SKU / code" />
+              <span>Product Code <em>*</em></span>
+              <input
+                type="text"
+                [(ngModel)]="productForm.sku"
+                name="sku"
+                placeholder="SKU / code"
+                required
+                [readonly]="mode() === 'edit'"
+              />
+              @if (mode() === 'edit') {
+                <small class="field-hint">SKU cannot be changed after create.</small>
+              }
             </label>
 
             <label class="form-field">
               <span>Color</span>
-              <input type="text" [(ngModel)]="productForm.color" name="color" placeholder="Optional" />
+              <select
+                [ngModel]="productForm.colorId"
+                (ngModelChange)="onColorChange($event)"
+                name="colorId"
+              >
+                <option [ngValue]="null">Optional</option>
+                @for (c of colorOptionsForForm(); track c.id) {
+                  <option [ngValue]="c.id">{{ c.name }}</option>
+                }
+              </select>
             </label>
 
             <label class="form-field">

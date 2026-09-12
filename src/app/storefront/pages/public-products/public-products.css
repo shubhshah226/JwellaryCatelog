@@ -153,6 +153,70 @@
   word-break: break-word;
 }
 
+.side-phone {
+  display: inline-block;
+  margin-top: 0.45rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.side-phone:hover {
+  color: var(--gold);
+}
+
+.header-actions-public {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.cart-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.cart-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mobile-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
+  margin-right: 0.45rem;
+}
+
+.for-customer {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-price {
+  margin: 0.2rem 0 0.55rem;
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.card-price::before {
+  content: '₹';
+}
+
 .side-nav {
   padding: 1.15rem 0.9rem;
   flex: 1;

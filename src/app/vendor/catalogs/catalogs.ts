@@ -1,186 +1,183 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Catalog } from '../../dashboard/models/dashboard.model';
 import { ApiClientError } from '../../core/api/api.types';
+import { DataGridComponent } from '../../core/components/data-grid/data-grid';
+import {
+  DataGridActionEvent,
+  DataGridConfig,
+} from '../../core/components/data-grid/data-grid.types';
 import { resolveShareUrl } from '../../core/utils/store-code.util';
+import { ToastService } from '../../core/services/toast.service';
 import { VendorDataService } from '../services/vendor-data.service';
-
-type SortKey = 'name' | 'products' | 'status';
 
 @Component({
   selector: 'app-vendor-catalogs',
-  imports: [FormsModule],
+  imports: [DataGridComponent],
   templateUrl: './catalogs.html',
   styleUrls: ['../shared/vendor-page.css', './catalogs.css'],
 })
 export class VendorCatalogs implements OnInit {
   private readonly vendorData = inject(VendorDataService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
   readonly allCatalogs = signal<Catalog[]>([]);
-  readonly filteredCatalogs = signal<Catalog[]>([]);
   readonly storeCode = signal('');
-  readonly openMenuId = signal<string | null>(null);
-  readonly shareCopied = signal(false);
-  readonly sortBy = signal<SortKey>('name');
-  readonly sortDir = signal<'asc' | 'desc'>('asc');
-
-  search = '';
-  status = 'all';
 
   readonly activeCount = computed(
-    () => this.filteredCatalogs().filter((c) => this.normalizeStatus(c.status) === 'active').length
+    () => this.allCatalogs().filter((c) => this.isActive(c)).length
   );
   readonly inactiveCount = computed(
-    () => this.filteredCatalogs().filter((c) => this.normalizeStatus(c.status) !== 'active').length
+    () => this.allCatalogs().filter((c) => !this.isActive(c)).length
   );
+
+  readonly gridConfig = computed<DataGridConfig<Catalog>>(() => ({
+    rowId: 'id',
+    selectable: false,
+    entityLabel: 'catalogs',
+    emptyMessage: 'No catalogs yet. Click + Add Catalog or share products from Manage Products.',
+    defaultPageSize: 10,
+    pageSizeOptions: [10, 20, 50],
+    filters: [
+      {
+        key: 'search',
+        type: 'search',
+        placeholder: 'Search catalogs...',
+        searchFields: ['name', 'customerName', 'customerPhone', 'id'],
+      },
+      {
+        key: 'status',
+        type: 'select',
+        defaultValue: 'all',
+        matchValue: (row) => ((row as Catalog).status === 'active' ? 'active' : 'inactive'),
+        matchMode: 'equals',
+        options: [
+          { label: 'All Status', value: 'all' },
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive', value: 'inactive' },
+        ],
+      },
+    ],
+    columns: [
+      {
+        key: 'name',
+        header: 'Catalog',
+        sortable: true,
+        cellType: 'stack',
+        value: (row) => row.name,
+        subtitle: (row) =>
+          row.customerName
+            ? `${row.customerName}${row.customerPhone ? ' · ' + row.customerPhone : ''}`
+            : row.shortCode
+              ? `Code: ${row.shortCode}`
+              : `ID: ${row.id.slice(0, 8)}…`,
+      },
+      {
+        key: 'productCount',
+        header: 'Products',
+        sortable: true,
+        cellType: 'text',
+        value: (row) => row.productCount ?? 0,
+        sortValue: (row) => row.productCount ?? 0,
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        sortable: true,
+        cellType: 'badge',
+        value: (row) => this.formatStatus(row.status),
+        badgeClass: (row) => `status-${this.isActive(row) ? 'active' : 'inactive'}`,
+        sortValue: (row) => row.status,
+      },
+    ],
+    actions: [
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: 'fa-solid fa-pen',
+        visible: (row) => this.isActive(row),
+      },
+      {
+        id: 'copy',
+        label: 'Copy share link',
+        icon: 'fa-solid fa-link',
+        visible: (row) => this.isActive(row),
+      },
+      {
+        id: 'revoke',
+        label: 'Revoke',
+        icon: 'fa-solid fa-ban',
+        visible: (row) => this.isActive(row),
+      },
+    ],
+  }));
 
   ngOnInit(): void {
     this.loadCatalogs();
     this.vendorData.getProfile().subscribe({
-      next: (profile) => {
-        this.storeCode.set(profile?.storeCode || '');
-        this.refreshShareUrls();
-      },
+      next: (profile) => this.storeCode.set(profile?.storeCode || ''),
       error: () => this.storeCode.set(''),
     });
   }
 
-  private normalizeStatus(status: string | undefined): 'active' | 'inactive' {
-    return (status || '').toLowerCase() === 'active' ? 'active' : 'inactive';
-  }
-
-  private toPublicShareUrl(catalog: Partial<Catalog> | null | undefined): string {
-    if (!catalog || this.normalizeStatus(catalog.status) !== 'active') {
-      return '';
-    }
-    return resolveShareUrl(catalog.shareUrl, this.storeCode() || undefined, catalog.shortCode);
-  }
-
-  private refreshShareUrls(): void {
-    this.allCatalogs.update((list) =>
-      list.map((c) => ({
-        ...c,
-        shareUrl: this.toPublicShareUrl(c) || null,
-      }))
-    );
-  }
-
   loadCatalogs(): void {
     this.isLoading.set(true);
+    this.errorMessage.set('');
     this.vendorData.getCatalogs().subscribe({
       next: (catalogs) => {
-        this.allCatalogs.set(
-          catalogs.map((c) => ({
-            ...c,
-            status: this.normalizeStatus(c.status),
-            shareUrl: this.toPublicShareUrl({ ...c, status: this.normalizeStatus(c.status) }) || null,
-          }))
-        );
-        this.applyFilters();
+        this.allCatalogs.set(catalogs);
         this.isLoading.set(false);
-        this.errorMessage.set('');
       },
       error: (err: unknown) => {
-        const message =
+        this.errorMessage.set(
           err instanceof ApiClientError
             ? err.message
-            : 'Unable to load catalogs. Please ensure the API is running on port 8001.';
-        this.errorMessage.set(message);
+            : err instanceof Error
+              ? err.message
+              : 'Unable to load catalogs.'
+        );
         this.isLoading.set(false);
       },
     });
   }
 
-  applyFilters(): void {
-    let list = this.vendorData.filterCatalogs(this.allCatalogs(), this.search, this.status);
-    const key = this.sortBy();
-    const dir = this.sortDir() === 'asc' ? 1 : -1;
-    list = [...list].sort((a, b) => {
-      let cmp = 0;
-      if (key === 'name') {
-        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-      } else if (key === 'products') {
-        cmp = (a.productCount ?? 0) - (b.productCount ?? 0);
-      } else {
-        cmp = this.normalizeStatus(a.status).localeCompare(this.normalizeStatus(b.status));
-      }
-      return cmp * dir;
-    });
-    this.filteredCatalogs.set(list);
-  }
-
-  toggleSort(column: SortKey): void {
-    if (this.sortBy() === column) {
-      this.sortDir.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
-    } else {
-      this.sortBy.set(column);
-      this.sortDir.set('asc');
+  onGridAction(event: DataGridActionEvent<Catalog>): void {
+    switch (event.actionId) {
+      case 'edit':
+        this.openEditPage(event.row);
+        break;
+      case 'copy':
+        this.copyShareLink(event.row);
+        break;
+      case 'revoke':
+        this.revokeCatalog(event.row);
+        break;
+      default:
+        break;
     }
-    this.applyFilters();
   }
 
-  sortIcon(column: SortKey): string {
-    if (this.sortBy() !== column) {
-      return 'fa-solid fa-sort';
-    }
-    return this.sortDir() === 'asc' ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down';
-  }
-
-  resetFilters(): void {
-    this.search = '';
-    this.status = 'all';
-    this.sortBy.set('name');
-    this.sortDir.set('asc');
-    this.applyFilters();
-  }
-
-  openAddPage(event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
+  openAddPage(): void {
     void this.router.navigate(['/vendor/catalogs/new']);
   }
 
-  openEditPage(catalog: Catalog, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
+  openEditPage(catalog: Catalog): void {
     void this.router.navigate([`/vendor/catalogs/${catalog.id}/edit`]);
   }
 
-  toggleMenu(event: MouseEvent, catalogId: string): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.openMenuId.update((id) => (id === catalogId ? null : catalogId));
-  }
-
-  closeMenu(): void {
-    this.openMenuId.set(null);
-  }
-
-  copyShareLink(catalog: Catalog, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
-
-    if (this.normalizeStatus(catalog.status) !== 'active') {
-      this.errorMessage.set('Activate the catalog before copying a share link.');
+  copyShareLink(catalog: Catalog): void {
+    if (!this.isActive(catalog)) {
+      this.toast.error('Only active catalogs have a share link.');
       return;
     }
-
-    const link = this.toPublicShareUrl(catalog);
+    const link = resolveShareUrl(catalog.shareUrl, this.storeCode() || undefined, catalog.shortCode);
     if (link) {
-      void navigator.clipboard.writeText(link).then(() => {
-        this.shareCopied.set(true);
-        setTimeout(() => this.shareCopied.set(false), 2000);
-      });
+      void navigator.clipboard.writeText(link).then(() => this.toast.success('Share link copied.'));
       return;
     }
-
     this.vendorData.ensureCatalogShare(catalog.id).subscribe({
       next: (share) => {
         const publicUrl = resolveShareUrl(share.url, this.storeCode() || undefined, share.shortCode);
@@ -191,41 +188,51 @@ export class VendorCatalogs implements OnInit {
               : item
           )
         );
-        void navigator.clipboard.writeText(publicUrl).then(() => {
-          this.shareCopied.set(true);
-          setTimeout(() => this.shareCopied.set(false), 2000);
-        });
+        void navigator.clipboard.writeText(publicUrl).then(() =>
+          this.toast.success('Share link copied.')
+        );
       },
       error: (err: unknown) => {
-        const message =
-          err instanceof ApiClientError ? err.message : 'Failed to create share link.';
-        this.errorMessage.set(message);
+        this.toast.error(
+          err instanceof ApiClientError ? err.message : 'Failed to get share link.'
+        );
       },
     });
   }
 
-  deleteCatalog(catalog: Catalog, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.openMenuId.set(null);
-    if (!confirm(`Delete catalog "${catalog.name}"? Products will move back to Default.`)) {
+  revokeCatalog(catalog: Catalog): void {
+    if (
+      !confirm(
+        `Revoke catalog "${catalog.name}"? The share link will stop working. Products stay in Manage Products.`
+      )
+    ) {
       return;
     }
-
-    this.vendorData.deleteCatalog(catalog.id).subscribe({
+    this.vendorData.revokeCatalog(catalog.id).subscribe({
       next: () => {
-        this.allCatalogs.update((list) => list.filter((item) => item.id !== catalog.id));
-        this.applyFilters();
+        this.allCatalogs.update((list) =>
+          list.map((item) =>
+            item.id === catalog.id ? { ...item, status: 'inactive' as const } : item
+          )
+        );
+        this.toast.success('Catalog revoked.');
       },
       error: (err: unknown) => {
-        const message =
-          err instanceof ApiClientError ? err.message : 'Failed to delete catalog.';
-        this.errorMessage.set(message);
+        this.toast.error(
+          err instanceof ApiClientError ? err.message : 'Failed to revoke catalog.'
+        );
       },
     });
   }
 
-  formatStatus(status: string): string {
-    return this.normalizeStatus(status);
+  formatStatus(status: string | undefined): string {
+    const s = (status || '').toLowerCase();
+    if (s === 'active') return 'Active';
+    if (s === 'expired') return 'Expired';
+    return 'Inactive';
+  }
+
+  private isActive(catalog: Catalog): boolean {
+    return (catalog.status || '').toLowerCase() === 'active';
   }
 }

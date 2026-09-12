@@ -3,7 +3,6 @@ import { Observable, map, throwError } from 'rxjs';
 import { ApiHttpService } from '../../core/api/api-http.service';
 import { Enquiry } from '../../dashboard/models/dashboard.model';
 import { CartProduct } from './interest-cart.service';
-import { CustomerAuthService } from './customer-auth.service';
 
 interface SubmitEnquiryResponse {
   success?: boolean;
@@ -19,11 +18,10 @@ interface SubmitEnquiryResponse {
 })
 export class LeadService {
   private readonly api = inject(ApiHttpService);
-  private readonly customerAuth = inject(CustomerAuthService);
 
   /**
    * Public enquiry via POST /public/submitEnquiry.
-   * `storeCode` is treated as the catalog share token in the new API.
+   * `storeCode` is the catalog share token.
    */
   submitCartInterest(
     vendorId: string | number,
@@ -34,8 +32,7 @@ export class LeadService {
     _source: 'store_home' | 'products' | 'shared_catalog' | 'cart' = 'cart',
     storeCode = ''
   ): Observable<Enquiry> {
-    const token = storeCode || this.customerAuth.getActiveStoreCode();
-    const session = token ? this.customerAuth.getSession(token) : null;
+    const token = storeCode.trim();
     if (!token) {
       return throwError(() => new Error('Catalog link is missing.'));
     }
@@ -43,8 +40,8 @@ export class LeadService {
       return throwError(() => new Error('Add at least one product to your interest list.'));
     }
 
-    const name = customerName.trim() || session?.name || '';
-    const phone = customerPhone.trim() || session?.phone || '';
+    const name = customerName.trim();
+    const phone = customerPhone.trim();
 
     return this.api
       .post<SubmitEnquiryResponse>('/public/submitEnquiry', {

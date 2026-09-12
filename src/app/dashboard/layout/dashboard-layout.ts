@@ -1,8 +1,13 @@
-import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { ThemeService } from '../../core/services/theme.service';
 import { AuthService } from '../../auth/services/auth.service';
+import { relativeTimeFromUtc } from '../../core/utils/date-time.util';
+import {
+  DashboardNotification,
+  DashboardService,
+} from '../services/dashboard.service';
 import { VendorDataService } from '../../vendor/services/vendor-data.service';
 
 interface NavItem {
@@ -42,6 +47,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly vendorData = inject(VendorDataService);
+  private readonly dashboardService = inject(DashboardService);
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly themeService = inject(ThemeService);
   private routerSub?: Subscription;
@@ -51,6 +57,25 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   readonly vendorLogo = signal('');
   private vendorLogoObjectUrl: string | null = null;
   readonly vendorDisplayName = signal('');
+
+  readonly notificationsOpen = signal(false);
+  readonly notifications = signal<DashboardNotification[]>([]);
+  readonly unreadCount = signal(0);
+  readonly notificationsLoading = signal(false);
+  readonly markReadBusy = signal(false);
+
+  /** Only unread items appear in the panel. */
+  readonly unreadNotifications = computed(() =>
+    this.notifications().filter((n) => !n.isRead)
+  );
+
+  readonly unreadBadge = computed(() => {
+    const n = this.unreadCount();
+    if (n <= 0) {
+      return '';
+    }
+    return n > 9 ? '9+' : String(n);
+  });
 
   readonly user = this.authService.getSession()?.user;
   readonly isAdmin = this.user?.role === 'superadmin';
@@ -87,9 +112,13 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     this.themeService.init();
     this.syncSidebarWithViewport();
     this.loadVendorBrand();
+    this.loadNotifications();
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => this.queueMobileScrollSync());
+      .subscribe(() => {
+        this.notificationsOpen.set(false);
+        this.queueMobileScrollSync();
+      });
   }
 
   ngAfterViewInit(): void {
@@ -144,13 +173,13 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (url.includes('/catalogs/new')) {
       return 'Add Catalog';
     }
-    if (/\/catalogs\/\d+\/edit/.test(url)) {
+    if (/\/catalogs\/[^/]+\/edit/.test(url)) {
       return 'Edit Catalog';
     }
     if (url.includes('/products/new')) {
       return 'Add Product';
     }
-    if (/\/products\/\d+\/edit/.test(url)) {
+    if (/\/products\/[^/]+\/edit/.test(url)) {
       return 'Edit Product';
     }
     if (url.includes('/master-data/new')) {
@@ -176,6 +205,100 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   logout(): void {
     this.authService.logout();
+  }
+
+  toggleNotifications(event?: Event): void {
+    event?.stopPropagation();
+    if (this.isAdmin) {
+      return;
+    }
+    const next = !this.notificationsOpen();
+    this.notificationsOpen.set(next);
+    if (next && !this.notifications().length) {
+      this.loadNotifications();
+    }
+  }
+
+  closeNotifications(): void {
+    this.notificationsOpen.set(false);
+  }
+
+  notificationTime(item: DashboardNotification): string {
+    return relativeTimeFromUtc(item.createdAt) || '';
+  }
+
+  markAllRead(): void {
+    if (this.isAdmin || this.markReadBusy() || this.unreadCount() <= 0) {
+      return;
+    }
+    this.markReadBusy.set(true);
+    this.dashboardService.markNotificationsRead().subscribe({
+      next: (res) => {
+        this.unreadCount.set(res.unreadCount);
+        this.notifications.set([]);
+        this.markReadBusy.set(false);
+      },
+      error: () => this.markReadBusy.set(false),
+    });
+  }
+
+  openNotification(item: DashboardNotification): void {
+    const go = () => {
+      this.closeNotifications();
+      if (item.type === 'enquiry_received') {
+        void this.router.navigateByUrl('/vendor/leads');
+        return;
+      }
+      if (item.type === 'catalog_viewed') {
+        void this.router.navigateByUrl('/vendor/catalogs');
+        return;
+      }
+      void this.router.navigateByUrl('/vendor/dashboard');
+    };
+
+    if (!item.isRead) {
+      this.dashboardService.markNotificationsRead([item.id]).subscribe({
+        next: (res) => {
+          this.unreadCount.set(res.unreadCount);
+          this.notifications.update((list) => list.filter((n) => n.id !== item.id));
+          go();
+        },
+        error: () => go(),
+      });
+      return;
+    }
+    go();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.notificationsOpen()) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.notification-wrap')) {
+      return;
+    }
+    this.closeNotifications();
+  }
+
+  private loadNotifications(): void {
+    if (this.isAdmin) {
+      return;
+    }
+    this.notificationsLoading.set(true);
+    this.dashboardService.getOwnerDashboard().subscribe({
+      next: (payload) => {
+        this.notifications.set(payload.notifications.filter((n) => !n.isRead));
+        this.unreadCount.set(payload.summary.unreadCount);
+        this.notificationsLoading.set(false);
+      },
+      error: () => {
+        this.notifications.set([]);
+        this.unreadCount.set(0);
+        this.notificationsLoading.set(false);
+      },
+    });
   }
 
   private loadVendorBrand(): void {

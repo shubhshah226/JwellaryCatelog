@@ -2,9 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicStoreNav } from '../../components/public-store-nav/public-store-nav';
-import { mergeHomepage } from '../../config/homepage.defaults';
-import { HomepageTextItem, PublicStoreContext } from '../../models/storefront.model';
-import { CustomerAuthService } from '../../services/customer-auth.service';
+import { PublicStoreContext } from '../../models/storefront.model';
 import { InterestCartService } from '../../services/interest-cart.service';
 import { LeadService } from '../../services/lead.service';
 import { formatRs, hasDisplayPrice, StorefrontService } from '../../services/storefront.service';
@@ -19,7 +17,6 @@ export class PublicInterestCart implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontService = inject(StorefrontService);
   private readonly cart = inject(InterestCartService);
-  private readonly customerAuth = inject(CustomerAuthService);
   private readonly leadService = inject(LeadService);
 
   readonly isLoading = signal(true);
@@ -31,6 +28,8 @@ export class PublicInterestCart implements OnInit {
   readonly successMessage = signal('');
 
   note = '';
+  guestName = '';
+  guestPhone = '';
 
   readonly cartItems = this.cart.items;
   readonly cartCount = this.cart.count;
@@ -41,12 +40,15 @@ export class PublicInterestCart implements OnInit {
 
     this.storefrontService.getStoreContext(storeCode).subscribe({
       next: (ctx) => {
-        if (!ctx) {
+        if (!ctx || ctx.isAvailable === false) {
           this.notFound.set(true);
           this.isLoading.set(false);
           return;
         }
         this.context.set(ctx);
+        if (ctx.customerName) {
+          this.guestName = ctx.customerName;
+        }
         this.isLoading.set(false);
       },
       error: () => {
@@ -56,27 +58,21 @@ export class PublicInterestCart implements OnInit {
     });
   }
 
-  topBarItems(ctx: PublicStoreContext): HomepageTextItem[] {
-    const home = mergeHomepage(ctx.config.homepage, ctx.vendor.name);
-    return home.topBar.enabled ? home.topBar.items : [];
+  catalogBrowseLink(ctx: PublicStoreContext): string[] {
+    return ['/c', ctx.storeCode];
+  }
+
+  brandColor(ctx: PublicStoreContext): string {
+    return ctx.brandColor || ctx.config.theme.primaryColor || '#c9a227';
   }
 
   primaryColor(): string {
-    return this.context()?.config.theme.primaryColor ?? '#c9a227';
+    const ctx = this.context();
+    return ctx ? this.brandColor(ctx) : '#c9a227';
   }
 
   accentColor(): string {
     return this.context()?.config.theme.accentColor ?? '#1a1a2e';
-  }
-
-  isVerified(): boolean {
-    const code = this.context()?.storeCode;
-    return !!code && !!this.customerAuth.getSession(code);
-  }
-
-  sessionName(): string {
-    const code = this.context()?.storeCode;
-    return code ? this.customerAuth.getSession(code)?.name ?? '' : '';
   }
 
   itemPrice(price?: number | null): string {
@@ -93,9 +89,10 @@ export class PublicInterestCart implements OnInit {
       return;
     }
 
-    const session = this.customerAuth.getSession(ctx.storeCode);
-    if (!session) {
-      this.errorMessage.set('Please verify your mobile number from any product first.');
+    const name = this.guestName.trim();
+    const phone = this.guestPhone.trim();
+    if (!name || !phone) {
+      this.errorMessage.set('Please enter your name and phone number.');
       return;
     }
 
@@ -105,8 +102,8 @@ export class PublicInterestCart implements OnInit {
     this.leadService
       .submitCartInterest(
         ctx.vendor.id,
-        session.name,
-        session.phone,
+        name,
+        phone,
         this.cartItems(),
         this.note,
         'cart',
@@ -121,8 +118,10 @@ export class PublicInterestCart implements OnInit {
           );
           this.isSubmitting.set(false);
         },
-        error: () => {
-          this.errorMessage.set('Could not submit your interest. Please try again.');
+        error: (err: unknown) => {
+          this.errorMessage.set(
+            err instanceof Error ? err.message : 'Could not submit your interest. Please try again.'
+          );
           this.isSubmitting.set(false);
         },
       });

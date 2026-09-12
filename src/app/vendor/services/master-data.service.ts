@@ -48,6 +48,34 @@ interface ApiMaster {
   sortOrder?: number | null;
 }
 
+export interface FilterOptions {
+  categories: MasterDataItem[];
+  metalTypes: MasterDataItem[];
+  purities: MasterDataItem[];
+  colors: MasterDataItem[];
+  stockStatuses: string[];
+  productCount: number;
+  pricedProductCount: number;
+  minWeight: number | null;
+  maxWeight: number | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+}
+
+interface ApiFilterOptions {
+  categories?: ApiCategory[];
+  metalTypes?: ApiMaster[];
+  purities?: ApiMaster[];
+  colors?: ApiMaster[];
+  stockStatuses?: string[];
+  productCount?: number;
+  pricedProductCount?: number;
+  minWeight?: number | null;
+  maxWeight?: number | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+}
+
 interface MasterActionResponse {
   success?: boolean;
   message?: string | null;
@@ -71,6 +99,27 @@ export class MasterDataService {
         isActive: null,
       })
       .pipe(map((items) => (items ?? []).map((i) => this.normalizeCategory(i))));
+  }
+
+  /** POST /master/filterOptions — one call for product filter dropdowns + ranges. */
+  getFilterOptions(): Observable<FilterOptions> {
+    return this.api.post<ApiFilterOptions>('/master/filterOptions', {}).pipe(
+      map((res) => ({
+        categories: (res?.categories ?? []).map((i) => this.normalizeCategory(i)),
+        metalTypes: (res?.metalTypes ?? []).map((i) => this.normalizeMaster(i)),
+        purities: (res?.purities ?? []).map((i) => this.normalizeMaster(i)),
+        colors: (res?.colors ?? []).map((i) => this.normalizeMaster(i)),
+        stockStatuses: res?.stockStatuses?.length
+          ? res.stockStatuses
+          : ['in_stock', 'out_of_stock', 'make_to_order'],
+        productCount: Number(res?.productCount ?? 0),
+        pricedProductCount: Number(res?.pricedProductCount ?? 0),
+        minWeight: res?.minWeight ?? null,
+        maxWeight: res?.maxWeight ?? null,
+        minPrice: res?.minPrice ?? null,
+        maxPrice: res?.maxPrice ?? null,
+      }))
+    );
   }
 
   /** Top-level only — used as Parent dropdown options. */

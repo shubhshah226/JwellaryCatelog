@@ -208,6 +208,21 @@ th {
   color: #fbbf24;
 }
 
+.dg-badge.status-in_stock {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.dg-badge.status-out_of_stock {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+.dg-badge.status-make_to_order {
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+}
+
 .dg-badge.status-trial {
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;

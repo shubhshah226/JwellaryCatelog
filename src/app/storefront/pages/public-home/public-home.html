@@ -21,6 +21,8 @@
       [storeCode]="data.storeCode"
       [vendorName]="data.vendor.name"
       [logoUrl]="data.config.logoUrl"
+      [contactPhone]="data.vendor.phone || ''"
+      [brandColor]="data.brandColor || data.config.theme.primaryColor || ''"
       [isAvailable]="data.isAvailable ?? true"
       [topBarItems]="hp(data).topBar.enabled ? hp(data).topBar.items : []"
     />
@@ -442,8 +444,9 @@
       [vendorId]="data.vendor.id"
       [vendorName]="data.vendor.name"
       [storeCode]="data.storeCode"
+      [brandColor]="data.brandColor || data.config.theme.primaryColor || ''"
+      [contactPhone]="data.vendor.phone || ''"
       (closed)="closeViewer()"
-      (verified)="onCustomerVerified()"
       (productHydrated)="onProductHydrated($event)"
     />
   </div>

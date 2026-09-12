@@ -1,161 +1,238 @@
 import { CurrencyPipe } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  HostListener,
-  OnDestroy,
-  OnInit,
-  ViewChild,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PRODUCT_STOCK_STATUSES, Product } from '../../dashboard/models/dashboard.model';
-import { resolveShareUrl } from '../../core/utils/store-code.util';
-import { VendorAccount } from '../../dashboard/models/vendor.model';
-import { VendorDataService } from '../services/vendor-data.service';
-import { MasterDataService } from '../services/master-data.service';
+import { DataGridComponent } from '../../core/components/data-grid/data-grid';
+import { DataGridCellDirective } from '../../core/components/data-grid/data-grid-cell.directive';
+import {
+  DataGridActionEvent,
+  DataGridConfig,
+  DataGridSelectionEvent,
+} from '../../core/components/data-grid/data-grid.types';
+import { ToastService } from '../../core/services/toast.service';
+import { FilterOptions, MasterDataService } from '../services/master-data.service';
 import { ProductService } from '../services/product.service';
 
 @Component({
   selector: 'app-vendor-products',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [CurrencyPipe, DataGridComponent, DataGridCellDirective],
   templateUrl: './products.html',
   styleUrls: ['../shared/vendor-page.css', './products.css'],
 })
-export class VendorProducts implements OnInit, OnDestroy {
+export class VendorProducts implements OnInit {
   private readonly router = inject(Router);
-  private readonly vendorData = inject(VendorDataService);
   private readonly productService = inject(ProductService);
   private readonly masterDataService = inject(MasterDataService);
-  private fabHostedOnBody = false;
+  private readonly toast = inject(ToastService);
 
-  @ViewChild('addFab')
-  set addFab(ref: ElementRef<HTMLButtonElement> | undefined) {
-    const el = ref?.nativeElement;
-    if (!el) {
-      return;
-    }
-    if (el.parentElement !== document.body) {
-      document.body.appendChild(el);
-      this.fabHostedOnBody = true;
-    }
-  }
+  @ViewChild(DataGridComponent) private dataGrid?: DataGridComponent<Product>;
 
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
   readonly allProducts = signal<Product[]>([]);
-  readonly categories = signal<{ id: string; name: string; status: string }[]>([]);
-  readonly metalTypes = signal<{ id: string; name: string }[]>([]);
-  readonly vendorProfile = signal<VendorAccount | null>(null);
+  readonly filterOptions = signal<FilterOptions | null>(null);
 
-  readonly isShareOpen = signal(false);
-  readonly shareLink = signal('');
-  readonly shareGenerating = signal(false);
-  readonly shareCopied = signal(false);
-  readonly shareError = signal('');
-
-  readonly search = signal('');
-  readonly category = signal('all');
-  readonly status = signal('all');
-  readonly minPrice = signal<number | null>(null);
-  readonly maxPrice = signal<number | null>(null);
-  readonly minWeight = signal<number | null>(null);
-  readonly maxWeight = signal<number | null>(null);
   readonly selectedIds = signal<Set<string>>(new Set());
-  readonly brokenImageIds = signal<Set<string>>(new Set());
-  readonly sortBy = signal<'latest' | 'name' | 'price_asc' | 'price_desc'>('latest');
-  readonly filtersOpen = signal(false);
-  readonly openMenuId = signal<string | null>(null);
-
-  readonly stockStatuses = PRODUCT_STOCK_STATUSES;
-  shareCatalogName = '';
-
-  readonly filteredProducts = computed(() => {
-    const list = this.productService.filterProducts(
-      this.allProducts(),
-      this.search(),
-      this.category(),
-      'all',
-      this.status(),
-      'all',
-      this.minPrice(),
-      this.maxPrice(),
-      this.minWeight(),
-      this.maxWeight()
-    );
-    const sort = this.sortBy();
-    return [...list].sort((a, b) => {
-      if (sort === 'name') {
-        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-      }
-      if (sort === 'price_asc') {
-        return (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY);
-      }
-      if (sort === 'price_desc') {
-        return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY);
-      }
-      return String(b.id).localeCompare(String(a.id));
-    });
-  });
-
-  readonly categoryFilterOptions = computed(() =>
-    this.categories()
-      .filter((c) => c.status === 'active')
-      .map((c) => c.name)
-      .sort((a, b) => a.localeCompare(b))
-  );
-
-  readonly activeFilterCount = computed(() => {
-    let n = 0;
-    if (this.category() !== 'all') n += 1;
-    if (this.status() !== 'all') n += 1;
-    if (this.minPrice() != null) n += 1;
-    if (this.maxPrice() != null) n += 1;
-    if (this.minWeight() != null) n += 1;
-    if (this.maxWeight() != null) n += 1;
-    return n;
-  });
-
-  readonly selectedProducts = computed(() => {
-    const ids = this.selectedIds();
-    return this.allProducts().filter((p) => ids.has(p.id));
-  });
 
   readonly selectedCount = computed(() => this.selectedIds().size);
 
-  ngOnInit(): void {
-    this.loadProducts();
-    this.loadMasterData();
-    this.vendorData.getProfile().subscribe({
-      next: (profile) => {
-        if (profile) {
-          this.vendorProfile.set({ ...profile, id: String(profile.id) });
-        }
-      },
+  /** Same Add Catalog form, with selected products pre-checked. */
+  openCreateCatalog(): void {
+    const ids = [...this.selectedIds()];
+    if (!ids.length) {
+      this.toast.error('Select at least one product.');
+      return;
+    }
+    void this.router.navigate(['/vendor/catalogs/new'], {
+      queryParams: { products: ids.join(',') },
     });
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.filtersOpen()) {
-      this.closeFilters();
-      return;
-    }
-    if (this.openMenuId() != null) {
-      this.openMenuId.set(null);
-      return;
-    }
-    if (this.isShareOpen()) {
-      this.closeShareDrawer();
-    }
-  }
+  readonly gridConfig = computed<DataGridConfig<Product>>(() => {
+    const opts = this.filterOptions();
+    const categoryOptions = [
+      { label: 'All Categories', value: 'all' },
+      ...(opts?.categories ?? [])
+        .filter((c) => c.status === 'active')
+        .map((c) => ({ label: c.name, value: c.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+    const metalOptions = [
+      { label: 'All Metals', value: 'all' },
+      ...(opts?.metalTypes ?? [])
+        .filter((m) => m.status === 'active')
+        .map((m) => ({ label: m.name, value: m.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+    const stockOptions = [
+      { label: 'All Stock', value: 'all' },
+      ...(opts?.stockStatuses ?? PRODUCT_STOCK_STATUSES.map((s) => s.value)).map((value) => {
+        const known = PRODUCT_STOCK_STATUSES.find((s) => s.value === value);
+        return {
+          label: known?.label || value.replace(/_/g, ' '),
+          value,
+        };
+      }),
+    ];
 
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.openMenuId.set(null);
+    return {
+      rowId: 'id',
+      selectable: true,
+      entityLabel: 'products',
+      emptyMessage: 'No products yet. Add your first design to get started.',
+      defaultPageSize: 10,
+      pageSizeOptions: [10, 20, 50],
+      filters: [
+        {
+          key: 'search',
+          type: 'search',
+          placeholder: 'Search name, SKU, category...',
+          searchFields: ['name', 'sku', 'category', 'metalType'],
+        },
+        {
+          key: 'category',
+          type: 'select',
+          defaultValue: 'all',
+          matchField: 'category',
+          matchMode: 'equals',
+          options: categoryOptions,
+        },
+        {
+          key: 'metalType',
+          type: 'select',
+          defaultValue: 'all',
+          matchField: 'metalType',
+          matchMode: 'equals',
+          options: metalOptions,
+        },
+        {
+          key: 'stock',
+          type: 'select',
+          defaultValue: 'all',
+          matchValue: (row) => (row as Product).stockStatus || (row as Product).status || '',
+          matchMode: 'equals',
+          options: stockOptions,
+        },
+        {
+          key: 'accountStatus',
+          type: 'select',
+          defaultValue: 'all',
+          matchField: 'accountStatus',
+          matchMode: 'equals',
+          options: [
+            { label: 'All Status', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
+          ],
+        },
+      ],
+      columns: [
+        {
+          key: 'image',
+          header: 'Photo',
+          sortable: false,
+          cellType: 'template',
+          templateKey: 'photo',
+          className: 'dg-col-photo',
+        },
+        {
+          key: 'name',
+          header: 'Product',
+          sortable: true,
+          cellType: 'stack',
+          value: (row) => row.name,
+          subtitle: (row) => row.sku || '—',
+        },
+        {
+          key: 'category',
+          header: 'Category',
+          sortable: true,
+          cellType: 'stack',
+          value: (row) => row.category || '—',
+          subtitle: (row) =>
+            [row.metalType, row.purity, row.weight ? `${row.weight}g` : '']
+              .filter(Boolean)
+              .join(' · ') || '—',
+        },
+        {
+          key: 'price',
+          header: 'Price',
+          sortable: true,
+          cellType: 'template',
+          templateKey: 'price',
+          sortValue: (row) => row.price ?? -1,
+        },
+        {
+          key: 'stockStatus',
+          header: 'Stock',
+          sortable: true,
+          cellType: 'badge',
+          value: (row) => this.stockLabel(row.stockStatus || row.status),
+          badgeClass: (row) => `status-${this.normalizeStockKey(row.stockStatus || row.status)}`,
+          sortValue: (row) => row.stockStatus || row.status || '',
+        },
+        {
+          key: 'accountStatus',
+          header: 'Status',
+          sortable: true,
+          cellType: 'badge',
+          value: (row) => (row.accountStatus === 'inactive' ? 'Inactive' : 'Active'),
+          badgeClass: (row) =>
+            row.accountStatus === 'inactive' ? 'status-inactive' : 'status-active',
+          sortValue: (row) => row.accountStatus || 'active',
+        },
+        {
+          key: 'imageCount',
+          header: 'Photos',
+          sortable: true,
+          cellType: 'text',
+          value: (row) => row.imageCount ?? 0,
+          sortValue: (row) => row.imageCount ?? 0,
+        },
+      ],
+      actions: [
+        { id: 'edit', label: 'Edit', icon: 'fa-solid fa-pen' },
+        {
+          id: 'stock_in',
+          label: 'Mark In Stock',
+          icon: 'fa-solid fa-box-open',
+          visible: (row) => (row.stockStatus || row.status) !== 'in_stock',
+        },
+        {
+          id: 'stock_out',
+          label: 'Mark Out of Stock',
+          icon: 'fa-solid fa-box',
+          visible: (row) => (row.stockStatus || row.status) !== 'out_of_stock',
+        },
+        {
+          id: 'stock_mto',
+          label: 'Mark Make to Order',
+          icon: 'fa-solid fa-hammer',
+          visible: (row) => (row.stockStatus || row.status) !== 'make_to_order',
+        },
+        {
+          id: 'deactivate',
+          label: 'Set Inactive',
+          icon: 'fa-solid fa-ban',
+          visible: (row) => row.accountStatus !== 'inactive',
+        },
+        {
+          id: 'activate',
+          label: 'Set Active',
+          icon: 'fa-solid fa-check',
+          visible: (row) => row.accountStatus === 'inactive',
+        },
+        { id: 'delete', label: 'Delete', icon: 'fa-solid fa-trash' },
+      ],
+    };
+  });
+
+  ngOnInit(): void {
+    this.loadProducts();
+    this.masterDataService.getFilterOptions().subscribe({
+      next: (opts) => this.filterOptions.set(opts),
+      error: () => this.filterOptions.set(null),
+    });
   }
 
   loadProducts(): void {
@@ -164,184 +241,89 @@ export class VendorProducts implements OnInit, OnDestroy {
     this.productService.getVendorProducts().subscribe({
       next: (products) => {
         this.allProducts.set(products);
-        this.brokenImageIds.set(new Set());
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Unable to load products. Please ensure the API is running on port 8001.');
+      error: (err: Error) => {
+        this.errorMessage.set(err.message || 'Unable to load products.');
         this.isLoading.set(false);
       },
     });
   }
 
-  loadMasterData(): void {
-    this.masterDataService.getCategories().subscribe({
-      next: (items) => this.categories.set(items),
-    });
-    this.masterDataService.getMetalTypes().subscribe({
-      next: (items) => this.metalTypes.set(items),
-    });
-  }
-
-  onSearchChange(value: string): void {
-    this.search.set(value ?? '');
-  }
-
-  onCategoryChange(value: string): void {
-    this.category.set(value || 'all');
-  }
-
-  onStatusChange(value: string): void {
-    this.status.set(value || 'all');
-  }
-
-  onMinPriceChange(value: string | number | null): void {
-    this.minPrice.set(this.toNullableNumber(value));
-  }
-
-  onMaxPriceChange(value: string | number | null): void {
-    this.maxPrice.set(this.toNullableNumber(value));
-  }
-
-  onMinWeightChange(value: string | number | null): void {
-    this.minWeight.set(this.toNullableNumber(value));
-  }
-
-  onMaxWeightChange(value: string | number | null): void {
-    this.maxWeight.set(this.toNullableNumber(value));
-  }
-
-  resetFilters(): void {
-    this.search.set('');
-    this.category.set('all');
-    this.status.set('all');
-    this.minPrice.set(null);
-    this.maxPrice.set(null);
-    this.minWeight.set(null);
-    this.maxWeight.set(null);
-  }
-
-  resetSheetFilters(): void {
-    this.status.set('all');
-    this.minPrice.set(null);
-    this.maxPrice.set(null);
-    this.minWeight.set(null);
-    this.maxWeight.set(null);
-  }
-
-  openFilters(event?: Event): void {
-    event?.stopPropagation();
-    this.openMenuId.set(null);
-    this.filtersOpen.set(true);
-    document.body.classList.add('mp-filter-open');
-  }
-
-  closeFilters(): void {
-    this.filtersOpen.set(false);
-    document.body.classList.remove('mp-filter-open');
-  }
-
-  applyFiltersSheet(): void {
-    this.closeFilters();
-  }
-
-  ngOnDestroy(): void {
-    document.body.classList.remove('mp-filter-open');
-    const fab = document.getElementById('mp-add-product-fab');
-    if (this.fabHostedOnBody && fab?.parentElement === document.body) {
-      fab.remove();
+  onGridAction(event: DataGridActionEvent<Product>): void {
+    const product = event.row;
+    switch (event.actionId) {
+      case 'edit':
+        this.openEditPage(product);
+        break;
+      case 'stock_in':
+        this.setStock(product, 'in_stock');
+        break;
+      case 'stock_out':
+        this.setStock(product, 'out_of_stock');
+        break;
+      case 'stock_mto':
+        this.setStock(product, 'make_to_order');
+        break;
+      case 'activate':
+        this.setAccountStatus(product, 'active');
+        break;
+      case 'deactivate':
+        this.setAccountStatus(product, 'inactive');
+        break;
+      case 'delete':
+        this.deleteProduct(product);
+        break;
+      default:
+        break;
     }
   }
 
-  onSortChange(value: string): void {
-    if (
-      value === 'latest' ||
-      value === 'name' ||
-      value === 'price_asc' ||
-      value === 'price_desc'
-    ) {
-      this.sortBy.set(value);
-    }
-  }
-
-  toggleMenu(event: Event, productId: string): void {
-    event.stopPropagation();
-    this.openMenuId.update((id) => (id === productId ? null : productId));
-  }
-
-  productMeta(product: Product): string {
-    const parts: string[] = [];
-    if (product.metalType) {
-      parts.push(product.metalType);
-    }
-    if (product.purity) {
-      parts.push(product.purity);
-    }
-    if (product.weight) {
-      parts.push(
-        this.weightHasUnit(product.weight) ? product.weight : `${product.weight}g`
-      );
-    }
-    return parts.join(' · ') || '—';
-  }
-
-  private toNullableNumber(value: string | number | null | undefined): number | null {
-    if (value === null || value === undefined || value === '') {
-      return null;
-    }
-    const num = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(num) ? num : null;
-  }
-
-  stockLabel(status?: string | null): string {
-    return this.productService.stockLabel(status);
-  }
-
-  weightHasUnit(weight?: string | null): boolean {
-    return /[a-zA-Z]/.test(weight ?? '');
-  }
-
-  isSelected(id: string): boolean {
-    return this.selectedIds().has(id);
-  }
-
-  hasImage(product: Product): boolean {
-    return !!product.imageUrl && !this.brokenImageIds().has(product.id);
-  }
-
-  onImageError(productId: string): void {
-    const ids = new Set(this.brokenImageIds());
-    ids.add(productId);
-    this.brokenImageIds.set(ids);
-  }
-
-  toggleSelect(product: Product, event?: Event): void {
-    event?.stopPropagation();
-    this.openMenuId.set(null);
-    const ids = new Set(this.selectedIds());
-    if (ids.has(product.id)) {
-      ids.delete(product.id);
-    } else {
-      ids.add(product.id);
-    }
-    this.selectedIds.set(ids);
-  }
-
-  clearSelection(): void {
-    this.selectedIds.set(new Set());
+  onSelectionChange(event: DataGridSelectionEvent): void {
+    this.selectedIds.set(new Set(event.selectedIds));
   }
 
   openAddPage(): void {
     void this.router.navigateByUrl('/vendor/products/new');
   }
 
-  openEditPage(product: Product, event?: Event): void {
-    event?.stopPropagation();
+  openEditPage(product: Product): void {
     void this.router.navigateByUrl(`/vendor/products/${product.id}/edit`);
   }
 
-  deleteProduct(product: Product, event?: Event): void {
-    event?.stopPropagation();
+  stockLabel(status?: string | null): string {
+    return this.productService.stockLabel(status);
+  }
+
+  setStock(product: Product, stockStatus: 'in_stock' | 'out_of_stock' | 'make_to_order'): void {
+    this.productService.updateStockStatus([product.id], stockStatus).subscribe({
+      next: () => {
+        this.allProducts.update((list) =>
+          list.map((p) =>
+            p.id === product.id
+              ? { ...p, stockStatus, status: stockStatus }
+              : p
+          )
+        );
+        this.toast.success(`Stock updated to ${this.stockLabel(stockStatus)}.`);
+      },
+      error: (err: Error) => this.toast.error(err.message || 'Failed to update stock.'),
+    });
+  }
+
+  setAccountStatus(product: Product, status: 'active' | 'inactive'): void {
+    this.productService.updateProductStatus([product.id], status).subscribe({
+      next: () => {
+        this.allProducts.update((list) =>
+          list.map((p) => (p.id === product.id ? { ...p, accountStatus: status } : p))
+        );
+        this.toast.success(status === 'active' ? 'Product activated.' : 'Product set inactive.');
+      },
+      error: (err: Error) => this.toast.error(err.message || 'Failed to update status.'),
+    });
+  }
+
+  deleteProduct(product: Product): void {
     if (!confirm(`Delete "${product.name}"?`)) {
       return;
     }
@@ -351,100 +333,34 @@ export class VendorProducts implements OnInit, OnDestroy {
         const ids = new Set(this.selectedIds());
         ids.delete(product.id);
         this.selectedIds.set(ids);
+        this.toast.success('Product deleted.');
       },
+      error: (err: Error) => this.toast.error(err.message || 'Failed to delete product.'),
     });
   }
 
-  openShareDrawer(): void {
-    if (!this.selectedCount()) {
-      return;
-    }
-    this.shareLink.set('');
-    this.shareCopied.set(false);
-    this.shareError.set('');
-    this.shareCatalogName = '';
-    this.isShareOpen.set(true);
+  clearSelection(): void {
+    this.dataGrid?.clearSelection();
+    this.selectedIds.set(new Set());
   }
 
-  closeShareDrawer(): void {
-    if (this.shareGenerating()) {
-      return;
-    }
-    this.isShareOpen.set(false);
-    this.shareError.set('');
-  }
-
-  removeFromShare(productId: string): void {
-    const ids = new Set(this.selectedIds());
-    ids.delete(productId);
-    this.selectedIds.set(ids);
-    if (!ids.size) {
-      this.closeShareDrawer();
+  onThumbError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const wrap = img.parentElement;
+    if (wrap && !wrap.querySelector('.product-thumb-fallback')) {
+      const fallback = document.createElement('span');
+      fallback.className = 'product-thumb-fallback';
+      fallback.innerHTML = '<i class="fa-solid fa-gem"></i>';
+      wrap.appendChild(fallback);
     }
   }
 
-  createAndShareCatalog(): void {
-    const name = this.shareCatalogName.trim();
-    if (!name) {
-      this.shareError.set('Please enter a catalog name (e.g. Catalog for Shubh).');
-      return;
-    }
-    const profile = this.vendorProfile();
-    if (!profile?.storeCode) {
-      this.shareError.set('Vendor store code is missing. Update your profile first.');
-      return;
-    }
-    const productIds = [...this.selectedIds()];
-    if (!productIds.length) {
-      this.shareError.set('Select at least one product.');
-      return;
-    }
-
-    this.shareGenerating.set(true);
-    this.shareError.set('');
-    this.shareLink.set('');
-
-    this.vendorData.createCatalog(name, 'active', productIds).subscribe({
-      next: (catalog) => {
-        if (catalog.shareUrl || catalog.shortCode) {
-          this.shareLink.set(
-            resolveShareUrl(catalog.shareUrl, profile.storeCode!, catalog.shortCode)
-          );
-          this.shareGenerating.set(false);
-          this.selectedIds.set(new Set());
-          return;
-        }
-        this.vendorData.ensureCatalogShare(catalog.id).subscribe({
-          next: (share) => {
-            this.shareLink.set(
-              resolveShareUrl(share.url, profile.storeCode!, share.shortCode)
-            );
-            this.shareGenerating.set(false);
-            this.selectedIds.set(new Set());
-          },
-          error: () => {
-            this.shareGenerating.set(false);
-            this.shareError.set(
-              'Catalog created, but share link failed. Open Catalogs to copy the link.'
-            );
-          },
-        });
-      },
-      error: () => {
-        this.shareGenerating.set(false);
-        this.shareError.set('Failed to create catalog. Please try again.');
-      },
-    });
-  }
-
-  copyShareLink(): void {
-    const link = this.shareLink();
-    if (!link) {
-      return;
-    }
-    navigator.clipboard.writeText(link).then(() => {
-      this.shareCopied.set(true);
-      setTimeout(() => this.shareCopied.set(false), 2000);
-    });
+  private normalizeStockKey(status?: string | null): string {
+    const value = (status || 'in_stock').toLowerCase().replace(/\s+/g, '_');
+    if (value === 'out_of_stock') return 'out_of_stock';
+    if (value === 'make_to_order') return 'make_to_order';
+    if (value === 'inactive') return 'inactive';
+    return 'in_stock';
   }
 }

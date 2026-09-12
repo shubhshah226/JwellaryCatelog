@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -7,21 +8,19 @@ import {
   computed,
   inject,
   signal,
-  effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CatalogShareService } from '../../../core/services/catalog-share.service';
 import { resolveMediaUrl } from '../../../core/utils/media-url.util';
 import { ProductViewerModal } from '../../components/product-viewer-modal/product-viewer-modal';
 import { PublicProduct, PublicStoreContext, PublicVendor } from '../../models/storefront.model';
-import { CustomerAuthService } from '../../services/customer-auth.service';
 import { InterestCartService } from '../../services/interest-cart.service';
 import { StorefrontService } from '../../services/storefront.service';
 
 @Component({
   selector: 'app-public-products',
-  imports: [FormsModule, ProductViewerModal],
+  imports: [FormsModule, ProductViewerModal, RouterLink, DecimalPipe],
   templateUrl: './public-products.html',
   styleUrl: './public-products.css',
 })
@@ -29,7 +28,6 @@ export class PublicProducts implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontService = inject(StorefrontService);
   private readonly catalogShareService = inject(CatalogShareService);
-  private readonly customerAuth = inject(CustomerAuthService);
   readonly cart = inject(InterestCartService);
   private observer: IntersectionObserver | null = null;
   private sentinelEl: HTMLElement | null = null;
@@ -48,6 +46,7 @@ export class PublicProducts implements OnInit, OnDestroy {
   readonly isLoading = signal(true);
   readonly isLoadingMore = signal(false);
   readonly notFound = signal(false);
+  readonly unavailableMessage = signal('');
   readonly context = signal<PublicStoreContext | null>(null);
   readonly products = signal<PublicProduct[]>([]);
   readonly totalCount = signal(0);
@@ -69,8 +68,6 @@ export class PublicProducts implements OnInit, OnDestroy {
   private page = 1;
   private readonly pageSize = 12;
   private shortCode = '';
-  private wasVerified = false;
-  private pricingReady = false;
   private sharedAllProducts: PublicProduct[] = [];
 
   readonly filteredCategories = computed(() => {
@@ -82,41 +79,17 @@ export class PublicProducts implements OnInit, OnDestroy {
     return list.filter((c) => c.toLowerCase().includes(q));
   });
 
-  constructor() {
-    effect(() => {
-      const tick = this.customerAuth.authTick();
-      const verified = this.customerAuth.isVerified(this.storeCode);
-      if (this.wasVerified && !verified && this.viewerOpen()) {
-        queueMicrotask(() => {
-          this.viewerOpen.set(false);
-          this.selectedProduct.set(null);
-        });
-      }
-      if (
-        this.pricingReady &&
-        tick > 0 &&
-        verified &&
-        !this.wasVerified &&
-        this.storeCode
-      ) {
-        queueMicrotask(() => {
-          if (this.isSharedView() && this.shortCode) {
-            this.reloadSharedCatalog();
-          } else if (!this.isSharedView()) {
-            this.reloadFirstPage();
-          }
-        });
-      }
-      this.wasVerified = verified;
-    });
-  }
-
   ngOnInit(): void {
+    const token = this.route.snapshot.paramMap.get('token');
+    const shortCode = this.route.snapshot.paramMap.get('shortCode') || token || '';
     this.storeCode = this.route.snapshot.paramMap.get('storeCode') ?? '';
     const shareToken = this.route.snapshot.paramMap.get('shareToken');
-    const shortCode = this.route.snapshot.paramMap.get('shortCode');
+
+    if (shortCode && !this.storeCode) {
+      this.storeCode = shortCode;
+    }
+
     this.cart.setStore(this.storeCode);
-    this.customerAuth.setActiveStore(this.storeCode);
 
     const categoryParam = this.route.snapshot.queryParamMap.get('category');
     if (categoryParam) {
@@ -125,7 +98,6 @@ export class PublicProducts implements OnInit, OnDestroy {
 
     if (shortCode) {
       this.shortCode = shortCode;
-      this.pricingReady = true;
       this.reloadSharedCatalog();
       return;
     }
@@ -159,7 +131,6 @@ export class PublicProducts implements OnInit, OnDestroy {
       return;
     }
 
-    this.pricingReady = true;
     this.loadCategories();
     this.reloadFirstPage();
   }
@@ -187,9 +158,8 @@ export class PublicProducts implements OnInit, OnDestroy {
     }, 300);
   }
 
-  isSignedIn(): boolean {
-    this.customerAuth.authTick();
-    return this.customerAuth.isVerified(this.storeCode);
+  brandColor(ctx: PublicStoreContext): string {
+    return ctx.brandColor || ctx.config.theme.primaryColor || '#c9a227';
   }
 
   vendorInitials(vendor: PublicVendor): string {
@@ -270,14 +240,6 @@ export class PublicProducts implements OnInit, OnDestroy {
   openProduct(product: PublicProduct): void {
     this.selectedProduct.set(product);
     this.viewerOpen.set(true);
-  }
-
-  onCustomerVerified(): void {
-    if (this.isSharedView() && this.shortCode) {
-      this.reloadSharedCatalog();
-    } else if (!this.isSharedView()) {
-      this.reloadFirstPage();
-    }
   }
 
   onProductHydrated(product: PublicProduct): void {
@@ -368,11 +330,12 @@ export class PublicProducts implements OnInit, OnDestroy {
   }
 
   private reloadSharedCatalog(): void {
-    if (!this.storeCode || !this.shortCode) {
+    if (!this.shortCode) {
       return;
     }
     this.isLoading.set(true);
-    this.storefrontService.getSharedCatalog(this.storeCode, this.shortCode).subscribe({
+    this.unavailableMessage.set('');
+    this.storefrontService.getSharedCatalog(this.storeCode || this.shortCode, this.shortCode).subscribe({
       next: (data) => {
         if (!data) {
           this.notFound.set(true);
@@ -381,7 +344,21 @@ export class PublicProducts implements OnInit, OnDestroy {
         }
         this.context.set(data.context);
         this.logoBroken.set(false);
-        this.applySharedProducts(data.products, null, data.shareLabel);
+        this.shareCustomerName.set(data.context.customerName || '');
+        if (data.status !== 'active') {
+          this.unavailableMessage.set(
+            data.message || 'This catalogue is no longer available.'
+          );
+          this.products.set([]);
+          this.totalCount.set(0);
+          this.isSharedView.set(true);
+          this.shareLabel.set(data.shareLabel);
+          this.isLoading.set(false);
+          return;
+        }
+        this.applySharedProducts(data.products, {
+          customerName: data.context.customerName || undefined,
+        }, data.shareLabel);
         this.isLoading.set(false);
       },
       error: () => {

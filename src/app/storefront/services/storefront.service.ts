@@ -16,7 +16,6 @@ import {
   StorefrontConfig,
   StorefrontFormData,
 } from '../models/storefront.model';
-import { CustomerAuthService } from './customer-auth.service';
 
 interface PublicCatalogApiItem {
   productId?: string;
@@ -67,7 +66,6 @@ interface PublicProductDetailApiResponse {
 })
 export class StorefrontService {
   private readonly api = inject(ApiHttpService);
-  private readonly customerAuth = inject(CustomerAuthService);
 
   /** In the new API, the route param is the catalog share token. */
   getStoreContext(token: string): Observable<PublicStoreContext | null> {
@@ -171,18 +169,25 @@ export class StorefrontService {
     context: PublicStoreContext;
     products: PublicProduct[];
     shareLabel: string;
+    status: string;
+    message?: string;
   } | null> {
     return this.fetchCatalog(shortCode).pipe(
       map((res) => {
-        if (!res) {
+        if (!res || res.status === 'not_found') {
           return null;
         }
+        const active = res.status === 'active';
         return {
           context: this.toContext(shortCode, res),
-          products: (res.items ?? []).map((item) =>
-            this.fromApiItem(shortCode, item, res.catalog?.priceVisible)
-          ),
+          products: active
+            ? (res.items ?? []).map((item) =>
+                this.fromApiItem(shortCode, item, res.catalog?.priceVisible)
+              )
+            : [],
           shareLabel: res.catalog?.title || 'Shared Catalog',
+          status: res.status || 'active',
+          message: res.message,
         };
       })
     );
@@ -314,30 +319,38 @@ export class StorefrontService {
   private toContext(token: string, res: PublicCatalogApiResponse): PublicStoreContext {
     const business = res.business;
     const name = business?.businessName || 'Catalog';
-    const vendorId = token;
+    const brandColor = (business?.brandColor || '').trim() || null;
+    const logoPath = business?.logoUrl || '';
+    const logoUrl = logoPath
+      ? logoPath.startsWith('http')
+        ? logoPath
+        : `${environment.apiBaseUrl}${logoPath}`
+      : '';
     const config = mergeStorefrontWithDefaults(
       {
-        logoUrl: business?.logoUrl
-          ? `${environment.apiBaseUrl}${business.logoUrl}`
-          : '',
+        logoUrl,
         theme: {
-          primaryColor: business?.brandColor || undefined,
+          primaryColor: brandColor || undefined,
         },
         tagline: res.catalog?.title || '',
       },
-      vendorId,
+      token,
       name
     );
 
     return {
       storeCode: token,
       vendor: {
-        id: vendorId as unknown as number,
+        id: token as unknown as number,
         name,
         phone: business?.contactPhone || undefined,
       },
       config,
       isAvailable: res.status === 'active',
+      catalogTitle: res.catalog?.title || undefined,
+      customerName: res.catalog?.customerName ?? null,
+      currency: business?.currency ?? null,
+      brandColor,
     };
   }
 

@@ -27,6 +27,40 @@ interface PlatformSummary {
   new_enquiry_count?: number;
 }
 
+export interface DashboardNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  refId: string | null;
+  isRead: boolean;
+  createdAt?: string;
+}
+
+export interface OwnerDashboardPayload {
+  summary: {
+    productCount: number;
+    activeProductCount: number;
+    outOfStockCount: number;
+    catalogCount: number;
+    liveCatalogCount: number;
+    enquiryCount: number;
+    newEnquiryCount: number;
+    unreadCount: number;
+  };
+  notifications: DashboardNotification[];
+}
+
+interface ApiNotification {
+  notificationId?: string;
+  notificationType?: string;
+  title?: string | null;
+  body?: string | null;
+  refId?: string | null;
+  isRead?: boolean;
+  createdAt?: string;
+}
+
 interface OwnerDashboardSummary {
   summary?: {
     productCount?: number;
@@ -38,6 +72,7 @@ interface OwnerDashboardSummary {
     newEnquiryCount?: number;
     unreadCount?: number;
   };
+  notifications?: ApiNotification[];
 }
 
 @Injectable({
@@ -68,6 +103,37 @@ export class DashboardService {
     );
   }
 
+  /** POST /dashboard/dashboardSummary — full owner payload including notifications. */
+  getOwnerDashboard(): Observable<OwnerDashboardPayload> {
+    return this.api.post<OwnerDashboardSummary>('/dashboard/dashboardSummary', {}).pipe(
+      map((res) => this.normalizeOwnerPayload(res))
+    );
+  }
+
+  /** POST /dashboard/markRead — mark selected (or all unread) notifications. */
+  markNotificationsRead(notificationIds?: string[]): Observable<{ markedCount: number; unreadCount: number }> {
+    return this.api
+      .post<{
+        success?: boolean;
+        markedCount?: number;
+        unreadCount?: number;
+        message?: string | null;
+      }>('/dashboard/markRead', {
+        notificationIds: notificationIds?.length ? notificationIds : null,
+      })
+      .pipe(
+        map((res) => {
+          if (res && res.success === false) {
+            throw new Error(res.message || 'Unable to mark notifications read.');
+          }
+          return {
+            markedCount: Number(res?.markedCount ?? 0),
+            unreadCount: Number(res?.unreadCount ?? 0),
+          };
+        })
+      );
+  }
+
   getDashboardData(): Observable<DashboardData> {
     const session = this.authService.getSession();
     const userName = session?.user?.name || 'User';
@@ -81,8 +147,8 @@ export class DashboardService {
       );
     }
 
-    return this.api.post<OwnerDashboardSummary>('/dashboard/dashboardSummary', {}).pipe(
-      map((summary) => this.buildOwnerDashboard(summary, userName)),
+    return this.getOwnerDashboard().pipe(
+      map((payload) => this.buildOwnerDashboard(payload, userName)),
       catchError(() =>
         of(
           this.emptyDashboard(false, userName, 'Owner', 'Last 30 days', [
@@ -94,6 +160,31 @@ export class DashboardService {
         )
       )
     );
+  }
+
+  private normalizeOwnerPayload(res: OwnerDashboardSummary | null | undefined): OwnerDashboardPayload {
+    const s = res?.summary ?? {};
+    return {
+      summary: {
+        productCount: Number(s.productCount ?? 0),
+        activeProductCount: Number(s.activeProductCount ?? 0),
+        outOfStockCount: Number(s.outOfStockCount ?? 0),
+        catalogCount: Number(s.catalogCount ?? 0),
+        liveCatalogCount: Number(s.liveCatalogCount ?? 0),
+        enquiryCount: Number(s.enquiryCount ?? 0),
+        newEnquiryCount: Number(s.newEnquiryCount ?? 0),
+        unreadCount: Number(s.unreadCount ?? 0),
+      },
+      notifications: (res?.notifications ?? []).map((n) => ({
+        id: String(n.notificationId || ''),
+        type: (n.notificationType || '').toLowerCase(),
+        title: n.title || 'Notification',
+        body: n.body || '',
+        refId: n.refId ? String(n.refId) : null,
+        isRead: !!n.isRead,
+        createdAt: n.createdAt,
+      })),
+    };
   }
 
   private normalizePlatformSummary(raw: PlatformSummary | null | undefined) {
@@ -137,17 +228,17 @@ export class DashboardService {
     ]);
   }
 
-  private buildOwnerDashboard(summary: OwnerDashboardSummary, userName: string): DashboardData {
-    const s = summary?.summary ?? {};
+  private buildOwnerDashboard(payload: OwnerDashboardPayload, userName: string): DashboardData {
+    const s = payload.summary;
     return this.emptyDashboard(false, userName, 'Owner', 'Last 30 days', [
-      this.stat('Products', Number(s.productCount ?? 0), 'products', '#3b82f6'),
-      this.stat('Active Products', Number(s.activeProductCount ?? 0), 'vendors', '#10b981'),
-      this.stat('Out of Stock', Number(s.outOfStockCount ?? 0), 'enquiries', '#f59e0b'),
-      this.stat('Catalogs', Number(s.catalogCount ?? 0), 'catalogs', '#14b8a6'),
-      this.stat('Live Catalogs', Number(s.liveCatalogCount ?? 0), 'catalogs', '#0ea5e9'),
-      this.stat('Enquiries', Number(s.enquiryCount ?? 0), 'enquiries', '#a855f7'),
-      this.stat('New Enquiries', Number(s.newEnquiryCount ?? 0), 'enquiries', '#ec4899'),
-      this.stat('Unread', Number(s.unreadCount ?? 0), 'enquiries', '#f43f5e'),
+      this.stat('Products', s.productCount, 'products', '#3b82f6'),
+      this.stat('Active Products', s.activeProductCount, 'vendors', '#10b981'),
+      this.stat('Out of Stock', s.outOfStockCount, 'enquiries', '#f59e0b'),
+      this.stat('Catalogs', s.catalogCount, 'catalogs', '#14b8a6'),
+      this.stat('Live Catalogs', s.liveCatalogCount, 'catalogs', '#0ea5e9'),
+      this.stat('Enquiries', s.enquiryCount, 'enquiries', '#a855f7'),
+      this.stat('New Enquiries', s.newEnquiryCount, 'enquiries', '#ec4899'),
+      this.stat('Unread', s.unreadCount, 'enquiries', '#f43f5e'),
     ]);
   }
 

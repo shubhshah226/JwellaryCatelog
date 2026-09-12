@@ -138,6 +138,29 @@
   pointer-events: none;
 }
 
+.pfp-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  background: linear-gradient(145deg, #eef2f7, #e2e8f0);
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.pfp-photo-placeholder i {
+  font-size: 1.25rem;
+  opacity: 0.85;
+}
+
+.pfp-photo.existing {
+  border-style: dashed;
+}
+
 .photo-order {
   position: absolute;
   top: 0.3rem;

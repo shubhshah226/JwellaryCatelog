@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, of } from 'rxjs';
+import { Observable, map, of, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiHttpService } from '../../core/api/api-http.service';
 import { AuthService } from '../../auth/services/auth.service';
 import { relativeTimeFromUtc } from '../../core/utils/date-time.util';
-import { Catalog, Enquiry, Product } from '../../dashboard/models/dashboard.model';
+import { Catalog, Enquiry, LeadItem, Product } from '../../dashboard/models/dashboard.model';
 import { VendorAccount } from '../../dashboard/models/vendor.model';
 
 interface ApiCatalog {
@@ -19,6 +19,8 @@ interface ApiCatalog {
   catalogUrl?: string | null;
   whatsappUrl?: string | null;
   createdAt?: string;
+  expiresAt?: string | null;
+  priceVisible?: boolean | null;
 }
 
 interface ApiCatalogListResponse {
@@ -33,14 +35,41 @@ interface ApiEnquiry {
   customerNote?: string | null;
   itemCount?: number;
   totalPrice?: number;
+  pricedItemCount?: number;
   enquiryStatus?: string;
   createdAt?: string;
+  updatedAt?: string;
   token?: string;
   catalogTitle?: string | null;
+  priceVisible?: boolean;
+  viewCount?: number;
+  previewImageId?: string | null;
+}
+
+interface ApiEnquiryItem {
+  productId?: string;
+  quantity?: number;
+  priceSnapshot?: number;
+  priceOnRequest?: boolean;
+  grossWeightSnapshot?: number;
+  skuCode?: string;
+  name?: string;
+  categoryName?: string;
+  metalType?: string | null;
+  purity?: string | null;
+  primaryImageId?: string | null;
+  currentPrice?: number | null;
 }
 
 interface ApiEnquiryListResponse {
   enquiries?: ApiEnquiry[];
+}
+
+interface ApiEnquiryDetailResponse {
+  enquiry?: ApiEnquiry | null;
+  items?: ApiEnquiryItem[];
+  catalogUrl?: string | null;
+  message?: string | null;
 }
 
 interface ApiBusinessProfile {
@@ -98,17 +127,28 @@ export class VendorDataService {
         catalogId: null,
         status: null,
         search: null,
-        pageSize: 50,
-        pageOffset: 0,
+        pageSize: null,
+        pageOffset: null,
       })
       .pipe(map((res) => (res?.catalogs ?? []).map((c) => this.normalizeCatalog(c))));
   }
 
+  /** POST /catalog/createCatalog — requires at least one product id. */
   createCatalog(
     name: string,
-    status: Catalog['status'] = 'active',
-    productIds: string[] = []
+    productIds: string[],
+    opts?: {
+      customerName?: string | null;
+      customerPhone?: string | null;
+      priceVisible?: boolean | null;
+      expiryDays?: number | null;
+      neverExpires?: boolean | null;
+    }
   ): Observable<Catalog> {
+    const ids = [...new Set(productIds.map(String).filter(Boolean))];
+    if (!ids.length) {
+      return throwError(() => new Error('Select at least one product for the catalog.'));
+    }
     return this.api
       .post<{
         success?: boolean;
@@ -121,9 +161,13 @@ export class VendorDataService {
         message?: string | null;
       }>('/catalog/createCatalog', {
         title: name.trim(),
-        productIds: productIds.length ? productIds : null,
-        selectAll: productIds.length ? false : true,
-        priceVisible: true,
+        productIds: ids,
+        selectAll: false,
+        customerName: opts?.customerName?.trim() || null,
+        customerPhone: opts?.customerPhone?.trim() || null,
+        priceVisible: opts?.priceVisible ?? null,
+        expiryDays: opts?.neverExpires ? null : opts?.expiryDays ?? null,
+        neverExpires: opts?.neverExpires ?? false,
       })
       .pipe(
         map((res) => {
@@ -134,68 +178,51 @@ export class VendorDataService {
             catalogId: res.catalogId,
             token: res.token,
             title: res.title || name.trim(),
-            itemCount: res.itemCount ?? productIds.length,
+            itemCount: res.itemCount ?? ids.length,
             catalogUrl: res.catalogUrl,
             whatsappUrl: res.whatsappUrl,
-            effectiveStatus: status,
-            status: status === 'inactive' ? 'revoked' : 'active',
+            effectiveStatus: 'active',
+            status: 'active',
           });
         })
       );
   }
 
-  updateCatalog(
-    id: string,
-    payload: { name?: string; status?: Catalog['status'] }
-  ): Observable<Catalog> {
-    if (payload.status === 'inactive') {
-      return this.deleteCatalog(id).pipe(
-        map(() =>
-          this.normalizeCatalog({
-            catalogId: id,
-            title: payload.name,
-            status: 'revoked',
-            effectiveStatus: 'revoked',
-          })
-        )
-      );
-    }
+  /** POST /catalog/catalogDetail */
+  getCatalogDetail(catalogId: string): Observable<{
+    catalog: Catalog;
+    products: Product[];
+    catalogUrl: string;
+    whatsappUrl: string;
+  }> {
     return this.api
-      .post<{ success?: boolean; message?: string | null }>('/catalog/updateCatalog', {
-        catalogId: id,
-        title: payload.name?.trim() || null,
-      })
+      .post<{
+        catalog?: ApiCatalog;
+        items?: Array<{
+          productId?: string;
+          name?: string;
+          skuCode?: string;
+          categoryName?: string;
+          metalType?: string;
+          purity?: string;
+          color?: string;
+          currentPrice?: number;
+          priceSnapshot?: number;
+          primaryImageId?: string | null;
+        }>;
+        catalogUrl?: string;
+        whatsappUrl?: string;
+      }>('/catalog/catalogDetail', { catalogId })
       .pipe(
         map((res) => {
-          if (res && res.success === false) {
-            throw new Error(res.message || 'Unable to update catalog.');
-          }
-          return this.normalizeCatalog({
-            catalogId: id,
-            title: payload.name,
-            status: 'active',
-            effectiveStatus: 'active',
+          const catalog = this.normalizeCatalog({
+            ...(res?.catalog || {}),
+            catalogId: res?.catalog?.catalogId || catalogId,
+            catalogUrl: res?.catalogUrl || res?.catalog?.catalogUrl,
+            whatsappUrl: res?.whatsappUrl || res?.catalog?.whatsappUrl,
+            itemCount: res?.items?.length ?? res?.catalog?.itemCount,
           });
-        })
-      );
-  }
-
-  getCatalogProducts(catalogId: string): Observable<Product[]> {
-    return this.api
-      .post<{ items?: Array<{
-        productId?: string;
-        name?: string;
-        skuCode?: string;
-        categoryName?: string;
-        metalType?: string;
-        purity?: string;
-        color?: string;
-        currentPrice?: number;
-        priceSnapshot?: number;
-      }> }>('/catalog/catalogDetail', { catalogId })
-      .pipe(
-        map((res) =>
-          (res?.items ?? []).map((p) => ({
+          const products: Product[] = (res?.items ?? []).map((p) => ({
             id: String(p.productId || ''),
             name: p.name || '',
             category: p.categoryName || '',
@@ -204,45 +231,87 @@ export class VendorDataService {
             purity: p.purity || '',
             color: p.color || '',
             price: p.currentPrice ?? p.priceSnapshot ?? null,
+            primaryImageId: p.primaryImageId ? String(p.primaryImageId) : null,
             catalogId,
-          }))
-        )
+          }));
+          return {
+            catalog,
+            products,
+            catalogUrl: res?.catalogUrl || catalog.shareUrl || '',
+            whatsappUrl: res?.whatsappUrl || catalog.whatsappUrl || '',
+          };
+        })
       );
   }
 
-  setCatalogProducts(catalogId: string, productIds: string[]): Observable<Catalog> {
+  updateCatalog(
+    id: string,
+    payload: {
+      name?: string;
+      /** Product ids to ADD. */
+      addProductIds?: string[];
+      /** Product ids to REMOVE. */
+      removeProductIds?: string[];
+      customerName?: string | null;
+      customerPhone?: string | null;
+      priceVisible?: boolean | null;
+      expiryDays?: number | null;
+      neverExpires?: boolean | null;
+    }
+  ): Observable<Catalog> {
+    const addIds = [...new Set((payload.addProductIds ?? []).map(String).filter(Boolean))];
+    const removeIds = [...new Set((payload.removeProductIds ?? []).map(String).filter(Boolean))];
     return this.api
-      .post<{ success?: boolean; message?: string | null }>('/catalog/updateCatalog', {
-        catalogId,
-        productIds,
-      })
+      .post<{ success?: boolean; message?: string | null; itemCount?: number }>(
+        '/catalog/updateCatalog',
+        {
+          catalogId: id,
+          title: payload.name?.trim() || null,
+          productIds: addIds.length ? addIds : null,
+          removeProductIds: removeIds.length ? removeIds : null,
+          customerName: payload.customerName?.trim() || null,
+          customerPhone: payload.customerPhone?.trim() || null,
+          priceVisible: payload.priceVisible ?? null,
+          expiryDays: payload.neverExpires ? null : payload.expiryDays ?? null,
+          neverExpires: payload.neverExpires ?? null,
+        }
+      )
       .pipe(
         map((res) => {
           if (res && res.success === false) {
-            throw new Error(res.message || 'Unable to update catalog products.');
+            throw new Error(res.message || 'Unable to update catalog.');
           }
           return this.normalizeCatalog({
-            catalogId,
-            itemCount: productIds.length,
+            catalogId: id,
+            title: payload.name,
+            itemCount: res?.itemCount,
             status: 'active',
             effectiveStatus: 'active',
+            priceVisible: payload.priceVisible,
           });
         })
       );
   }
 
+  getCatalogProducts(catalogId: string): Observable<Product[]> {
+    return this.getCatalogDetail(catalogId).pipe(map((d) => d.products));
+  }
+
+  /** @deprecated Prefer updateCatalog with add/remove product ids. */
+  setCatalogProducts(catalogId: string, productIds: string[]): Observable<Catalog> {
+    return this.updateCatalog(catalogId, { addProductIds: productIds });
+  }
+
   ensureCatalogShare(catalogId: string): Observable<{ shortCode: string; url: string }> {
-    return this.api.post<{ catalog?: ApiCatalog; catalogUrl?: string; token?: string }>(
-      '/catalog/catalogDetail',
-      { catalogId }
-    ).pipe(
-      map((res) => ({
-        shortCode: res?.catalog?.token || res?.token || '',
-        url: res?.catalogUrl || res?.catalog?.catalogUrl || '',
+    return this.getCatalogDetail(catalogId).pipe(
+      map((d) => ({
+        shortCode: d.catalog.token || d.catalog.shortCode || '',
+        url: d.catalogUrl || d.catalog.shareUrl || '',
       }))
     );
   }
 
+  /** POST /catalog/revokeCatalog */
   deleteCatalog(id: string): Observable<void> {
     return this.api
       .post<{ success?: boolean; message?: string | null }>('/catalog/revokeCatalog', {
@@ -257,31 +326,61 @@ export class VendorDataService {
       );
   }
 
+  revokeCatalog(id: string): Observable<void> {
+    return this.deleteCatalog(id);
+  }
+
   getProducts(): Observable<Product[]> {
     return this.api
       .post<{ products?: unknown[] }>('/product/productList', {})
       .pipe(map((res) => (res?.products as Product[]) ?? []));
   }
 
-  getLeads(): Observable<Enquiry[]> {
+  getLeads(filters?: {
+    enquiryStatus?: string | null;
+    search?: string | null;
+  }): Observable<Enquiry[]> {
     return this.api
       .post<ApiEnquiryListResponse>('/enquiry/enquiryList', {
         enquiryId: null,
-        enquiryStatus: null,
-        search: null,
+        enquiryStatus: filters?.enquiryStatus || null,
+        search: filters?.search || null,
         pageSize: null,
         pageOffset: null,
       })
       .pipe(map((res) => (res?.enquiries ?? []).map((e) => this.normalizeEnquiry(e))));
   }
 
-  updateLeadStatus(enquiryId: string, enquiryStatus: string): Observable<void> {
+  getLeadDetail(enquiryId: string): Observable<Enquiry> {
     return this.api
-      .post<{ success?: boolean }>('/enquiry/updateEnquiryStatus', {
-        enquiryId,
-        enquiryStatus,
-      })
-      .pipe(map(() => undefined));
+      .post<ApiEnquiryDetailResponse>('/enquiry/enquiryDetail', { enquiryId })
+      .pipe(
+        map((res) => {
+          if (!res?.enquiry) {
+            throw new Error(res?.message || 'Enquiry not found.');
+          }
+          return this.normalizeEnquiry(res.enquiry, res.items, res.catalogUrl);
+        })
+      );
+  }
+
+  updateLeadStatus(enquiryId: string, enquiryStatus: string): Observable<Enquiry['status']> {
+    return this.api
+      .post<{ success?: boolean; enquiryStatus?: string; message?: string | null }>(
+        '/enquiry/updateEnquiryStatus',
+        {
+          enquiryId,
+          enquiryStatus,
+        }
+      )
+      .pipe(
+        map((res) => {
+          if (res && res.success === false) {
+            throw new Error(res.message || 'Unable to update status.');
+          }
+          return this.mapEnquiryStatus(res?.enquiryStatus || enquiryStatus);
+        })
+      );
   }
 
   filterLeads(items: Enquiry[], search: string, status: string): Enquiry[] {
@@ -292,7 +391,8 @@ export class VendorDataService {
         item.customerName.toLowerCase().includes(term) ||
         (item.customerPhone || '').includes(term) ||
         (item.message || '').toLowerCase().includes(term) ||
-        (item.productName || '').toLowerCase().includes(term);
+        (item.productName || '').toLowerCase().includes(term) ||
+        (item.catalogTitle || '').toLowerCase().includes(term);
       const matchesStatus = status === 'all' || item.status === status;
       return matchesSearch && matchesStatus;
     });
@@ -513,20 +613,19 @@ export class VendorDataService {
       customerName: c.customerName || null,
       customerPhone: c.customerPhone || null,
       whatsappUrl: c.whatsappUrl || null,
+      priceVisible: c.priceVisible ?? null,
+      expiresAt: c.expiresAt || null,
     };
   }
 
-  private normalizeEnquiry(e: ApiEnquiry): Enquiry {
+  private normalizeEnquiry(
+    e: ApiEnquiry,
+    items?: ApiEnquiryItem[] | null,
+    catalogUrl?: string | null
+  ): Enquiry {
     const name = e.customerName || 'Customer';
-    const statusRaw = (e.enquiryStatus || 'new').toLowerCase();
-    let status: Enquiry['status'] = 'new';
-    if (statusRaw === 'in_progress' || statusRaw === 'open') {
-      status = 'in_progress';
-    } else if (statusRaw === 'responded' || statusRaw === 'won') {
-      status = 'responded';
-    } else if (statusRaw === 'closed' || statusRaw === 'lost') {
-      status = 'closed';
-    }
+    const status = this.mapEnquiryStatus(e.enquiryStatus || 'new');
+    const leadItems = (items ?? []).map((item) => this.normalizeEnquiryItem(item));
     return {
       id: String(e.enquiryId || ''),
       vendorId: this.getVendorId(),
@@ -538,17 +637,57 @@ export class VendorDataService {
         .slice(0, 2)
         .map((p) => p[0]?.toUpperCase() || '')
         .join(''),
-      message: e.customerNote || e.catalogTitle || '',
+      message: e.customerNote || '',
       status,
       timeAgo: relativeTimeFromUtc(e.createdAt || '') || '',
       createdAt: e.createdAt,
-      itemCount: Number(e.itemCount ?? 0),
-      productName: e.catalogTitle || `${e.itemCount ?? 0} products`,
+      updatedAt: e.updatedAt,
+      itemCount: Number(e.itemCount ?? leadItems.length),
+      productName: e.catalogTitle || `${e.itemCount ?? leadItems.length} products`,
       interestType: 'enquiry',
       catalogId: e.catalogId,
       token: e.token,
+      catalogUrl: catalogUrl || (e.token ? `/c/${e.token}` : undefined),
+      catalogTitle: e.catalogTitle || undefined,
       totalPrice: e.totalPrice,
-      items: [],
+      pricedItemCount: e.pricedItemCount,
+      viewCount: e.viewCount,
+      items: leadItems,
     };
+  }
+
+  private normalizeEnquiryItem(item: ApiEnquiryItem): LeadItem {
+    const priceOnRequest = !!item.priceOnRequest;
+    const price =
+      priceOnRequest || item.priceSnapshot == null || Number(item.priceSnapshot) <= 0
+        ? undefined
+        : Number(item.priceSnapshot);
+    return {
+      productId: String(item.productId || ''),
+      productName: item.name || 'Product',
+      category: item.categoryName,
+      price,
+      priceOnRequest,
+      sku: item.skuCode,
+      quantity: item.quantity ?? 1,
+      metalType: item.metalType || undefined,
+      purity: item.purity || undefined,
+      weight: item.grossWeightSnapshot != null ? Number(item.grossWeightSnapshot) : undefined,
+      imageUrl: item.primaryImageId || undefined,
+    };
+  }
+
+  private mapEnquiryStatus(raw: string): Enquiry['status'] {
+    const statusRaw = (raw || 'new').toLowerCase();
+    if (statusRaw === 'contacted' || statusRaw === 'in_progress' || statusRaw === 'open') {
+      return 'contacted';
+    }
+    if (statusRaw === 'closed_won' || statusRaw === 'responded' || statusRaw === 'won') {
+      return 'closed_won';
+    }
+    if (statusRaw === 'closed_lost' || statusRaw === 'closed' || statusRaw === 'lost') {
+      return 'closed_lost';
+    }
+    return 'new';
   }
 }

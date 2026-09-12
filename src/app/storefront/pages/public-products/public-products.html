@@ -7,10 +7,19 @@
   <div class="public-state error-state">
     <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
     <h1>Not Found</h1>
-    <p>This store or shared catalog link is invalid.</p>
+    <p>This catalog link is invalid. Please check the message you were sent.</p>
+  </div>
+} @else if (unavailableMessage()) {
+  <div class="public-state error-state">
+    <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
+    <h1>Catalog Unavailable</h1>
+    <p>{{ unavailableMessage() }}</p>
+    @if (context()?.vendor?.phone; as phone) {
+      <p>Call {{ context()!.vendor.name }}: {{ phone }}</p>
+    }
   </div>
 } @else if (context(); as ctx) {
-  <div class="catalog-page">
+  <div class="catalog-page" [style.--gold]="brandColor(ctx)" [style.--gold-soft]="brandColor(ctx)" [style.--header-accent]="brandColor(ctx)">
     @if (categoriesOpen()) {
       <button type="button" class="cat-scrim" (click)="closeCategories()" aria-label="Close menu"></button>
     }
@@ -23,9 +32,12 @@
         @if (logoUrl(ctx); as logo) {
           <img class="side-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
         } @else {
-          <span class="side-logo-fallback"><i class="fa-solid fa-gem"></i></span>
+          <span class="side-logo-fallback">{{ vendorInitials(ctx.vendor) }}</span>
         }
         <h1 class="side-name">{{ ctx.vendor.name }}</h1>
+        @if (ctx.vendor.phone) {
+          <a class="side-phone" [href]="'tel:' + ctx.vendor.phone">{{ ctx.vendor.phone }}</a>
+        }
       </div>
 
       <div class="side-nav">
@@ -65,7 +77,7 @@
 
       <div class="side-promo">
         <i class="fa-regular fa-gem" aria-hidden="true"></i>
-        <p>Timeless jewellery for a brighter tomorrow.</p>
+        <p>{{ ctx.catalogTitle || 'Designs selected for you.' }}</p>
       </div>
     </aside>
 
@@ -81,6 +93,9 @@
             <i class="fa-solid fa-bars"></i>
           </button>
           <div class="mobile-brand">
+            @if (logoUrl(ctx); as logo) {
+              <img class="mobile-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
+            }
             <span class="mobile-brand-name">{{ ctx.vendor.name }}</span>
           </div>
         </div>
@@ -95,39 +110,40 @@
           />
         </label>
 
-        @if (hasContact(ctx.vendor)) {
-          <div class="biz-contact">
-            @if (vendorAddress(ctx.vendor); as address) {
-              <div class="contact-item address" [title]="address">
-                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-location-dot"></i></span>
-                <span class="contact-text">{{ address }}</span>
-              </div>
+        <div class="header-actions-public">
+          @if (ctx.vendor.phone) {
+            <a class="contact-item phone" [href]="'tel:' + ctx.vendor.phone" [title]="ctx.vendor.phone">
+              <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
+              <span class="contact-text">{{ ctx.vendor.phone }}</span>
+            </a>
+          }
+          <a
+            class="cart-chip"
+            [routerLink]="['/', ctx.storeCode, 'cart']"
+            [attr.aria-label]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
+          >
+            <i class="fa-solid fa-heart" aria-hidden="true"></i>
+            @if (cart.count()) {
+              <span>{{ cart.count() }}</span>
             }
-            @if (ctx.vendor.email) {
-              <a class="contact-item" [href]="'mailto:' + ctx.vendor.email" [title]="ctx.vendor.email">
-                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-envelope"></i></span>
-                <span class="contact-text">{{ ctx.vendor.email }}</span>
-              </a>
-            }
-            @if (ctx.vendor.phone) {
-              <a class="contact-item phone" [href]="'tel:' + ctx.vendor.phone" [title]="ctx.vendor.phone">
-                <span class="contact-ico" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
-                <span class="contact-text">{{ ctx.vendor.phone }}</span>
-              </a>
-            }
-          </div>
-        }
+          </a>
+        </div>
       </header>
 
       <main class="catalog-main">
         <nav class="crumbs" aria-label="Breadcrumb">
-          <span>Home</span>
+          <span>{{ ctx.vendor.name }}</span>
           <span class="sep">›</span>
           <span>{{ activeCategoryLabel() }}</span>
         </nav>
 
         <div class="section-head">
-          <h2>{{ isSharedView() ? (shareLabel() || 'Shared Catalog') : activeCategoryLabel() }}</h2>
+          <div>
+            <h2>{{ isSharedView() ? (shareLabel() || ctx.catalogTitle || 'Shared Catalog') : activeCategoryLabel() }}</h2>
+            @if (shareCustomerName()) {
+              <p class="for-customer">For {{ shareCustomerName() }}</p>
+            }
+          </div>
           <p class="result-count">{{ totalCount() }} pieces</p>
         </div>
 
@@ -152,6 +168,9 @@
                 <div class="card-body">
                   <h3>{{ product.name }}</h3>
                   <p class="sku">{{ skuLabel(product) }}</p>
+                  @if (product.price != null) {
+                    <p class="card-price">{{ product.price | number: '1.0-0' }}</p>
+                  }
                   <button type="button" class="view-btn" (click)="openProduct(product); $event.stopPropagation()">
                     <i class="fa-regular fa-eye" aria-hidden="true"></i>
                     View Details
@@ -191,8 +210,9 @@
       [vendorId]="ctx.vendor.id"
       [vendorName]="ctx.vendor.name"
       [storeCode]="ctx.storeCode"
+      [brandColor]="brandColor(ctx)"
+      [contactPhone]="ctx.vendor.phone || ''"
       (closed)="closeViewer()"
-      (verified)="onCustomerVerified()"
       (productHydrated)="onProductHydrated($event)"
     />
   </div>

@@ -1,14 +1,14 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { Product } from '../../dashboard/models/dashboard.model';
 import { ApiClientError } from '../../core/api/api.types';
-import { resolveMediaUrl } from '../../core/utils/media-url.util';
 import { resolveShareUrl } from '../../core/utils/store-code.util';
+import { ToastService } from '../../core/services/toast.service';
 import { ProductService } from '../services/product.service';
 import { VendorDataService } from '../services/vendor-data.service';
-
-type CatalogFormStatus = 'active' | 'inactive';
 
 @Component({
   selector: 'app-vendor-catalog-form',
@@ -21,6 +21,7 @@ export class VendorCatalogForm implements OnInit {
   private readonly router = inject(Router);
   private readonly vendorData = inject(VendorDataService);
   private readonly productService = inject(ProductService);
+  private readonly toast = inject(ToastService);
 
   readonly mode = signal<'add' | 'edit'>('add');
   readonly catalogId = signal<string | null>(null);
@@ -31,18 +32,36 @@ export class VendorCatalogForm implements OnInit {
   readonly storeCode = signal('');
   readonly shareLink = signal('');
   readonly shareCopied = signal(false);
+  readonly isRevoked = signal(false);
 
   readonly allProducts = signal<Product[]>([]);
   readonly selectedProductIds = signal<Set<string>>(new Set());
+  /** Products on the catalog when edit opened (used to compute add/remove diffs). */
+  readonly initialProductIds = signal<Set<string>>(new Set());
   readonly productSearch = signal('');
   readonly loadingProducts = signal(false);
 
   formName = '';
-  formStatus: CatalogFormStatus = 'active';
+  formCustomerName = '';
+  formCustomerPhone = '';
+  formPriceVisible = true;
+  formNeverExpires = false;
+  formExpiryDays: number | null = 30;
+  private defaultExpiryDays = 30;
 
+  /** Selected catalog products first, then the rest — all products still listed. */
   readonly filteredPickerProducts = computed(() => {
     const q = this.productSearch().trim().toLowerCase();
-    const list = this.allProducts();
+    const selected = this.selectedProductIds();
+    let list = [...this.allProducts()];
+    list.sort((a, b) => {
+      const aSel = selected.has(String(a.id)) ? 0 : 1;
+      const bSel = selected.has(String(b.id)) ? 0 : 1;
+      if (aSel !== bSel) {
+        return aSel - bSel;
+      }
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
     if (!q) {
       return list;
     }
@@ -58,25 +77,42 @@ export class VendorCatalogForm implements OnInit {
 
   ngOnInit(): void {
     this.vendorData.getProfile().subscribe({
-      next: (profile) => this.storeCode.set(profile?.storeCode || ''),
+      next: (profile) => {
+        this.storeCode.set(profile?.storeCode || '');
+        this.defaultExpiryDays = profile?.catalogExpiryDays ?? 30;
+        if (this.mode() === 'add') {
+          this.formExpiryDays = this.defaultExpiryDays;
+          this.formPriceVisible = profile?.priceVisibleDefault ?? true;
+        }
+      },
       error: () => this.storeCode.set(''),
-    });
-
-    this.productService.getVendorProducts().subscribe({
-      next: (products) => this.allProducts.set(products),
-      error: () => this.allProducts.set([]),
     });
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.mode.set('edit');
       this.catalogId.set(idParam);
-      this.loadCatalog(idParam);
+      this.loadEdit(idParam);
+    } else {
+      this.loadProductsForCreate();
+    }
+  }
+
+  onNeverExpiresChange(value: boolean): void {
+    this.formNeverExpires = value;
+    if (value) {
+      this.formExpiryDays = null;
+    } else if (this.formExpiryDays == null || this.formExpiryDays <= 0) {
+      this.formExpiryDays = this.defaultExpiryDays;
     }
   }
 
   productImage(product: Product): string {
-    return resolveMediaUrl(product.imageUrl || '');
+    return (
+      product.imageUrl ||
+      this.productService.panelImageUrl(product.primaryImageId, 'grid') ||
+      ''
+    );
   }
 
   onProductImgError(event: Event): void {
@@ -96,15 +132,20 @@ export class VendorCatalogForm implements OnInit {
   }
 
   isProductSelected(id: string): boolean {
-    return this.selectedProductIds().has(id);
+    return this.selectedProductIds().has(String(id));
+  }
+
+  productKey(id: string | number): string {
+    return String(id);
   }
 
   toggleProduct(id: string): void {
+    const key = String(id);
     const next = new Set(this.selectedProductIds());
-    if (next.has(id)) {
-      next.delete(id);
+    if (next.has(key)) {
+      next.delete(key);
     } else {
-      next.add(id);
+      next.add(key);
     }
     this.selectedProductIds.set(next);
   }
@@ -112,20 +153,20 @@ export class VendorCatalogForm implements OnInit {
   selectAllFiltered(): void {
     const next = new Set(this.selectedProductIds());
     for (const p of this.filteredPickerProducts()) {
-      next.add(p.id);
+      next.add(String(p.id));
     }
     this.selectedProductIds.set(next);
   }
 
   clearSelection(): void {
+    if (this.mode() === 'edit') {
+      this.selectedProductIds.set(new Set(this.initialProductIds()));
+      return;
+    }
     this.selectedProductIds.set(new Set());
   }
 
   copyShareLink(): void {
-    if (this.formStatus !== 'active') {
-      this.formError.set('Activate the catalog before copying a share link.');
-      return;
-    }
     const link = resolveShareUrl(this.shareLink(), this.storeCode() || undefined);
     if (!link) {
       this.formError.set('Save the catalog first to get a share link.');
@@ -133,6 +174,7 @@ export class VendorCatalogForm implements OnInit {
     }
     void navigator.clipboard.writeText(link).then(() => {
       this.shareCopied.set(true);
+      this.toast.success('Share link copied.');
       setTimeout(() => this.shareCopied.set(false), 2000);
     });
   }
@@ -145,74 +187,176 @@ export class VendorCatalogForm implements OnInit {
     }
 
     const productIds = [...this.selectedProductIds()];
+    if (!productIds.length) {
+      this.formError.set('Select at least one product.');
+      return;
+    }
+    if (!this.formNeverExpires) {
+      const days = Number(this.formExpiryDays);
+      if (!Number.isFinite(days) || days <= 0) {
+        this.formError.set('Enter catalog expiry in days, or turn on Never expires.');
+        return;
+      }
+    }
+
     this.isSubmitting.set(true);
     this.formError.set('');
 
-    if (this.mode() === 'edit' && this.catalogId() != null) {
+    const shareOpts = {
+      customerName: this.formCustomerName.trim() || null,
+      customerPhone: this.formCustomerPhone.trim() || null,
+      priceVisible: this.formPriceVisible,
+      neverExpires: this.formNeverExpires,
+      expiryDays: this.formNeverExpires ? null : Number(this.formExpiryDays),
+    };
+
+    if (this.mode() === 'edit' && this.catalogId()) {
+      if (this.isRevoked()) {
+        this.formError.set('This catalog is revoked and cannot be updated. Create a new one.');
+        this.isSubmitting.set(false);
+        return;
+      }
       const id = this.catalogId()!;
-      this.vendorData.updateCatalog(id, { name, status: this.formStatus }).subscribe({
-        next: () => {
-          this.vendorData.setCatalogProducts(id, productIds).subscribe({
-            next: () => {
-              this.isSubmitting.set(false);
-              this.goBack();
-            },
-            error: (err: unknown) => {
-              this.formError.set(this.errMsg(err, 'Failed to update products.'));
-              this.isSubmitting.set(false);
-            },
-          });
-        },
-        error: (err: unknown) => {
-          this.formError.set(this.errMsg(err, 'Failed to save catalog.'));
-          this.isSubmitting.set(false);
-        },
-      });
+      const initial = this.initialProductIds();
+      const selected = new Set(productIds);
+      const addProductIds = productIds.filter((pid) => !initial.has(pid));
+      const removeProductIds = [...initial].filter((pid) => !selected.has(pid));
+
+      this.vendorData
+        .updateCatalog(id, {
+          name,
+          addProductIds,
+          removeProductIds,
+          ...shareOpts,
+        })
+        .subscribe({
+          next: () => {
+            this.isSubmitting.set(false);
+            this.toast.success('Catalog updated.');
+            this.goBack();
+          },
+          error: (err: unknown) => {
+            this.formError.set(this.errMsg(err, 'Failed to save catalog.'));
+            this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
+            this.isSubmitting.set(false);
+          },
+        });
       return;
     }
 
-    this.vendorData.createCatalog(name, this.formStatus, productIds).subscribe({
-      next: () => {
+    this.vendorData.createCatalog(name, productIds, shareOpts).subscribe({
+      next: (catalog) => {
         this.isSubmitting.set(false);
+        const link = resolveShareUrl(
+          catalog.shareUrl,
+          this.storeCode() || undefined,
+          catalog.shortCode
+        );
+        this.toast.success(
+          link ? 'Catalog created. Share link is ready on the Catalogs page.' : 'Catalog created.'
+        );
         this.goBack();
       },
       error: (err: unknown) => {
         this.formError.set(this.errMsg(err, 'Failed to save catalog.'));
+        this.toast.error(this.errMsg(err, 'Failed to save catalog.'));
         this.isSubmitting.set(false);
       },
     });
   }
 
-  private loadCatalog(id: string): void {
+  private loadProductsForCreate(): void {
+    this.loadingProducts.set(true);
+    const preselected = this.parseProductIdsQuery(
+      this.route.snapshot.queryParamMap.get('products')
+    );
+
+    this.productService.getVendorProducts().subscribe({
+      next: (products) => {
+        const withUrls = this.withImageUrls(products);
+        if (preselected.size) {
+          const valid = new Set(
+            withUrls.map((p) => String(p.id)).filter((id) => preselected.has(id))
+          );
+          this.selectedProductIds.set(valid);
+          // Selected first — same as edit flow
+          this.allProducts.set([
+            ...withUrls.filter((p) => valid.has(String(p.id))),
+            ...withUrls.filter((p) => !valid.has(String(p.id))),
+          ]);
+          if (valid.size) {
+            void this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: {},
+              replaceUrl: true,
+            });
+          }
+        } else {
+          this.allProducts.set(withUrls);
+        }
+        this.loadingProducts.set(false);
+      },
+      error: () => {
+        this.allProducts.set([]);
+        this.loadingProducts.set(false);
+      },
+    });
+  }
+
+  private parseProductIdsQuery(raw: string | null): Set<string> {
+    if (!raw?.trim()) {
+      return new Set();
+    }
+    return new Set(
+      raw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    );
+  }
+
+  /** Full product list + catalog items pre-selected. */
+  private loadEdit(id: string): void {
     this.isLoading.set(true);
     this.loadingProducts.set(true);
 
-    this.vendorData.getCatalogs().subscribe({
-      next: (catalogs) => {
-        const catalog = catalogs.find((c) => c.id === id);
-        if (!catalog) {
-          this.pageError.set('Catalog not found.');
-          this.isLoading.set(false);
-          this.loadingProducts.set(false);
-          return;
-        }
+    forkJoin({
+      products: this.productService.getVendorProducts().pipe(catchError(() => of([] as Product[]))),
+      detail: this.vendorData.getCatalogDetail(id),
+    }).subscribe({
+      next: ({ products, detail }) => {
+        const { catalog, products: catalogProducts, catalogUrl } = detail;
         this.formName = catalog.name;
-        this.formStatus = (catalog.status || '').toLowerCase() === 'active' ? 'active' : 'inactive';
+        this.formCustomerName = catalog.customerName || '';
+        this.formCustomerPhone = catalog.customerPhone || '';
+        this.formPriceVisible = catalog.priceVisible ?? true;
+        this.formNeverExpires = !catalog.expiresAt;
+        if (catalog.expiresAt) {
+          const ms = new Date(catalog.expiresAt).getTime() - Date.now();
+          const daysLeft = Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+          this.formExpiryDays = daysLeft;
+        } else {
+          this.formExpiryDays = this.defaultExpiryDays;
+        }
+        this.isRevoked.set((catalog.status || '').toLowerCase() !== 'active');
         this.shareLink.set(
-          resolveShareUrl(catalog.shareUrl, this.storeCode() || undefined, catalog.shortCode)
+          resolveShareUrl(
+            catalogUrl || catalog.shareUrl,
+            this.storeCode() || undefined,
+            catalog.shortCode
+          )
+        );
+
+        const catalogIds = new Set(
+          catalogProducts.map((p) => String(p.id)).filter(Boolean)
+        );
+        this.initialProductIds.set(catalogIds);
+        this.selectedProductIds.set(new Set(catalogIds));
+        this.allProducts.set(
+          this.mergeProductLists(this.withImageUrls(products), catalogProducts)
         );
         this.isLoading.set(false);
-
-        this.vendorData.getCatalogProducts(id).subscribe({
-          next: (products) => {
-            this.selectedProductIds.set(new Set(products.map((p) => String(p.id))));
-            this.loadingProducts.set(false);
-          },
-          error: () => {
-            this.loadingProducts.set(false);
-            this.formError.set('Could not load catalog products.');
-          },
-        });
+        this.loadingProducts.set(false);
       },
       error: (err: unknown) => {
         this.pageError.set(this.errMsg(err, 'Unable to load catalog.'));
@@ -222,7 +366,52 @@ export class VendorCatalogForm implements OnInit {
     });
   }
 
+  /** All vendor products, plus any catalog-only rows so selection still shows. */
+  private mergeProductLists(all: Product[], catalogItems: Product[]): Product[] {
+    const byId = new Map<string, Product>();
+    for (const p of all) {
+      const id = String(p.id);
+      if (id) {
+        byId.set(id, p);
+      }
+    }
+    for (const p of catalogItems) {
+      const id = String(p.id);
+      if (!id) {
+        continue;
+      }
+      const existing = byId.get(id);
+      if (existing) {
+        byId.set(id, {
+          ...existing,
+          primaryImageId: existing.primaryImageId || p.primaryImageId || null,
+          imageUrl:
+            existing.imageUrl ||
+            this.productService.panelImageUrl(p.primaryImageId, 'grid') ||
+            '',
+        });
+      } else {
+        byId.set(id, {
+          ...p,
+          imageUrl: this.productService.panelImageUrl(p.primaryImageId, 'grid') || '',
+        });
+      }
+    }
+    return [...byId.values()];
+  }
+
+  private withImageUrls(products: Product[]): Product[] {
+    return products.map((p) => ({
+      ...p,
+      id: String(p.id),
+      imageUrl:
+        p.imageUrl || this.productService.panelImageUrl(p.primaryImageId, 'grid') || '',
+    }));
+  }
+
   private errMsg(err: unknown, fallback: string): string {
-    return err instanceof ApiClientError ? err.message : fallback;
+    if (err instanceof ApiClientError) return err.message;
+    if (err instanceof Error) return err.message;
+    return fallback;
   }
 }

@@ -16,6 +16,10 @@ function isLogoutRequest(url: string): boolean {
   return url.includes('/account/logout');
 }
 
+function isPublicApiRequest(url: string): boolean {
+  return url.includes('/public/');
+}
+
 function envelopeStatus(body: unknown): number {
   if (!body || typeof body !== 'object') {
     return 0;
@@ -47,10 +51,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const toastService = inject(ToastService);
   const isLogin = isLoginRequest(req.url);
-  const skipInvalidTokenHandler = isLogin || isLogoutRequest(req.url);
+  const skipInvalidTokenHandler =
+    isLogin || isLogoutRequest(req.url) || isPublicApiRequest(req.url);
 
   let outbound = req;
-  if (!isLogin && !req.headers.has('Token') && !req.headers.has('X-Customer-Session')) {
+  if (
+    !isLogin &&
+    !isPublicApiRequest(req.url) &&
+    !req.headers.has('Token') &&
+    !req.headers.has('X-Customer-Session')
+  ) {
     let token = authService.getAccessToken();
     if (!token) {
       try {
