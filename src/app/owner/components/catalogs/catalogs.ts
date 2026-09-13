@@ -111,9 +111,21 @@ export class VendorCatalogs implements OnInit {
         visible: (row) => this.isActive(row),
       },
       {
+        id: 'deactivate',
+        label: 'Set Inactive',
+        icon: 'fa-solid fa-ban',
+        visible: (row) => this.isActive(row),
+      },
+      {
+        id: 'activate',
+        label: 'Set Active',
+        icon: 'fa-solid fa-check',
+        visible: (row) => !this.isActive(row),
+      },
+      {
         id: 'revoke',
         label: 'Revoke',
-        icon: 'fa-solid fa-ban',
+        icon: 'fa-solid fa-link-slash',
         visible: (row) => this.isActive(row),
       },
     ],
@@ -157,8 +169,14 @@ export class VendorCatalogs implements OnInit {
       case 'copy':
         this.copyShareLink(event.row);
         break;
+      case 'activate':
+        void this.setCatalogStatus(event.row, 'active');
+        break;
+      case 'deactivate':
+        void this.setCatalogStatus(event.row, 'inactive');
+        break;
       case 'revoke':
-        this.revokeCatalog(event.row);
+        void this.revokeCatalog(event.row);
         break;
       default:
         break;
@@ -198,6 +216,28 @@ export class VendorCatalogs implements OnInit {
         );
       },
     });
+  }
+
+  async setCatalogStatus(catalog: Catalog, status: 'active' | 'inactive'): Promise<void> {
+    const makingInactive = status === 'inactive';
+    const confirmed = await this.confirmDialog.confirm({
+      title: makingInactive ? 'Set Inactive' : 'Set Active',
+      message: makingInactive
+        ? `Set "${catalog.name}" as inactive?`
+        : `Set "${catalog.name}" as active?`,
+      confirmLabel: makingInactive ? 'Set Inactive' : 'Set Active',
+      cancelLabel: 'Cancel',
+      tone: makingInactive ? 'danger' : 'default',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    // TODO: bind activate/inactive catalog API when available.
+    this.allCatalogs.update((list) =>
+      list.map((item) => (item.id === catalog.id ? { ...item, status } : item))
+    );
+    this.toast.success(makingInactive ? 'Catalog set inactive.' : 'Catalog set active.');
   }
 
   async revokeCatalog(catalog: Catalog): Promise<void> {

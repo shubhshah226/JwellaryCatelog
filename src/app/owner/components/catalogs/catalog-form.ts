@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -43,10 +43,13 @@ export class VendorCatalogForm implements OnInit {
   readonly filterCategory = signal('all');
   readonly filterMetal = signal('all');
   readonly filterStock = signal('all');
-  readonly showSelectedOnly = signal(false);
   readonly loadingProducts = signal(false);
-  /** Step 1 = details, Step 2 = full-page product picker */
+  /** Step 1 = details, Step 2 = selected products */
   readonly step = signal<'details' | 'products'>('details');
+  /** Drawer to pick products that are not yet on the catalog */
+  readonly addDrawerOpen = signal(false);
+  readonly drawerPendingIds = signal<Set<string>>(new Set());
+  readonly selectedListSearch = signal('');
 
   formName = '';
   formCustomerName = '';
@@ -58,13 +61,29 @@ export class VendorCatalogForm implements OnInit {
 
   readonly selectedProducts = computed(() => {
     const selected = this.selectedProductIds();
-    return this.allProducts().filter((p) => selected.has(String(p.id)));
+    const q = this.selectedListSearch().trim().toLowerCase();
+    let list = this.allProducts().filter((p) => selected.has(String(p.id)));
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.sku ?? '').toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  });
+
+  /** Products not currently on the catalog — shown in the add drawer. */
+  readonly availableProducts = computed(() => {
+    const selected = this.selectedProductIds();
+    return this.allProducts().filter((p) => !selected.has(String(p.id)));
   });
 
   readonly categoryFilterOptions = computed(() => {
     const names = [
       ...new Set(
-        this.allProducts()
+        this.availableProducts()
           .map((p) => (p.category || '').trim())
           .filter(Boolean)
       ),
@@ -75,7 +94,7 @@ export class VendorCatalogForm implements OnInit {
   readonly metalFilterOptions = computed(() => {
     const names = [
       ...new Set(
-        this.allProducts()
+        this.availableProducts()
           .map((p) => (p.metalType || '').trim())
           .filter(Boolean)
       ),
@@ -88,73 +107,58 @@ export class VendorCatalogForm implements OnInit {
     ...PRODUCT_STOCK_STATUSES.map((s) => ({ label: s.label, value: s.value })),
   ]);
 
-  /** Selected catalog products first, then the rest — selected stay visible when filtering. */
-  readonly filteredPickerProducts = computed(() => {
+  /** Unselected products filtered for the add drawer. */
+  readonly filteredAvailableProducts = computed(() => {
     const q = this.productSearch().trim().toLowerCase();
-    const selected = this.selectedProductIds();
     const category = this.filterCategory();
     const metal = this.filterMetal();
     const stock = this.filterStock();
-    const selectedOnly = this.showSelectedOnly();
 
-    let list = [...this.allProducts()];
-    list = list.filter((p) => {
-      const id = String(p.id);
-      const isSelected = selected.has(id);
-      if (selectedOnly && !isSelected) {
-        return false;
-      }
-
-      // Keep already-selected products visible while browsing filters/search.
-      if (isSelected) {
-        return true;
-      }
-
-      if (category !== 'all' && (p.category || '').trim() !== category) {
-        return false;
-      }
-      if (metal !== 'all' && (p.metalType || '').trim() !== metal) {
-        return false;
-      }
-      if (stock !== 'all') {
-        const status = (p.stockStatus || p.status || '').trim();
-        if (status !== stock) {
+    return this.availableProducts()
+      .filter((p) => {
+        if (category !== 'all' && (p.category || '').trim() !== category) {
           return false;
         }
-      }
-      if (!q) {
-        return true;
-      }
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? '').toLowerCase().includes(q) ||
-        (p.category ?? '').toLowerCase().includes(q) ||
-        (p.metalType ?? '').toLowerCase().includes(q)
-      );
-    });
-
-    list.sort((a, b) => {
-      const aSel = selected.has(String(a.id)) ? 0 : 1;
-      const bSel = selected.has(String(b.id)) ? 0 : 1;
-      if (aSel !== bSel) {
-        return aSel - bSel;
-      }
-      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-    });
-    return list;
+        if (metal !== 'all' && (p.metalType || '').trim() !== metal) {
+          return false;
+        }
+        if (stock !== 'all') {
+          const status = (p.stockStatus || p.status || '').trim();
+          if (status !== stock) {
+            return false;
+          }
+        }
+        if (!q) {
+          return true;
+        }
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.sku ?? '').toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q) ||
+          (p.metalType ?? '').toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   });
 
-  readonly filteredVisibleCount = computed(() => this.filteredPickerProducts().length);
+  readonly availableCount = computed(() => this.availableProducts().length);
+  readonly drawerPendingCount = computed(() => this.drawerPendingIds().size);
   readonly hasActiveFilters = computed(
     () =>
       !!this.productSearch().trim() ||
       this.filterCategory() !== 'all' ||
       this.filterMetal() !== 'all' ||
-      this.filterStock() !== 'all' ||
-      this.showSelectedOnly()
+      this.filterStock() !== 'all'
   );
 
   readonly selectedCount = computed(() => this.selectedProductIds().size);
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.addDrawerOpen()) {
+      this.closeAddDrawer();
+    }
+  }
 
   ngOnInit(): void {
     this.vendorData.getProfile().subscribe({
@@ -209,6 +213,10 @@ export class VendorCatalogForm implements OnInit {
     if (this.isSubmitting()) {
       return;
     }
+    if (this.addDrawerOpen()) {
+      this.closeAddDrawer();
+      return;
+    }
     if (this.step() === 'products') {
       this.step.set('details');
       this.formError.set('');
@@ -237,36 +245,75 @@ export class VendorCatalogForm implements OnInit {
     }
     this.formError.set('');
     this.step.set('products');
+    // Create flow: open the add drawer immediately so the vendor can pick products.
+    if (this.mode() === 'add' && !this.selectedCount()) {
+      this.openAddDrawer();
+    }
   }
 
-  isProductSelected(id: string): boolean {
-    return this.selectedProductIds().has(String(id));
+  isDrawerPending(id: string): boolean {
+    return this.drawerPendingIds().has(String(id));
   }
 
-  productKey(id: string | number): string {
-    return String(id);
-  }
-
-  toggleProduct(id: string): void {
+  removeSelectedProduct(id: string): void {
     const key = String(id);
     const next = new Set(this.selectedProductIds());
+    next.delete(key);
+    this.selectedProductIds.set(next);
+  }
+
+  openAddDrawer(): void {
+    if (this.isRevoked()) {
+      return;
+    }
+    this.resetProductFilters();
+    this.drawerPendingIds.set(new Set());
+    this.addDrawerOpen.set(true);
+  }
+
+  closeAddDrawer(): void {
+    this.addDrawerOpen.set(false);
+    this.drawerPendingIds.set(new Set());
+    this.resetProductFilters();
+  }
+
+  toggleDrawerProduct(id: string): void {
+    const key = String(id);
+    const next = new Set(this.drawerPendingIds());
     if (next.has(key)) {
       next.delete(key);
     } else {
       next.add(key);
     }
-    this.selectedProductIds.set(next);
+    this.drawerPendingIds.set(next);
   }
 
-  selectAllFiltered(): void {
-    const next = new Set(this.selectedProductIds());
-    for (const p of this.filteredPickerProducts()) {
+  selectAllAvailableVisible(): void {
+    const next = new Set(this.drawerPendingIds());
+    for (const p of this.filteredAvailableProducts()) {
       next.add(String(p.id));
     }
-    this.selectedProductIds.set(next);
+    this.drawerPendingIds.set(next);
   }
 
-  clearSelection(): void {
+  clearDrawerPending(): void {
+    this.drawerPendingIds.set(new Set());
+  }
+
+  confirmAddProducts(): void {
+    const pending = this.drawerPendingIds();
+    if (!pending.size) {
+      return;
+    }
+    const next = new Set(this.selectedProductIds());
+    for (const id of pending) {
+      next.add(id);
+    }
+    this.selectedProductIds.set(next);
+    this.closeAddDrawer();
+  }
+
+  resetSelectedToInitial(): void {
     if (this.mode() === 'edit') {
       this.selectedProductIds.set(new Set(this.initialProductIds()));
       return;
@@ -279,7 +326,6 @@ export class VendorCatalogForm implements OnInit {
     this.filterCategory.set('all');
     this.filterMetal.set('all');
     this.filterStock.set('all');
-    this.showSelectedOnly.set(false);
   }
 
   onCustomerPhoneChange(value: string): void {

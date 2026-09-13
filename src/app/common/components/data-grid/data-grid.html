@@ -252,7 +252,7 @@
                 <button
                   type="button"
                   class="dg-card-footer-btn"
-                  [class.danger]="item.id === 'delete' || item.id === 'revoke'"
+                  [class.danger]="item.id === 'delete' || item.id === 'revoke' || item.id === 'deactivate'"
                   [disabled]="isActionDisabled(item, row)"
                   (click)="onAction(item, row, $event)"
                 >
@@ -267,7 +267,7 @@
                 <button
                   type="button"
                   class="dg-card-footer-btn"
-                  [class.danger]="item.id === 'delete' || item.id === 'revoke'"
+                  [class.danger]="item.id === 'delete' || item.id === 'revoke' || item.id === 'deactivate'"
                   [disabled]="isActionDisabled(item, row)"
                   (click)="onAction(item, row, $event)"
                 >

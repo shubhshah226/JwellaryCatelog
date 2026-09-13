@@ -198,7 +198,13 @@ export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterV
   });
 
   /** Primary footer actions (Edit / Delete) on mobile. */
-  readonly cardPrimaryActionIds = new Set(['edit', 'delete', 'revoke']);
+  readonly cardPrimaryActionIds = new Set([
+    'edit',
+    'delete',
+    'revoke',
+    'activate',
+    'deactivate',
+  ]);
 
   readonly columnCount = computed(() => {
     let count = this.config().columns.length;
