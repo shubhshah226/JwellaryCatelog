@@ -208,7 +208,7 @@ export class VendorService {
       );
   }
 
-  /** POST /admin/resetOwnerPassword */
+  /** POST /admin/resetOwnerPassword — body: { tenantId }; API creates password. */
   resetOwnerPassword(
     param: ResetOwnerPasswordParamModel
   ): Observable<VendorLoginCredentials & { message: string | null }> {
@@ -220,13 +220,13 @@ export class VendorService {
         ownerEmail?: string;
         ownerPassword?: string;
         sessionsEnded?: number;
-      }>('/admin/resetOwnerPassword', param)
+      }>('/admin/resetOwnerPassword', { tenantId: param.tenantId })
       .pipe(
         map((res) => {
           if (res && res.success === false) {
             throw new Error(res.message || 'Unable to reset owner password.');
           }
-          const password = (res?.ownerPassword || param.newPassword || '').trim();
+          const password = (res?.ownerPassword || '').trim();
           if (!password) {
             throw new Error(res?.message || 'Password reset succeeded but no password was returned.');
           }

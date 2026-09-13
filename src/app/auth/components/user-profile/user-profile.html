@@ -42,15 +42,17 @@
           <input type="text" [value]="p.userId || '—'" readonly />
         </label>
 
-        <label class="field">
-          <span>Tenant ID</span>
-          <input type="text" [value]="p.tenantId || '—'" readonly />
-        </label>
+        @if (!isSuperAdmin(p.userRole)) {
+          <label class="field">
+            <span>Tenant ID</span>
+            <input type="text" [value]="p.tenantId || '—'" readonly />
+          </label>
 
-        <label class="field">
-          <span>Business Name</span>
-          <input type="text" [value]="p.businessName || '—'" readonly />
-        </label>
+          <label class="field">
+            <span>Business Name</span>
+            <input type="text" [value]="p.businessName || '—'" readonly />
+          </label>
+        }
 
         <label class="field">
           <span>Last Login</span>

@@ -1,5 +1,6 @@
 ﻿import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { normalizeAppRole } from '@common/utils/jwt.util';
 import { formatInIndia } from '@common/utils/date-time.util';
 import { AuthService } from '../../services/auth.service';
 import { UserProfile } from '../../models/user.model';
@@ -14,7 +15,7 @@ export class UserProfilePage implements OnInit {
   private readonly authService = inject(AuthService);
 
   readonly isLoading = signal(true);
-  /** Static page state only â€” API detail goes to toast. */
+  /** Static page state only — API detail goes to toast. */
   readonly loadFailed = signal(false);
   readonly profile = signal<UserProfile | null>(null);
 
@@ -38,9 +39,13 @@ export class UserProfilePage implements OnInit {
     });
   }
 
+  isSuperAdmin(role: string): boolean {
+    return normalizeAppRole(role) === 'superadmin';
+  }
+
   formatRole(role: string): string {
     if (!role) {
-      return 'â€”';
+      return '—';
     }
     if (role === 'superadmin' || role === 'admin') {
       return 'Super Admin';
@@ -53,14 +58,14 @@ export class UserProfilePage implements OnInit {
 
   formatStatus(status: string): string {
     if (!status) {
-      return 'â€”';
+      return '—';
     }
     return status.replace(/_/g, ' ');
   }
 
   formatLastLogin(value: string | null): string {
     if (!value) {
-      return 'â€”';
+      return '—';
     }
     return formatInIndia(value) || value;
   }

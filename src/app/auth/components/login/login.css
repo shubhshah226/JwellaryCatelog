@@ -188,6 +188,16 @@
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
+.input-group input:-webkit-autofill,
+.input-group input:-webkit-autofill:hover,
+.input-group input:-webkit-autofill:focus,
+.input-group input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink) !important;
+  caret-color: var(--ink);
+  box-shadow: 0 0 0 1000px var(--field) inset !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
 .input-group input::placeholder {
   color: #94a3b8;
 }

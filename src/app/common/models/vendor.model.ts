@@ -11,10 +11,9 @@ export class UpdateTenantStatusParamModel {
   public accountStatus: TenantAccountStatus = 'active';
 }
 
-/** Payload for POST /admin/resetOwnerPassword */
+/** Payload for POST /admin/resetOwnerPassword — API generates the password. */
 export class ResetOwnerPasswordParamModel {
   public tenantId: string = '';
-  public newPassword: string = '';
 }
 
 /** Allowed masterType values for /admin/addTenant */

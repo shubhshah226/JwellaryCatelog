@@ -12,7 +12,7 @@ export class ToastService {
     this.toastr.success(message, title, this.options());
   }
 
-  error(message: string, title = 'Error'): void {
+  error(message: string, title = ''): void {
     this.toastr.error(message, title, this.options());
   }
 

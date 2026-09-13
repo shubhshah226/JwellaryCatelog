@@ -677,7 +677,7 @@ tbody tr:hover {
   font-style: normal;
 }
 
-.form-field input,
+.form-field input:not([type='checkbox']),
 .form-field select {
   width: 100%;
   padding: 0.7rem 0.85rem;
@@ -690,11 +690,11 @@ tbody tr:hover {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-field input::placeholder {
+.form-field input:not([type='checkbox'])::placeholder {
   color: var(--app-text-subtle);
 }
 
-.form-field input:focus,
+.form-field input:not([type='checkbox']):focus,
 .form-field select:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--app-accent) 50%, transparent);
@@ -777,7 +777,7 @@ tbody tr:hover {
     grid-column: span 1;
   }
 
-  .drawer-form .form-field input,
+  .drawer-form .form-field input:not([type='checkbox']),
   .drawer-form .form-field select,
   .drawer-form .form-field textarea {
     min-height: 2.85rem;
@@ -899,13 +899,39 @@ tbody tr:hover {
 
 .checkbox-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
 }
 
+.checkbox-field span {
+  margin: 0;
+  font-weight: 500;
+  color: var(--app-text);
+}
+
+/* Reset .form-field input styles so this stays a real checkbox, not a wide toggle-like box */
 .checkbox-field input[type='checkbox'] {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 0.2rem;
+  background: transparent;
+  box-shadow: none;
+  accent-color: var(--app-text, #ffffff);
+  cursor: pointer;
+  appearance: auto;
+}
+
+.checkbox-field input[type='checkbox']:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 35%, transparent);
 }
 
 .creds-backdrop {

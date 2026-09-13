@@ -66,8 +66,12 @@ export class ChangePassword {
         this.toast.success(res.message || 'Password changed successfully.');
         this.authService.forceLogout();
       },
-      error: () => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
+        // Business failures (e.g. incorrect current password) may not go through ApiHttpService toast.
+        this.toast.error(
+          err instanceof Error ? err.message : 'Unable to change password. Please try again.'
+        );
       },
     });
   }

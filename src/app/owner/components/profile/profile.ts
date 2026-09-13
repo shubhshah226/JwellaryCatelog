@@ -136,6 +136,10 @@ export class VendorProfile implements OnInit, OnDestroy {
     this.loadLogoPreview(this.storedLogoUri);
   }
 
+  onPhoneChange(value: string): void {
+    this.editPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
   saveProfile(): void {
     const p = this.profile();
     if (!p) {
@@ -147,6 +151,10 @@ export class VendorProfile implements OnInit, OnDestroy {
     }
     if (!this.editEmail.trim() || !this.editPhone.trim()) {
       this.formError.set('Email and phone are required.');
+      return;
+    }
+    if (!/^\d{10}$/.test(this.editPhone.trim())) {
+      this.formError.set('Phone must be a 10-digit number.');
       return;
     }
 

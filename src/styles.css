@@ -214,6 +214,28 @@ select {
   font: inherit;
 }
 
+/*
+ * Chrome/Edge autofill paints a light blue background on inputs.
+ * Force theme colors so suggestions don't flash the field white/blue.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--app-text) !important;
+  caret-color: var(--app-text);
+  box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
 /* Native LOV/dropdown options stay readable in dark theme (Windows/Chrome). */
 select {
   color: var(--app-text);

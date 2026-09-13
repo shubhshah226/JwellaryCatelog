@@ -2,15 +2,17 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { ConfirmDialog } from './common/components/confirm-dialog/confirm-dialog';
 import { GlobalLoader } from './common/components/global-loader/global-loader';
 import { LoadingService } from './common/services/loading.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, GlobalLoader],
+  imports: [RouterOutlet, GlobalLoader, ConfirmDialog],
   template: `
     <router-outlet></router-outlet>
     <app-global-loader></app-global-loader>
+    <app-confirm-dialog></app-confirm-dialog>
   `,
 })
 export class App {

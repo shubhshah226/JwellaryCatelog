@@ -44,7 +44,7 @@ function handleInvalidToken(authService: AuthService, toastService: ToastService
     return;
   }
   handlingUnauthorized = true;
-  toastService.error('Invalid or expired token. Please log in again.', 'Error');
+  toastService.error('Invalid or expired token. Please log in again.');
   authService.forceLogout();
   window.setTimeout(() => {
     handlingUnauthorized = false;

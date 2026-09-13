@@ -1,0 +1,36 @@
+@if (dialog.state(); as state) {
+  @if (state.open) {
+    <div
+      class="confirm-backdrop"
+      role="presentation"
+      (click)="dialog.dismiss()"
+    ></div>
+
+    <div
+      class="confirm-modal"
+      role="alertdialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'confirm-dialog-title'"
+      [attr.aria-describedby]="'confirm-dialog-message'"
+      (click)="$event.stopPropagation()"
+    >
+      <h3 id="confirm-dialog-title">{{ state.title }}</h3>
+      <p id="confirm-dialog-message">{{ state.message }}</p>
+
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-outline" (click)="dialog.dismiss()">
+          {{ state.cancelLabel }}
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [class.btn-primary]="state.tone !== 'danger'"
+          [class.btn-danger]="state.tone === 'danger'"
+          (click)="dialog.accept()"
+        >
+          {{ state.confirmLabel }}
+        </button>
+      </div>
+    </div>
+  }
+}

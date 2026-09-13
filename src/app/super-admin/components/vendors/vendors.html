@@ -115,8 +115,12 @@
               <input
                 type="tel"
                 name="contactPhone"
-                placeholder="9876543210"
+                inputmode="numeric"
+                maxlength="10"
+                pattern="[0-9]{10}"
+                placeholder="10-digit mobile"
                 [(ngModel)]="vendorForm.contactPhone"
+                (ngModelChange)="onContactPhoneChange($event)"
               />
             </label>
 
@@ -148,15 +152,6 @@
             </label>
 
             <label class="form-field">
-              <span>Currency</span>
-              <select name="currency" [(ngModel)]="vendorForm.currency">
-                <option value="INR">INR</option>
-                <option value="USD">USD</option>
-                <option value="AED">AED</option>
-              </select>
-            </label>
-
-            <label class="form-field">
               <span>Catalog Expiry Days</span>
               <input
                 type="number"
@@ -166,9 +161,14 @@
               />
             </label>
 
-            <label class="form-field checkbox-field">
+            <label class="form-field checkbox-field span-2">
+              <input
+                type="checkbox"
+                id="priceVisibleDefault"
+                name="priceVisibleDefault"
+                [(ngModel)]="vendorForm.priceVisibleDefault"
+              />
               <span>Show Prices by Default</span>
-              <input type="checkbox" name="priceVisibleDefault" [(ngModel)]="vendorForm.priceVisibleDefault" />
             </label>
 
             @if (drawerMode() === 'edit') {
@@ -206,7 +206,7 @@
           <div class="form-section">
             <h4>Master Data</h4>
             <div class="master-block">
-              <label>Metal Types <small>(masterType = metal_type)</small></label>
+              <label>Metal Types</label>
               <div class="chip-row">
                 <input
                   type="text"
@@ -228,7 +228,7 @@
             </div>
 
             <div class="master-block">
-              <label>Purities <small>(masterType = purity)</small></label>
+              <label>Purities</label>
               <div class="chip-row">
                 <input
                   type="text"
@@ -250,7 +250,7 @@
             </div>
 
             <div class="master-block">
-              <label>Colors <small>(masterType = color)</small></label>
+              <label>Colors</label>
               <div class="chip-row">
                 <input
                   type="text"
@@ -287,44 +287,6 @@
         </div>
       </form>
     </aside>
-  }
-
-  @if (resetPasswordVendor(); as resetVendor) {
-    <div class="creds-backdrop" (click)="closeResetPasswordModal()"></div>
-    <div class="creds-modal" role="dialog" aria-labelledby="reset-pwd-title">
-      <h3 id="reset-pwd-title">Reset owner password</h3>
-      <p>
-        Set a new password for <strong>{{ resetVendor.name }}</strong>
-        @if (resetVendor.email) {
-          (<strong>{{ resetVendor.email }}</strong>)
-        }.
-        Share it once — it cannot be shown again.
-      </p>
-      <form class="reset-pwd-form" (ngSubmit)="submitResetPassword()">
-        <label class="form-field">
-          <span>New Password <em>*</em></span>
-          <input
-            type="text"
-            name="newPassword"
-            placeholder="e.g. Owner@5678"
-            [(ngModel)]="resetPasswordForm.newPassword"
-            autocomplete="new-password"
-            required
-          />
-        </label>
-        @if (resetPasswordError()) {
-          <p class="login-error form-inline-error" role="alert">{{ resetPasswordError() }}</p>
-        }
-        <div class="creds-actions">
-          <button type="button" class="btn btn-outline" (click)="closeResetPasswordModal()" [disabled]="isResettingPassword()">
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary" [disabled]="isResettingPassword()">
-            {{ isResettingPassword() ? 'Resetting...' : 'Reset Password' }}
-          </button>
-        </div>
-      </form>
-    </div>
   }
 
   @if (createdCredentials(); as creds) {

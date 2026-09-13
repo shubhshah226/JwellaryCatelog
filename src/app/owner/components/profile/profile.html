@@ -150,7 +150,11 @@
             <span>Phone <em>*</em></span>
             <input
               type="tel"
+              inputmode="numeric"
+              maxlength="10"
+              pattern="[0-9]{10}"
               [(ngModel)]="editPhone"
+              (ngModelChange)="onPhoneChange($event)"
               name="editPhone"
               placeholder="10-digit mobile"
               required

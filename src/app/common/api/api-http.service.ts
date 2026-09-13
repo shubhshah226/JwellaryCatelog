@@ -198,31 +198,55 @@ export class ApiHttpService {
     if (err.status === 401) {
       return;
     }
-    this.toast.error(err.message || 'Request failed');
+    this.toast.error(this.userFacingMessage(err.message));
+  }
+
+  /** Hide raw Angular/HTTP noise (URLs, status 0) from users. */
+  private userFacingMessage(message: string | null | undefined): string {
+    const text = (message || '').trim();
+    if (!text) {
+      return 'Something went wrong.';
+    }
+    if (
+      text.startsWith('Http failure response') ||
+      /:\s*0\s+Unknown Error/i.test(text) ||
+      /localhost:\d+/i.test(text) ||
+      /Http failure/i.test(text)
+    ) {
+      return 'Something went wrong.';
+    }
+    return text;
   }
 
   private toApiError(err: unknown): ApiClientError {
     if (err instanceof ApiClientError) {
-      return err;
+      return new ApiClientError(err.code, this.userFacingMessage(err.message), err.status);
     }
     if (err instanceof HttpErrorResponse) {
       const payload = err.error as ApiResponse | string | undefined;
+      // Network / CORS / server down → status 0
+      if (!err.status || err.status === 0) {
+        return new ApiClientError('HTTP_ERROR', 'Something went wrong.', 0);
+      }
       if (payload && typeof payload === 'object') {
+        const detail =
+          payload.exceptions ||
+          this.messageFromData(payload.data) ||
+          null;
         return new ApiClientError(
           'HTTP_ERROR',
-          payload.exceptions || this.messageFromData(payload.data) || err.message || 'Request failed',
+          this.userFacingMessage(detail || 'Something went wrong.'),
           Number(payload.status) || err.status || 0
         );
       }
-      return new ApiClientError(
-        'HTTP_ERROR',
-        (typeof payload === 'string' && payload) || err.message || 'Unable to reach the API server.',
-        err.status || 0
-      );
+      if (typeof payload === 'string' && payload.trim() && !payload.startsWith('Http failure')) {
+        return new ApiClientError('HTTP_ERROR', this.userFacingMessage(payload), err.status);
+      }
+      return new ApiClientError('HTTP_ERROR', 'Something went wrong.', err.status || 0);
     }
     if (err instanceof Error && err.message) {
-      return new ApiClientError('UNKNOWN', err.message);
+      return new ApiClientError('UNKNOWN', this.userFacingMessage(err.message));
     }
-    return new ApiClientError('UNKNOWN', 'Unexpected error');
+    return new ApiClientError('UNKNOWN', 'Something went wrong.');
   }
 }

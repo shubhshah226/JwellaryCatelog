@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { ToastService } from '@common/services/toast.service';
 import { LoginParamModel, LoginResponse } from '../../models/user.model';
 import { AuthService } from '../../services/auth.service';
 
@@ -20,13 +21,14 @@ import { AuthService } from '../../services/auth.service';
 })
 export class Login {
   private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
   email = '';
   password = '';
   showPassword = false;
   isLoading = signal(false);
-  /** Static client validation only â€” API messages go to toast. */
+  /** Static client validation only — API messages go to toast. */
   errorMessage = signal('');
   userLoginResponse: LoginResponse = new LoginResponse();
 
@@ -58,9 +60,9 @@ export class Login {
       .subscribe({
         next: (response) => {
           this.userLoginResponse = response;
+          this.toast.success('Login successfully.');
           this.authService.redirectToDashboard();
         },
-        // API errors are toasted by ApiHttpService; finalize clears loading.
         error: () => undefined,
       });
   }

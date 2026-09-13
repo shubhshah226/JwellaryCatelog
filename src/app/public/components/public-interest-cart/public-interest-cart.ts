@@ -181,6 +181,10 @@ export class PublicInterestCart implements OnInit {
       this.errorMessage.set('Please enter your name and phone number.');
       return;
     }
+    if (!/^\d{10}$/.test(phone)) {
+      this.errorMessage.set('Phone must be a 10-digit number.');
+      return;
+    }
 
     this.isSubmitting.set(true);
     this.errorMessage.set('');

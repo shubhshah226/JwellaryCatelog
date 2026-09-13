@@ -64,10 +64,14 @@
           <label class="form-field">
             <span>Customer phone</span>
             <input
-              type="text"
+              type="tel"
+              inputmode="numeric"
+              maxlength="10"
+              pattern="[0-9]{10}"
               [(ngModel)]="formCustomerPhone"
+              (ngModelChange)="onCustomerPhoneChange($event)"
               name="customerPhone"
-              placeholder="Optional WhatsApp number"
+              placeholder="10-digit mobile (optional)"
               [disabled]="isRevoked()"
             />
           </label>

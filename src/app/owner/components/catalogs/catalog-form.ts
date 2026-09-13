@@ -165,6 +165,10 @@ export class VendorCatalogForm implements OnInit {
     this.selectedProductIds.set(new Set());
   }
 
+  onCustomerPhoneChange(value: string): void {
+    this.formCustomerPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+  }
+
   copyShareLink(): void {
     const link = resolveShareUrl(this.shareLink(), this.storeCode() || undefined);
     if (!link) {
@@ -188,6 +192,11 @@ export class VendorCatalogForm implements OnInit {
     const productIds = [...this.selectedProductIds()];
     if (!productIds.length) {
       this.formError.set('Select at least one product.');
+      return;
+    }
+    const customerPhone = this.formCustomerPhone.trim();
+    if (customerPhone && !/^\d{10}$/.test(customerPhone)) {
+      this.formError.set('Customer phone must be a 10-digit number.');
       return;
     }
     if (!this.formNeverExpires) {

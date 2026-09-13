@@ -59,6 +59,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   readonly vendorDisplayName = signal('');
 
   readonly notificationsOpen = signal(false);
+  readonly userMenuOpen = signal(false);
   readonly notifications = signal<DashboardNotification[]>([]);
   readonly unreadCount = signal(0);
   readonly notificationsLoading = signal(false);
@@ -85,7 +86,6 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
   readonly adminNavItems: NavItem[] = [
     { label: 'Dashboard', route: '/superAdmin/dashboard', icon: 'dashboard' },
     { label: 'Manage Vendors', route: '/superAdmin/vendors', icon: 'vendors' },
-    { label: 'User Profile', route: '/superAdmin/user-profile', icon: 'profile' },
     { label: 'Change Password', route: '/common/changepassword', icon: 'password' },
   ];
 
@@ -117,6 +117,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => {
         this.notificationsOpen.set(false);
+        this.userMenuOpen.set(false);
         this.queueMobileScrollSync();
       });
   }
@@ -173,6 +174,9 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (url.includes('/common/access-denied')) {
       return 'Access Denied';
     }
+    if (url.includes('/user-profile')) {
+      return 'User Profile';
+    }
     if (url.includes('/catalogs/new')) {
       return 'Add Catalog';
     }
@@ -215,11 +219,30 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (this.isAdmin) {
       return;
     }
+    this.userMenuOpen.set(false);
     const next = !this.notificationsOpen();
     this.notificationsOpen.set(next);
     if (next && !this.notifications().length) {
       this.loadNotifications();
     }
+  }
+
+  toggleUserMenu(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isAdmin) {
+      return;
+    }
+    this.notificationsOpen.set(false);
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
+  }
+
+  goToUserProfile(): void {
+    this.closeUserMenu();
+    void this.router.navigateByUrl('/superAdmin/user-profile');
   }
 
   closeNotifications(): void {
@@ -275,14 +298,13 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.notificationsOpen()) {
-      return;
-    }
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.notification-wrap')) {
-      return;
+    if (this.notificationsOpen() && !target?.closest('.notification-wrap')) {
+      this.closeNotifications();
     }
-    this.closeNotifications();
+    if (this.userMenuOpen() && !target?.closest('.user-menu-wrap')) {
+      this.closeUserMenu();
+    }
   }
 
   private loadNotifications(): void {
