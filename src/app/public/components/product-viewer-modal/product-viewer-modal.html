@@ -11,7 +11,7 @@
       [attr.aria-label]="item.name"
       [class.is-saved]="isInCart()"
     >
-      <button type="button" class="pvm-close" (click)="close()" aria-label="Close">
+      <button type="button" class="pvm-close" (click)="close()" aria-label="Close" data-tooltip="Close" data-tooltip-pos="left">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
@@ -41,10 +41,10 @@
             </div>
 
             @if (displayImages().length > 1) {
-              <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image">
+              <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image" data-tooltip="Previous photo">
                 <i class="fa-solid fa-chevron-left"></i>
               </button>
-              <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image">
+              <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image" data-tooltip="Next photo">
                 <i class="fa-solid fa-chevron-right"></i>
               </button>
               <span class="pvm-photo-count" aria-hidden="true">
@@ -61,6 +61,8 @@
                   class="pvm-thumb"
                   [class.active]="activeImageIndex() === $index"
                   (click)="selectImage($index)"
+                  [attr.aria-label]="'View photo ' + ($index + 1)"
+                  [attr.data-tooltip]="'Photo ' + ($index + 1)"
                 >
                   <img [src]="img" [alt]="item.name + ' view ' + ($index + 1)" />
                 </button>

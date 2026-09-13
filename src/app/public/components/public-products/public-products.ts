@@ -63,6 +63,8 @@ export class PublicProducts implements OnInit, OnDestroy {
   readonly productSearch = signal('');
   readonly selectedCategory = signal('all');
   readonly logoBroken = signal(false);
+  /** Bumps to remount product grid and replay enter animations. */
+  readonly gridAnimTick = signal(0);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   private storeCode = '';
@@ -252,6 +254,10 @@ export class PublicProducts implements OnInit, OnDestroy {
     return this.cart.items().some((p) => p.id === productId);
   }
 
+  cardDelay(index: number): string {
+    return `${Math.min(index, 10) * 0.07}s`;
+  }
+
   openProduct(product: PublicProduct): void {
     this.selectedProduct.set(product);
     this.viewerOpen.set(true);
@@ -342,6 +348,7 @@ export class PublicProducts implements OnInit, OnDestroy {
     this.products.set(filtered);
     this.totalCount.set(filtered.length);
     this.hasMore.set(false);
+    this.bumpGridAnimation();
   }
 
   private reloadSharedCatalog(): void {
@@ -432,6 +439,7 @@ export class PublicProducts implements OnInit, OnDestroy {
             this.products.set([...this.products(), ...next]);
           } else {
             this.products.set(data.products);
+            this.bumpGridAnimation();
           }
 
           this.isLoading.set(false);
@@ -449,6 +457,10 @@ export class PublicProducts implements OnInit, OnDestroy {
           this.isLoadingMore.set(false);
         },
       });
+  }
+
+  private bumpGridAnimation(): void {
+    this.gridAnimTick.update((n) => n + 1);
   }
 
   private attachScrollObserver(el: HTMLElement): void {

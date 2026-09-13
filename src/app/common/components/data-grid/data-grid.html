@@ -59,8 +59,8 @@
 
       <div class="dg-filter-actions">
         <button type="button" class="dg-btn dg-btn-primary" (click)="applyFilters()">Filter</button>
-        <button type="button" class="dg-btn dg-btn-icon" (click)="resetFilters()" aria-label="Reset filters">
-          <i class="fa-solid fa-rotate-right"></i>
+        <button type="button" class="dg-btn dg-btn-icon" (click)="resetFilters()" aria-label="Reset filters" data-tooltip="Reset filters">
+          <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
         </button>
       </div>
     </div>
@@ -75,7 +75,13 @@
         <tr>
           @if (config().selectable) {
             <th class="dg-col-check">
-              <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
+              <input
+                type="checkbox"
+                [checked]="isAllSelected()"
+                (change)="toggleSelectAll($event)"
+                aria-label="Select all rows"
+                title="Select all"
+              />
             </th>
           }
           @for (column of config().columns; track column.key) {
@@ -121,6 +127,8 @@
                   [checked]="isSelected(row)"
                   (change)="toggleSelect(row, $event)"
                   (click)="$event.stopPropagation()"
+                  aria-label="Select row"
+                  title="Select row"
                 />
               </td>
             }
@@ -155,7 +163,7 @@
     @if (config().selectable && paginatedRows().length) {
       <div class="dg-cards-select-all">
         <label>
-          <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" />
+          <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" aria-label="Select all rows" />
           Select all on this page
         </label>
       </div>
@@ -177,6 +185,8 @@
                 [checked]="isSelected(row)"
                 (change)="toggleSelect(row, $event)"
                 (click)="$event.stopPropagation()"
+                aria-label="Select row"
+                title="Select row"
               />
             }
 
@@ -222,6 +232,7 @@
                   type="button"
                   class="dg-menu-dots"
                   aria-label="More actions"
+                  data-tooltip="More actions"
                   [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
                   (click)="toggleActionsMenu(row, $event, 'secondary')"
                 >
@@ -300,8 +311,10 @@
           class="dg-page-btn"
           (click)="goToPage(currentPage() - 1)"
           [disabled]="currentPage() === 1"
+          aria-label="Previous page"
+          data-tooltip="Previous page"
         >
-          <i class="fa-solid fa-chevron-left"></i>
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
         </button>
         @for (page of pageNumbers(); track page) {
           <button
@@ -309,13 +322,21 @@
             class="dg-page-btn"
             [class.active]="page === currentPage()"
             (click)="goToPage(page)"
+            [attr.aria-label]="'Go to page ' + page"
+            [attr.data-tooltip]="'Page ' + page"
           >
             {{ page }}
           </button>
         }
         @if (totalPages() > 5) {
           <span class="dg-page-ellipsis">...</span>
-          <button type="button" class="dg-page-btn" (click)="goToPage(totalPages())">
+          <button
+            type="button"
+            class="dg-page-btn"
+            (click)="goToPage(totalPages())"
+            [attr.aria-label]="'Go to page ' + totalPages()"
+            [attr.data-tooltip]="'Page ' + totalPages()"
+          >
             {{ totalPages() }}
           </button>
         }
@@ -324,8 +345,10 @@
           class="dg-page-btn"
           (click)="goToPage(currentPage() + 1)"
           [disabled]="currentPage() === totalPages()"
+          aria-label="Next page"
+          data-tooltip="Next page"
         >
-          <i class="fa-solid fa-chevron-right"></i>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -404,10 +427,11 @@
       type="button"
       class="dg-menu-dots"
       aria-label="Row actions"
+      data-tooltip="Actions"
       [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
       (click)="toggleActionsMenu(row, $event, 'all')"
     >
-      <i class="fa-solid fa-ellipsis-vertical"></i>
+      <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
     </button>
   </div>
 </ng-template>

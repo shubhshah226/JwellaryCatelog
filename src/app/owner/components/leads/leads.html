@@ -62,8 +62,8 @@
         </select>
 
         <div class="filter-actions">
-          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters">
-            <i class="fa-solid fa-rotate-right"></i>
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters" data-tooltip="Reset filters">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
           </button>
         </div>
       </div>
@@ -198,8 +198,8 @@
             <h3>{{ lead.customerName }}</h3>
             <p>{{ formatPhone(lead.customerPhone) }}</p>
           </div>
-          <button type="button" class="drawer-close" (click)="closeDetail()" aria-label="Close">
-            <i class="fa-solid fa-xmark"></i>
+          <button type="button" class="drawer-close" (click)="closeDetail()" aria-label="Close" data-tooltip="Close">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
         </div>
 

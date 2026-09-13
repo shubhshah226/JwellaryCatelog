@@ -11,6 +11,7 @@
 @import '@fontsource/fraunces/500.css';
 @import '@fontsource/fraunces/600.css';
 @import '@fontsource/fraunces/700.css';
+@import './app/common/styles/tooltips.css';
 
 *,
 *::before,

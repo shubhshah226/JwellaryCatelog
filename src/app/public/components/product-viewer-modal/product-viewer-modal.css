@@ -93,15 +93,21 @@
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 0.7rem;
   overflow: hidden;
+  container-type: size;
 }
 
 .pvm-gallery-frame {
+  /* Fixed square stage — every photo uses the same W×H */
   position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 280px;
+  flex: 0 0 auto;
+  width: min(100%, 100cqh - 4.5rem);
+  aspect-ratio: 1 / 1;
+  height: auto;
+  margin-inline: auto;
   border-radius: 16px;
   overflow: hidden;
   background: #f4f1ec;
@@ -110,6 +116,8 @@
 }
 
 .pvm-carousel {
+  position: absolute;
+  inset: 0;
   display: flex;
   width: 100%;
   height: 100%;
@@ -123,27 +131,33 @@
 }
 
 .pvm-slide {
+  position: relative;
   flex: 0 0 100%;
   width: 100%;
   min-width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
   background: #f4f1ec;
   user-select: none;
 }
 
 .pvm-slide img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
   object-position: center;
+  display: block;
   pointer-events: none;
   -webkit-user-drag: none;
 }
 
 .pvm-image-placeholder {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: grid;
@@ -186,6 +200,8 @@
   display: flex;
   gap: 0.45rem;
   flex: 0 0 auto;
+  width: 100%;
+  align-self: stretch;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -195,6 +211,7 @@
 }
 
 .pvm-thumb {
+  position: relative;
   flex: 0 0 56px;
   width: 56px;
   height: 56px;
@@ -211,9 +228,14 @@
 }
 
 .pvm-thumb img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -478,17 +500,24 @@
     border-right: none;
     background: #f3f1ee;
     overflow: visible;
+    align-items: stretch;
+    justify-content: flex-start;
+    container-type: normal;
   }
 
   .pvm-gallery-frame {
     flex: none;
     width: 100%;
-    height: min(100vw, 48svh);
-    min-height: 260px;
+    aspect-ratio: 1 / 1;
+    height: auto;
     border-radius: 0;
     border: none;
     border-bottom: 1px solid var(--line);
     background: #f3f1ee;
+  }
+
+  .pvm-thumbs {
+    width: 100%;
   }
 
   .pvm-thumbs {

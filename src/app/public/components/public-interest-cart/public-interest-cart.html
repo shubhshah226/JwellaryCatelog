@@ -24,7 +24,13 @@
         <span class="topbar-sub">Interest list</span>
       </div>
       @if (ctx.vendor.phone) {
-        <a class="topbar-call" [href]="'tel:' + ctx.vendor.phone" aria-label="Call jeweller">
+        <a
+          class="topbar-call"
+          [href]="'tel:' + ctx.vendor.phone"
+          aria-label="Call jeweller"
+          data-tooltip="Call jeweller"
+          data-tooltip-pos="bottom"
+        >
           <i class="fa-solid fa-phone"></i>
         </a>
       } @else {
@@ -79,6 +85,7 @@
                     class="remove-btn"
                     (click)="removeItem(item.id)"
                     aria-label="Remove {{ item.name }}"
+                    [attr.data-tooltip]="'Remove ' + item.name"
                   >
                     <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                   </button>
@@ -231,11 +238,18 @@
                       type="button"
                       class="suggest-heart"
                       (click)="addSuggestion(product)"
-                      aria-label="Add {{ product.name }} to interest list"
+                      [attr.aria-label]="'Add ' + product.name + ' to interest list'"
+                      [attr.data-tooltip]="'Add to interest list'"
                     >
-                      <i class="fa-regular fa-heart"></i>
+                      <i class="fa-regular fa-heart" aria-hidden="true"></i>
                     </button>
-                    <button type="button" class="suggest-media" (click)="viewDetails(asCartItem(product))">
+                    <button
+                      type="button"
+                      class="suggest-media"
+                      (click)="viewDetails(asCartItem(product))"
+                      [attr.aria-label]="'View ' + product.name"
+                      [attr.data-tooltip]="product.name"
+                    >
                       @if (product.imageUrl) {
                         <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
                       } @else {

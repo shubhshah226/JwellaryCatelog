@@ -595,6 +595,8 @@
 
 .suggest-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -638,21 +640,37 @@
 }
 
 .suggest-media {
+  position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
   border: none;
   padding: 0;
   background: var(--page-deep);
   cursor: pointer;
-  display: grid;
-  place-items: center;
+  display: block;
   color: #a8a29e;
 }
 
 .suggest-media img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.suggest-media span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
 .suggest-copy {
@@ -661,6 +679,7 @@
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .suggest-copy strong {

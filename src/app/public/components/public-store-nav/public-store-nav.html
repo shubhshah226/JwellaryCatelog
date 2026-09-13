@@ -28,17 +28,38 @@
       @if (isAvailable()) {
         <div class="nav-actions">
           @if (contactPhone()) {
-            <a class="icon-btn phone-link" [href]="'tel:' + contactPhone()" [attr.aria-label]="'Call ' + contactPhone()">
-              <i class="fa-solid fa-phone"></i>
+            <a
+              class="icon-btn phone-link"
+              [href]="'tel:' + contactPhone()"
+              [attr.aria-label]="'Call ' + contactPhone()"
+              [attr.data-tooltip]="'Call ' + contactPhone()"
+              data-tooltip-pos="bottom"
+            >
+              <i class="fa-solid fa-phone" aria-hidden="true"></i>
             </a>
           }
-          <button type="button" class="icon-btn" (click)="goCart()" [class.active]="isCartActive()" aria-label="Interest list">
-            <i class="fa-solid fa-heart"></i>
+          <button
+            type="button"
+            class="icon-btn"
+            (click)="goCart()"
+            [class.active]="isCartActive()"
+            aria-label="Interest list"
+            data-tooltip="Interest list"
+            data-tooltip-pos="bottom"
+          >
+            <i class="fa-solid fa-heart" aria-hidden="true"></i>
             @if (cart.count()) {
               <span class="cart-badge">{{ cart.count() }}</span>
             }
           </button>
-          <button type="button" class="menu-btn" (click)="toggleMenu()" aria-label="Open menu">
+          <button
+            type="button"
+            class="menu-btn"
+            (click)="toggleMenu()"
+            [attr.aria-label]="menuOpen() ? 'Close menu' : 'Open menu'"
+            [attr.data-tooltip]="menuOpen() ? 'Close menu' : 'Open menu'"
+            data-tooltip-pos="bottom"
+          >
             <span></span>
             <span></span>
             <span></span>

@@ -45,6 +45,8 @@
           class="drawer-close"
           (click)="closeCategories($event)"
           aria-label="Close menu"
+          data-tooltip="Close menu"
+          data-tooltip-pos="bottom"
         >
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
@@ -110,7 +112,9 @@
             type="button"
             class="mobile-cat-btn"
             (click)="toggleCategories()"
-            aria-label="Open categories"
+            [attr.aria-label]="categoriesOpen() ? 'Close categories' : 'Open categories'"
+            [attr.data-tooltip]="categoriesOpen() ? 'Close categories' : 'Open categories'"
+            data-tooltip-pos="bottom"
           >
             <i class="fa-solid fa-bars"></i>
           </button>
@@ -141,7 +145,13 @@
 
         <div class="header-actions-public">
           @if (ctx.vendor.phone) {
-            <a class="icon-action phone" [href]="'tel:' + ctx.vendor.phone" [title]="'Call ' + ctx.vendor.phone">
+            <a
+              class="icon-action phone"
+              [href]="'tel:' + ctx.vendor.phone"
+              [attr.aria-label]="'Call ' + ctx.vendor.phone"
+              [attr.data-tooltip]="'Call ' + ctx.vendor.phone"
+              data-tooltip-pos="bottom"
+            >
               <i class="fa-solid fa-phone" aria-hidden="true"></i>
               <span class="action-label">{{ ctx.vendor.phone }}</span>
             </a>
@@ -150,6 +160,8 @@
             class="icon-action cart"
             [routerLink]="['/c', ctx.storeCode, 'cart']"
             [attr.aria-label]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
+            [attr.data-tooltip]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
+            data-tooltip-pos="bottom"
           >
             <i class="fa-regular fa-heart" aria-hidden="true"></i>
             @if (cart.count()) {
@@ -209,65 +221,68 @@
         }
 
         @if (products().length) {
-          <div class="product-grid">
-            @for (product of products(); track product.id) {
-              <article
-                class="product-card"
-                [class.in-interest]="inInterestList(product.id)"
-                (click)="openProduct(product)"
-              >
-                <div class="card-media">
-                  @if (product.category) {
-                    <span class="cat-badge">{{ product.category }}</span>
-                  }
-                  @if (inInterestList(product.id)) {
-                    <span class="interest-badge" aria-label="Already in your interest list">
-                      <i class="fa-solid fa-check" aria-hidden="true"></i>
-                      Added
-                    </span>
-                  }
-                  @if (product.imageUrl) {
-                    <img
-                      [src]="product.imageUrl"
-                      [alt]="product.name"
-                      loading="lazy"
-                      (error)="onImgError($event)"
-                    />
-                  }
-                  <div class="ph" [class.visible]="!product.imageUrl"><i class="fa-solid fa-gem"></i></div>
-                  <span class="quick-view" aria-hidden="true">
-                    @if (inInterestList(product.id)) {
-                      <i class="fa-solid fa-check"></i>
-                      Added
-                    } @else {
-                      <i class="fa-regular fa-eye"></i>
-                      View
+          @for (tick of [gridAnimTick()]; track tick) {
+            <div class="product-grid">
+              @for (product of products(); track product.id; let i = $index) {
+                <article
+                  class="product-card"
+                  [class.in-interest]="inInterestList(product.id)"
+                  [style.animation-delay]="cardDelay(i)"
+                  (click)="openProduct(product)"
+                >
+                  <div class="card-media">
+                    @if (product.category) {
+                      <span class="cat-badge">{{ product.category }}</span>
                     }
-                  </span>
-                </div>
-                <div class="card-body">
-                  <h3>{{ product.name }}</h3>
-                  <div class="card-meta-row">
-                    <p class="sku">{{ skuLabel(product) }}</p>
-                    @if (product.price != null) {
-                      <p class="card-price">{{ product.price | number: '1.0-0' }}</p>
+                    @if (inInterestList(product.id)) {
+                      <span class="interest-badge" aria-label="Already in your interest list">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i>
+                        Added
+                      </span>
+                    }
+                    @if (product.imageUrl) {
+                      <img
+                        [src]="product.imageUrl"
+                        [alt]="product.name"
+                        loading="lazy"
+                        (error)="onImgError($event)"
+                      />
+                    }
+                    <div class="ph" [class.visible]="!product.imageUrl"><i class="fa-solid fa-gem"></i></div>
+                    <span class="quick-view" aria-hidden="true">
+                      @if (inInterestList(product.id)) {
+                        <i class="fa-solid fa-check"></i>
+                        Added
+                      } @else {
+                        <i class="fa-regular fa-eye"></i>
+                        View
+                      }
+                    </span>
+                  </div>
+                  <div class="card-body">
+                    <h3>{{ product.name }}</h3>
+                    <div class="card-meta-row">
+                      <p class="sku">{{ skuLabel(product) }}</p>
+                      @if (product.price != null) {
+                        <p class="card-price">{{ product.price | number: '1.0-0' }}</p>
+                      }
+                    </div>
+                    @if (product.metalType || product.purity) {
+                      <p class="card-spec">
+                        {{ product.metalType }}{{ product.metalType && product.purity ? ' · ' : '' }}{{ product.purity }}
+                      </p>
+                    }
+                    @if (inInterestList(product.id)) {
+                      <p class="interest-status">
+                        <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                        In your interest list
+                      </p>
                     }
                   </div>
-                  @if (product.metalType || product.purity) {
-                    <p class="card-spec">
-                      {{ product.metalType }}{{ product.metalType && product.purity ? ' · ' : '' }}{{ product.purity }}
-                    </p>
-                  }
-                  @if (inInterestList(product.id)) {
-                    <p class="interest-status">
-                      <i class="fa-solid fa-heart" aria-hidden="true"></i>
-                      In your interest list
-                    </p>
-                  }
-                </div>
-              </article>
-            }
-          </div>
+                </article>
+              }
+            </div>
+          }
 
           @if (!isSharedView()) {
             <div #loadMoreSentinel class="sentinel" aria-hidden="true"></div>

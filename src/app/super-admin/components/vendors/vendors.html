@@ -69,8 +69,8 @@
           <h3 id="vendor-drawer-title">{{ drawerTitle() }}</h3>
           <p>{{ drawerSubtitle() }}</p>
         </div>
-        <button type="button" class="drawer-close" (click)="closeVendorDrawer()" aria-label="Close">
-          <i class="fa-solid fa-xmark"></i>
+        <button type="button" class="drawer-close" (click)="closeVendorDrawer()" aria-label="Close" data-tooltip="Close">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -207,7 +207,7 @@
               @for (item of vendorForm.categories; track item; let i = $index) {
                 <span class="chip">
                   {{ item }}
-                  <button type="button" (click)="removeCategory(i)" aria-label="Remove">×</button>
+                  <button type="button" (click)="removeCategory(i)" aria-label="Remove category" data-tooltip="Remove">×</button>
                 </span>
               }
             </div>
@@ -231,7 +231,7 @@
                 @for (item of vendorForm.metalTypes; track item; let i = $index) {
                   <span class="chip">
                     {{ item }}
-                    <button type="button" (click)="removeMetalType(i)" aria-label="Remove">×</button>
+                    <button type="button" (click)="removeMetalType(i)" aria-label="Remove metal type" data-tooltip="Remove">×</button>
                   </span>
                 }
               </div>
@@ -253,7 +253,7 @@
                 @for (item of vendorForm.purities; track item; let i = $index) {
                   <span class="chip">
                     {{ item }}
-                    <button type="button" (click)="removePurity(i)" aria-label="Remove">×</button>
+                    <button type="button" (click)="removePurity(i)" aria-label="Remove purity" data-tooltip="Remove">×</button>
                   </span>
                 }
               </div>
@@ -275,7 +275,7 @@
                 @for (item of vendorForm.colors; track item; let i = $index) {
                   <span class="chip">
                     {{ item }}
-                    <button type="button" (click)="removeColor(i)" aria-label="Remove">×</button>
+                    <button type="button" (click)="removeColor(i)" aria-label="Remove color" data-tooltip="Remove">×</button>
                   </span>
                 }
               </div>

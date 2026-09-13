@@ -24,7 +24,7 @@
           <p class="brand-subtitle">MANAGEMENT SYSTEM</p>
         }
       </div>
-      <button type="button" class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close sidebar">
+      <button type="button" class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close sidebar" data-tooltip="Close sidebar">
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
     </div>
@@ -67,6 +67,8 @@
           (click)="toggleSidebar()"
           [attr.aria-expanded]="isSidebarOpen()"
           aria-label="Toggle menu"
+          data-tooltip="Menu"
+          data-tooltip-pos="bottom"
         >
           <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
@@ -86,6 +88,8 @@
           class="icon-btn theme-btn"
           (click)="toggleTheme()"
           [attr.aria-label]="themeService.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+          [attr.data-tooltip]="themeService.isDark() ? 'Light theme' : 'Dark theme'"
+          data-tooltip-pos="bottom"
         >
           @if (themeService.isDark()) {
             <i class="fa-solid fa-sun" aria-hidden="true"></i>
@@ -100,6 +104,8 @@
               type="button"
               class="icon-btn notification-btn"
               aria-label="Notifications"
+              data-tooltip="Notifications"
+              data-tooltip-pos="bottom"
               [attr.aria-expanded]="notificationsOpen()"
               (click)="toggleNotifications($event)"
             >
@@ -160,6 +166,8 @@
             [attr.aria-expanded]="userMenuOpen()"
             aria-haspopup="menu"
             aria-label="Account menu"
+            data-tooltip="Account"
+            data-tooltip-pos="bottom"
             (click)="toggleUserMenu($event)"
           >
             <div class="avatar">{{ user?.firstName?.charAt(0) }}{{ user?.lastName?.charAt(0) }}</div>
@@ -184,7 +192,7 @@
           }
         </div>
 
-        <button type="button" class="logout-btn" (click)="logout()" aria-label="Logout">
+        <button type="button" class="logout-btn" (click)="logout()" aria-label="Logout" data-tooltip="Logout" data-tooltip-pos="left">
           <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
           <span class="logout-label">Logout</span>
         </button>
