@@ -13,7 +13,7 @@
     <div class="mf-toolbar">
       <button type="button" class="mf-back" (click)="goBack()" [disabled]="isSubmitting()" aria-label="Back">
         <i class="fa-solid fa-arrow-left"></i>
-        <span>{{ step() === 'products' ? 'Back to details' : 'Back' }}</span>
+        <span class="mf-back-label">{{ step() === 'products' ? 'Details' : 'Back' }}</span>
       </button>
       <div class="mf-title">
         <h2>
@@ -25,18 +25,34 @@
         </h2>
         <p>
           @if (step() === 'details') {
-            Fill catalog details first, then choose products on the next step.
+            Details first, then products
           } @else {
-            {{ selectedCount() }} on this catalog
+            {{ selectedCount() }} selected
             @if (availableCount()) {
-              · {{ availableCount() }} more available to add
+              · {{ availableCount() }} available
             }
           }
         </p>
       </div>
       <div class="step-pills" aria-label="Catalog steps">
-        <span class="step-pill" [class.active]="step() === 'details'">1. Details</span>
-        <span class="step-pill" [class.active]="step() === 'products'">2. Products</span>
+        <button
+          type="button"
+          class="step-pill"
+          [class.active]="step() === 'details'"
+          [disabled]="isSubmitting()"
+          (click)="goToDetailsStep()"
+        >
+          1. Details
+        </button>
+        <button
+          type="button"
+          class="step-pill"
+          [class.active]="step() === 'products'"
+          [disabled]="isSubmitting() || isRevoked()"
+          (click)="goToProductsStep()"
+        >
+          2. Products
+        </button>
       </div>
     </div>
 
@@ -197,104 +213,237 @@
       </form>
     } @else {
       <form class="mf-form products-form" (ngSubmit)="submit()">
-        <section class="mf-card products-step-card">
-          <div class="products-head">
-            <div>
-              <h3 class="card-title">On this catalog</h3>
-              <p class="card-sub">
-                @if (selectedCount()) {
-                  {{ selectedCount() }} product{{ selectedCount() === 1 ? '' : 's' }} · remove any, or add more below
-                } @else {
-                  No products yet — add products to continue
+        <div class="products-tabs mobile-only" role="tablist" aria-label="Catalog products">
+          <button
+            type="button"
+            role="tab"
+            class="products-tab"
+            [class.active]="productsPanel() === 'selected'"
+            [attr.aria-selected]="productsPanel() === 'selected'"
+            (click)="showSelectedPanel()"
+          >
+            On catalog
+            <span class="tab-count">{{ selectedCount() }}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="products-tab"
+            [class.active]="productsPanel() === 'add'"
+            [attr.aria-selected]="productsPanel() === 'add'"
+            [disabled]="isRevoked() || !availableCount()"
+            (click)="showAddPanel()"
+          >
+            Add more
+            <span class="tab-count">{{ availableCount() }}</span>
+          </button>
+        </div>
+
+        <div class="products-split">
+          <section
+            class="mf-card products-pane selected-pane"
+            [class.pane-hidden-mobile]="productsPanel() !== 'selected'"
+          >
+            <div class="products-head">
+              <div>
+                <h3 class="card-title">On this catalog</h3>
+                <p class="card-sub">
+                  @if (selectedCount()) {
+                    {{ selectedCount() }} product{{ selectedCount() === 1 ? '' : 's' }} · tap remove to take off
+                  } @else {
+                    Nothing here yet — use Available to add
+                  }
+                </p>
+              </div>
+              <div class="picker-actions">
+                @if (mode() === 'edit' && selectedCount()) {
+                  <button type="button" class="link-btn" (click)="resetSelectedToInitial()" [disabled]="isRevoked()">
+                    Reset list
+                  </button>
                 }
-              </p>
+              </div>
             </div>
-            <div class="picker-actions">
-              @if (mode() === 'edit' && selectedCount()) {
-                <button type="button" class="link-btn" (click)="resetSelectedToInitial()" [disabled]="isRevoked()">
-                  Reset list
+
+            @if (selectedCount() > 8) {
+              <label class="product-search selected-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [ngModel]="selectedListSearch()"
+                  (ngModelChange)="selectedListSearch.set($event)"
+                  name="selectedListSearch"
+                  placeholder="Search selected..."
+                />
+              </label>
+            }
+
+            @if (loadingProducts()) {
+              <p class="picker-hint">Loading catalog products...</p>
+            } @else if (!selectedCount()) {
+              <div class="empty-selected">
+                <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+                <p>No products on this catalog yet.</p>
+                <p class="empty-hint">Pick products from <strong>Available to add</strong> on the right.</p>
+                <button
+                  type="button"
+                  class="btn btn-primary mobile-only-btn"
+                  (click)="showAddPanel()"
+                  [disabled]="isRevoked() || !availableCount()"
+                >
+                  <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                  Add products
                 </button>
-              }
-              <button
-                type="button"
-                class="btn btn-primary add-products-btn"
-                (click)="openAddDrawer()"
-                [disabled]="isRevoked() || !availableCount()"
-              >
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                Add products
-              </button>
-            </div>
-          </div>
+                @if (!allProducts().length) {
+                  <p class="picker-hint">Add products from Manage Products first.</p>
+                } @else if (!availableCount()) {
+                  <p class="picker-hint">No products left to add.</p>
+                }
+              </div>
+            } @else {
+              <div class="selected-products-list">
+                @for (product of selectedProducts(); track product.id) {
+                  <article class="selected-product-row">
+                    <div class="picker-thumb">
+                      @if (productImage(product); as img) {
+                        <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
+                        <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
+                      } @else {
+                        <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
+                      }
+                    </div>
+                    <div class="picker-info">
+                      <span class="picker-name">{{ product.name }}</span>
+                      <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
+                      @if (product.category) {
+                        <span class="picker-cat">{{ product.category }}</span>
+                      }
+                    </div>
+                    <button
+                      type="button"
+                      class="remove-product-btn"
+                      [disabled]="isRevoked()"
+                      (click)="removeSelectedProduct(product.id)"
+                      [attr.aria-label]="'Remove ' + product.name"
+                    >
+                      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                      <span>Remove</span>
+                    </button>
+                  </article>
+                } @empty {
+                  <p class="picker-hint">No selected products match your search.</p>
+                }
+              </div>
+            }
+          </section>
 
-          @if (selectedCount() > 6) {
-            <label class="product-search selected-search">
-              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-              <input
-                type="search"
-                [ngModel]="selectedListSearch()"
-                (ngModelChange)="selectedListSearch.set($event)"
-                name="selectedListSearch"
-                placeholder="Search selected products..."
-              />
-            </label>
-          }
-
-          @if (loadingProducts()) {
-            <p class="picker-hint">Loading catalog products...</p>
-          } @else if (!selectedCount()) {
-            <div class="empty-selected">
-              <i class="fa-solid fa-box-open" aria-hidden="true"></i>
-              <p>No products on this catalog yet.</p>
-              <button
-                type="button"
-                class="btn btn-primary"
-                (click)="openAddDrawer()"
-                [disabled]="isRevoked() || !allProducts().length"
-              >
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                Add products
-              </button>
-              @if (!allProducts().length) {
-                <p class="picker-hint">Add products from Manage Products first.</p>
-              }
+          <section
+            class="mf-card products-pane add-pane"
+            [class.pane-hidden-mobile]="productsPanel() !== 'add'"
+          >
+            <div class="products-head">
+              <div>
+                <h3 class="card-title">Available to add</h3>
+                <p class="card-sub">Tap a product to add it to the catalog</p>
+              </div>
+              <div class="picker-actions">
+                @if (filteredAvailableProducts().length) {
+                  <button type="button" class="link-btn" (click)="addAllVisibleAvailable()" [disabled]="isRevoked()">
+                    Add all visible
+                  </button>
+                }
+                <button type="button" class="link-btn mobile-only" (click)="showSelectedPanel()">
+                  Done
+                </button>
+              </div>
             </div>
-          } @else {
-            <div class="selected-products-list">
-              @for (product of selectedProducts(); track product.id) {
-                <article class="selected-product-row">
-                  <div class="picker-thumb">
-                    @if (productImage(product); as img) {
-                      <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
-                      <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
-                    } @else {
-                      <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
-                    }
-                  </div>
-                  <div class="picker-info">
-                    <span class="picker-name">{{ product.name }}</span>
-                    <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
-                    @if (product.category) {
-                      <span class="picker-cat">{{ product.category }}</span>
-                    }
-                  </div>
+
+            <div class="add-pane-filters">
+              <label class="product-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [ngModel]="productSearch()"
+                  (ngModelChange)="productSearch.set($event)"
+                  name="addProductSearch"
+                  placeholder="Search name, SKU, category..."
+                />
+              </label>
+
+              <div class="add-pane-selects">
+                <select
+                  class="picker-filter-select"
+                  name="filterCategory"
+                  [ngModel]="filterCategory()"
+                  (ngModelChange)="filterCategory.set($event)"
+                >
+                  @for (opt of categoryFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="picker-filter-select"
+                  name="filterMetal"
+                  [ngModel]="filterMetal()"
+                  (ngModelChange)="filterMetal.set($event)"
+                >
+                  @for (opt of metalFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="picker-filter-select"
+                  name="filterStock"
+                  [ngModel]="filterStock()"
+                  (ngModelChange)="filterStock.set($event)"
+                >
+                  @for (opt of stockFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="add-pane-toolbar">
+                <span class="drawer-count">{{ filteredAvailableProducts().length }} showing</span>
+                @if (hasActiveFilters()) {
+                  <button type="button" class="link-btn" (click)="resetProductFilters()">Reset filters</button>
+                }
+              </div>
+            </div>
+
+            @if (!availableCount()) {
+              <p class="picker-hint">All products are already on this catalog.</p>
+            } @else if (!filteredAvailableProducts().length) {
+              <p class="picker-hint">No products match your filters.</p>
+            } @else {
+              <div class="available-image-grid">
+                @for (product of filteredAvailableProducts(); track product.id) {
                   <button
                     type="button"
-                    class="remove-product-btn"
+                    class="available-card"
                     [disabled]="isRevoked()"
-                    (click)="removeSelectedProduct(product.id)"
-                    [attr.aria-label]="'Remove ' + product.name"
+                    (click)="addProductToCatalog(product.id)"
                   >
-                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    <span>Remove</span>
+                    <div class="available-thumb">
+                      @if (productImage(product); as img) {
+                        <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
+                        <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
+                      } @else {
+                        <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
+                      }
+                      <span class="available-add-badge" aria-hidden="true">
+                        <i class="fa-solid fa-plus"></i>
+                      </span>
+                    </div>
+                    <span class="available-name">{{ product.name }}</span>
+                    <span class="available-meta">{{ product.sku || product.category || '' }}</span>
                   </button>
-                </article>
-              } @empty {
-                <p class="picker-hint">No selected products match your search.</p>
-              }
-            </div>
-          }
-        </section>
+                }
+              </div>
+            }
+          </section>
+        </div>
 
         @if (formError()) {
           <p class="form-error mf-error">{{ formError() }}</p>
@@ -313,147 +462,6 @@
           </button>
         </div>
       </form>
-
-      @if (addDrawerOpen()) {
-        <div class="add-drawer-backdrop" (click)="closeAddDrawer()" aria-hidden="true"></div>
-        <aside class="add-drawer" role="dialog" aria-modal="true" aria-labelledby="add-drawer-title">
-          <div class="add-drawer-handle" aria-hidden="true"></div>
-          <header class="add-drawer-head">
-            <div>
-              <h3 id="add-drawer-title">Add products</h3>
-              <p>Only products not already on this catalog</p>
-            </div>
-            <button type="button" class="add-drawer-close" (click)="closeAddDrawer()" aria-label="Close">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </header>
-
-          <div class="add-drawer-filters">
-            <label class="product-search">
-              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-              <input
-                type="search"
-                [ngModel]="productSearch()"
-                (ngModelChange)="productSearch.set($event)"
-                name="drawerProductSearch"
-                placeholder="Search name, SKU, category..."
-                autofocus
-              />
-            </label>
-
-            <div class="add-drawer-selects">
-              <select
-                class="picker-filter-select"
-                name="filterCategory"
-                [ngModel]="filterCategory()"
-                (ngModelChange)="filterCategory.set($event)"
-              >
-                @for (opt of categoryFilterOptions(); track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-
-              <select
-                class="picker-filter-select"
-                name="filterMetal"
-                [ngModel]="filterMetal()"
-                (ngModelChange)="filterMetal.set($event)"
-              >
-                @for (opt of metalFilterOptions(); track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-
-              <select
-                class="picker-filter-select"
-                name="filterStock"
-                [ngModel]="filterStock()"
-                (ngModelChange)="filterStock.set($event)"
-              >
-                @for (opt of stockFilterOptions(); track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="add-drawer-toolbar">
-              <span class="drawer-count">
-                {{ filteredAvailableProducts().length }} available
-                @if (drawerPendingCount()) {
-                  · {{ drawerPendingCount() }} picked
-                }
-              </span>
-              <div class="picker-actions">
-                <button type="button" class="link-btn" (click)="selectAllAvailableVisible()">
-                  Select visible
-                </button>
-                @if (drawerPendingCount()) {
-                  <button type="button" class="link-btn" (click)="clearDrawerPending()">Clear</button>
-                }
-                @if (hasActiveFilters()) {
-                  <button type="button" class="link-btn" (click)="resetProductFilters()">Reset filters</button>
-                }
-              </div>
-            </div>
-          </div>
-
-          <div class="add-drawer-body">
-            @if (!availableCount()) {
-              <p class="picker-hint">All products are already on this catalog.</p>
-            } @else if (!filteredAvailableProducts().length) {
-              <p class="picker-hint">No products match your filters.</p>
-            } @else {
-              <div class="product-picker-grid drawer-grid">
-                @for (product of filteredAvailableProducts(); track product.id) {
-                  <button
-                    type="button"
-                    class="picker-card drawer-pick"
-                    [class.selected]="isDrawerPending(product.id)"
-                    (click)="toggleDrawerProduct(product.id)"
-                  >
-                    <span class="picker-check-ui" aria-hidden="true">
-                      @if (isDrawerPending(product.id)) {
-                        <i class="fa-solid fa-check"></i>
-                      }
-                    </span>
-                    <div class="picker-thumb">
-                      @if (productImage(product); as img) {
-                        <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
-                        <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
-                      } @else {
-                        <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
-                      }
-                    </div>
-                    <div class="picker-info">
-                      <span class="picker-name">{{ product.name }}</span>
-                      <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
-                      @if (product.category) {
-                        <span class="picker-cat">{{ product.category }}</span>
-                      }
-                    </div>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-
-          <footer class="add-drawer-footer">
-            <button type="button" class="btn btn-outline" (click)="closeAddDrawer()">Cancel</button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              [disabled]="!drawerPendingCount()"
-              (click)="confirmAddProducts()"
-            >
-              Add
-              @if (drawerPendingCount()) {
-                {{ drawerPendingCount() }}
-              }
-              to catalog
-            </button>
-          </footer>
-        </aside>
-      }
     }
   </section>
 }

@@ -16,6 +16,9 @@ import { VendorDataService } from '../../services/vendor-data.service';
   imports: [FormsModule, PhoneDigitsDirective],
   templateUrl: './catalog-form.html',
   styleUrls: ['../../shared/vendor-page.css', './catalog-form.css'],
+  host: {
+    '[class.fill-height]': 'step() === "products"',
+  },
 })
 export class VendorCatalogForm implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -44,11 +47,10 @@ export class VendorCatalogForm implements OnInit {
   readonly filterMetal = signal('all');
   readonly filterStock = signal('all');
   readonly loadingProducts = signal(false);
-  /** Step 1 = details, Step 2 = selected products */
+  /** Step 1 = details, Step 2 = products */
   readonly step = signal<'details' | 'products'>('details');
-  /** Drawer to pick products that are not yet on the catalog */
-  readonly addDrawerOpen = signal(false);
-  readonly drawerPendingIds = signal<Set<string>>(new Set());
+  /** Mobile tab: selected list vs browse-to-add. Desktop shows both. */
+  readonly productsPanel = signal<'selected' | 'add'>('selected');
   readonly selectedListSearch = signal('');
 
   formName = '';
@@ -142,7 +144,6 @@ export class VendorCatalogForm implements OnInit {
   });
 
   readonly availableCount = computed(() => this.availableProducts().length);
-  readonly drawerPendingCount = computed(() => this.drawerPendingIds().size);
   readonly hasActiveFilters = computed(
     () =>
       !!this.productSearch().trim() ||
@@ -155,8 +156,8 @@ export class VendorCatalogForm implements OnInit {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.addDrawerOpen()) {
-      this.closeAddDrawer();
+    if (this.step() === 'products' && this.productsPanel() === 'add') {
+      this.showSelectedPanel();
     }
   }
 
@@ -213,16 +214,32 @@ export class VendorCatalogForm implements OnInit {
     if (this.isSubmitting()) {
       return;
     }
-    if (this.addDrawerOpen()) {
-      this.closeAddDrawer();
+    // Mobile tabs: from Add more, return to On catalog first.
+    if (
+      this.step() === 'products' &&
+      this.productsPanel() === 'add' &&
+      typeof window !== 'undefined' &&
+      window.innerWidth < 900
+    ) {
+      this.showSelectedPanel();
       return;
     }
     if (this.step() === 'products') {
       this.step.set('details');
       this.formError.set('');
+      this.showSelectedPanel();
       return;
     }
     void this.router.navigate(['/vendor/catalogs']);
+  }
+
+  goToDetailsStep(): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+    this.step.set('details');
+    this.formError.set('');
+    this.showSelectedPanel();
   }
 
   goToProductsStep(): void {
@@ -245,14 +262,12 @@ export class VendorCatalogForm implements OnInit {
     }
     this.formError.set('');
     this.step.set('products');
-    // Create flow: open the add drawer immediately so the vendor can pick products.
+    // Create flow: jump straight to browse-to-add when nothing is selected yet.
     if (this.mode() === 'add' && !this.selectedCount()) {
-      this.openAddDrawer();
+      this.showAddPanel();
+    } else {
+      this.showSelectedPanel();
     }
-  }
-
-  isDrawerPending(id: string): boolean {
-    return this.drawerPendingIds().has(String(id));
   }
 
   removeSelectedProduct(id: string): void {
@@ -262,55 +277,38 @@ export class VendorCatalogForm implements OnInit {
     this.selectedProductIds.set(next);
   }
 
-  openAddDrawer(): void {
+  showSelectedPanel(): void {
+    this.productsPanel.set('selected');
+  }
+
+  showAddPanel(): void {
     if (this.isRevoked()) {
       return;
     }
     this.resetProductFilters();
-    this.drawerPendingIds.set(new Set());
-    this.addDrawerOpen.set(true);
-  }
-
-  closeAddDrawer(): void {
-    this.addDrawerOpen.set(false);
-    this.drawerPendingIds.set(new Set());
-    this.resetProductFilters();
-  }
-
-  toggleDrawerProduct(id: string): void {
-    const key = String(id);
-    const next = new Set(this.drawerPendingIds());
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
+    this.productsPanel.set('add');
+    // Desktop: both panes are already visible — scroll the add pane into view.
+    if (typeof window !== 'undefined' && window.innerWidth >= 900) {
+      queueMicrotask(() => {
+        document.querySelector('.add-pane')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
     }
-    this.drawerPendingIds.set(next);
   }
 
-  selectAllAvailableVisible(): void {
-    const next = new Set(this.drawerPendingIds());
+  /** Add one available product onto the catalog list immediately. */
+  addProductToCatalog(id: string): void {
+    const key = String(id);
+    const next = new Set(this.selectedProductIds());
+    next.add(key);
+    this.selectedProductIds.set(next);
+  }
+
+  addAllVisibleAvailable(): void {
+    const next = new Set(this.selectedProductIds());
     for (const p of this.filteredAvailableProducts()) {
       next.add(String(p.id));
     }
-    this.drawerPendingIds.set(next);
-  }
-
-  clearDrawerPending(): void {
-    this.drawerPendingIds.set(new Set());
-  }
-
-  confirmAddProducts(): void {
-    const pending = this.drawerPendingIds();
-    if (!pending.size) {
-      return;
-    }
-    const next = new Set(this.selectedProductIds());
-    for (const id of pending) {
-      next.add(id);
-    }
     this.selectedProductIds.set(next);
-    this.closeAddDrawer();
   }
 
   resetSelectedToInitial(): void {

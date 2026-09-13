@@ -93,7 +93,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     { label: 'Dashboard', route: '/vendor/dashboard', icon: 'dashboard' },
     { label: 'Product Options', route: '/vendor/master-data', icon: 'categories' },
     { label: 'Manage Products', route: '/vendor/products', icon: 'products' },
-    { label: 'Catalogs', route: '/vendor/catalogs', icon: 'catalogs' },
+    { label: 'Manage Catalogs', route: '/vendor/catalogs', icon: 'catalogs' },
     { label: 'Manage Leads', route: '/vendor/leads', icon: 'leads' },
     // { label: 'My Website', route: '/vendor/storefront', icon: 'storefront' },
     { label: 'Business Profile', route: '/vendor/profile', icon: 'profile' },

@@ -583,6 +583,21 @@ button.user-menu-trigger[aria-expanded='true'] .user-menu-caret {
   isolation: auto;
 }
 
+@media (min-width: 901px) {
+  .dashboard-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-content > app-vendor-catalog-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 1100px) {
   .search-box {
     display: none;
