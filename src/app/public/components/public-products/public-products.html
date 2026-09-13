@@ -24,14 +24,33 @@
     [style.--brand]="brandColor(ctx)"
   >
     @if (categoriesOpen()) {
-      <button type="button" class="cat-scrim" (click)="closeCategories()" aria-label="Close menu"></button>
+      <button
+        type="button"
+        class="cat-scrim"
+        (click)="closeCategories($event)"
+        aria-label="Close menu"
+      ></button>
     }
 
-    <aside class="cat-sidebar" [class.open]="categoriesOpen()" aria-label="Catalog menu">
-      <div class="side-brand">
-        <button type="button" class="drawer-close" (click)="closeCategories()" aria-label="Close">
-          <i class="fa-solid fa-xmark"></i>
+    <aside
+      class="cat-sidebar"
+      [class.open]="categoriesOpen()"
+      aria-label="Catalog menu"
+      [attr.aria-hidden]="!categoriesOpen()"
+    >
+      <div class="drawer-topbar">
+        <span class="drawer-topbar-label">Menu</span>
+        <button
+          type="button"
+          class="drawer-close"
+          (click)="closeCategories($event)"
+          aria-label="Close menu"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
+      </div>
+
+      <div class="side-brand">
         @if (logoUrl(ctx); as logo) {
           <img class="side-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
         } @else {
@@ -192,10 +211,20 @@
         @if (products().length) {
           <div class="product-grid">
             @for (product of products(); track product.id) {
-              <article class="product-card" (click)="openProduct(product)">
+              <article
+                class="product-card"
+                [class.in-interest]="inInterestList(product.id)"
+                (click)="openProduct(product)"
+              >
                 <div class="card-media">
                   @if (product.category) {
                     <span class="cat-badge">{{ product.category }}</span>
+                  }
+                  @if (inInterestList(product.id)) {
+                    <span class="interest-badge" aria-label="Already in your interest list">
+                      <i class="fa-solid fa-check" aria-hidden="true"></i>
+                      Added
+                    </span>
                   }
                   @if (product.imageUrl) {
                     <img
@@ -207,8 +236,13 @@
                   }
                   <div class="ph" [class.visible]="!product.imageUrl"><i class="fa-solid fa-gem"></i></div>
                   <span class="quick-view" aria-hidden="true">
-                    <i class="fa-regular fa-eye"></i>
-                    View
+                    @if (inInterestList(product.id)) {
+                      <i class="fa-solid fa-check"></i>
+                      Added
+                    } @else {
+                      <i class="fa-regular fa-eye"></i>
+                      View
+                    }
                   </span>
                 </div>
                 <div class="card-body">
@@ -222,6 +256,12 @@
                   @if (product.metalType || product.purity) {
                     <p class="card-spec">
                       {{ product.metalType }}{{ product.metalType && product.purity ? ' · ' : '' }}{{ product.purity }}
+                    </p>
+                  }
+                  @if (inInterestList(product.id)) {
+                    <p class="interest-status">
+                      <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                      In your interest list
                     </p>
                   }
                 </div>

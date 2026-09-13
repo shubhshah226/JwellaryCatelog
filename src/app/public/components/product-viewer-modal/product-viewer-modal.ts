@@ -33,12 +33,32 @@ export class ProductViewerModal implements OnDestroy {
   readonly justAdded = signal(false);
   readonly activeImageIndex = signal(0);
   readonly detail = signal<PublicProduct | null>(null);
+  /** Live drag offset in px while swiping. */
+  readonly dragOffsetPx = signal(0);
+  readonly isDragging = signal(false);
 
   private wasOpen = false;
   private detailRequestId = 0;
   private modalScrollLocked = false;
+  private swipeStartX = 0;
+  private swipeStartY = 0;
+  private swipeDeltaX = 0;
+  private swipeAxis: 'x' | 'y' | null = null;
+  private swipeTracking = false;
+  private galleryEl: HTMLElement | null = null;
 
-  @ViewChild('carouselTrack') carouselTrack?: ElementRef<HTMLDivElement>;
+  private readonly onTouchStart = (event: TouchEvent): void => this.handleSwipeStart(event);
+  private readonly onTouchMove = (event: TouchEvent): void => this.handleSwipeMove(event);
+  private readonly onTouchEnd = (): void => this.handleSwipeEnd();
+
+  @ViewChild('galleryFrame')
+  set galleryFrame(ref: ElementRef<HTMLElement> | undefined) {
+    this.unbindGallerySwipe();
+    this.galleryEl = ref?.nativeElement ?? null;
+    if (this.galleryEl) {
+      this.bindGallerySwipe(this.galleryEl);
+    }
+  }
 
   constructor() {
     effect(() => {
@@ -66,6 +86,7 @@ export class ProductViewerModal implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unbindGallerySwipe();
     if (this.modalScrollLocked) {
       unlockBodyScroll();
       this.modalScrollLocked = false;
@@ -139,11 +160,20 @@ export class ProductViewerModal implements OnDestroy {
     return product.imageUrl ? [product.imageUrl] : [];
   }
 
+  trackTransform(): string {
+    const index = this.activeImageIndex();
+    const drag = this.dragOffsetPx();
+    const width = this.galleryEl?.clientWidth || 0;
+    const dragPercent = width ? (drag / width) * 100 : 0;
+    return `translate3d(calc(${-index * 100}% + ${dragPercent}%), 0, 0)`;
+  }
+
   selectImage(index: number): void {
     const images = this.displayImages();
     const next = Math.max(0, Math.min(index, images.length - 1));
     this.activeImageIndex.set(next);
-    this.scrollCarouselTo(next);
+    this.dragOffsetPx.set(0);
+    this.isDragging.set(false);
   }
 
   prevImage(): void {
@@ -162,15 +192,81 @@ export class ProductViewerModal implements OnDestroy {
     this.selectImage((this.activeImageIndex() + 1) % total);
   }
 
-  onCarouselScroll(): void {
-    const track = this.carouselTrack?.nativeElement;
-    if (!track || !track.clientWidth) {
+  private handleSwipeStart(event: TouchEvent): void {
+    if (this.displayImages().length < 2 || !event.touches.length) {
       return;
     }
-    const index = Math.round(track.scrollLeft / track.clientWidth);
-    if (index !== this.activeImageIndex() && index >= 0 && index < this.displayImages().length) {
-      this.activeImageIndex.set(index);
+    this.swipeTracking = true;
+    this.swipeAxis = null;
+    this.swipeDeltaX = 0;
+    this.swipeStartX = event.touches[0].clientX;
+    this.swipeStartY = event.touches[0].clientY;
+    this.isDragging.set(false);
+    this.dragOffsetPx.set(0);
+  }
+
+  private handleSwipeMove(event: TouchEvent): void {
+    if (!this.swipeTracking || !event.touches.length) {
+      return;
     }
+    const dx = event.touches[0].clientX - this.swipeStartX;
+    const dy = event.touches[0].clientY - this.swipeStartY;
+
+    if (!this.swipeAxis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+        return;
+      }
+      this.swipeAxis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+      if (this.swipeAxis === 'x') {
+        this.isDragging.set(true);
+      }
+    }
+
+    if (this.swipeAxis === 'x') {
+      event.preventDefault();
+      this.swipeDeltaX = dx;
+      this.dragOffsetPx.set(dx);
+    }
+  }
+
+  private handleSwipeEnd(): void {
+    if (!this.swipeTracking) {
+      return;
+    }
+    const width = this.galleryEl?.clientWidth || 1;
+    const shouldFlip = this.swipeAxis === 'x' && Math.abs(this.swipeDeltaX) > Math.min(56, width * 0.18);
+    const delta = this.swipeDeltaX;
+    this.swipeTracking = false;
+    this.swipeAxis = null;
+    this.swipeDeltaX = 0;
+    this.isDragging.set(false);
+    this.dragOffsetPx.set(0);
+
+    if (!shouldFlip) {
+      return;
+    }
+    if (delta < 0) {
+      this.nextImage();
+    } else {
+      this.prevImage();
+    }
+  }
+
+  private bindGallerySwipe(el: HTMLElement): void {
+    el.addEventListener('touchstart', this.onTouchStart, { passive: true });
+    el.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    el.addEventListener('touchend', this.onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+  }
+
+  private unbindGallerySwipe(): void {
+    if (!this.galleryEl) {
+      return;
+    }
+    this.galleryEl.removeEventListener('touchstart', this.onTouchStart);
+    this.galleryEl.removeEventListener('touchmove', this.onTouchMove);
+    this.galleryEl.removeEventListener('touchend', this.onTouchEnd);
+    this.galleryEl.removeEventListener('touchcancel', this.onTouchEnd);
   }
 
   private loadDetail(): void {
@@ -202,18 +298,9 @@ export class ProductViewerModal implements OnDestroy {
             : {}),
         });
         this.productHydrated.emit(this.detail()!);
-        this.activeImageIndex.set(0);
-        requestAnimationFrame(() => this.scrollCarouselTo(0));
+        this.selectImage(0);
       },
     });
-  }
-
-  private scrollCarouselTo(index: number): void {
-    const track = this.carouselTrack?.nativeElement;
-    if (!track) {
-      return;
-    }
-    track.scrollTo({ left: track.clientWidth * index, behavior: 'smooth' });
   }
 
   private resetState(): void {
@@ -230,7 +317,7 @@ export class ProductViewerModal implements OnDestroy {
           }
         : null
     );
-    this.activeImageIndex.set(0);
+    this.selectImage(0);
     this.errorMessage.set('');
     this.successMessage.set('');
     this.justAdded.set(false);

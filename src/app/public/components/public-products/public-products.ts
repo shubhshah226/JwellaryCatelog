@@ -57,6 +57,7 @@ export class PublicProducts implements OnInit, OnDestroy {
   readonly viewerOpen = signal(false);
   readonly selectedProduct = signal<PublicProduct | null>(null);
   readonly categoriesOpen = signal(false);
+  private menuToggleLockedUntil = 0;
   readonly categoryList = signal<string[]>([]);
   readonly categorySearch = signal('');
   readonly productSearch = signal('');
@@ -197,7 +198,7 @@ export class PublicProducts implements OnInit, OnDestroy {
 
   selectCategory(category: string): void {
     if (this.selectedCategory() === category) {
-      this.categoriesOpen.set(false);
+      this.closeCategories();
       return;
     }
     this.selectedCategory.set(category);
@@ -211,14 +212,24 @@ export class PublicProducts implements OnInit, OnDestroy {
   }
 
   toggleCategories(): void {
+    if (Date.now() < this.menuToggleLockedUntil) {
+      return;
+    }
     const next = !this.categoriesOpen();
     this.categoriesOpen.set(next);
     this.setBodyScrollLocked(next);
   }
 
-  closeCategories(): void {
+  closeCategories(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.categoriesOpen()) {
+      return;
+    }
     this.categoriesOpen.set(false);
     this.setBodyScrollLocked(false);
+    // Prevent the same tap from reopening via hamburger / dock underneath.
+    this.menuToggleLockedUntil = Date.now() + 450;
   }
 
   private setBodyScrollLocked(locked: boolean): void {
@@ -235,6 +246,10 @@ export class PublicProducts implements OnInit, OnDestroy {
 
   skuLabel(product: PublicProduct): string {
     return product.sku || `P${product.id}`;
+  }
+
+  inInterestList(productId: string): boolean {
+    return this.cart.items().some((p) => p.id === productId);
   }
 
   openProduct(product: PublicProduct): void {
