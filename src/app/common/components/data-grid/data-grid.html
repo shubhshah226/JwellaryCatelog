@@ -171,17 +171,28 @@
 
             @if (cardMediaColumn(); as mediaCol) {
               <div class="dg-card-media">
-                <ng-container
-                  *ngTemplateOutlet="cellContent; context: { $implicit: row, column: mediaCol }"
-                ></ng-container>
+                @if ((mediaCol.cellType || 'text') === 'avatar') {
+                  <div class="dg-avatar">{{ displayAvatar(row, mediaCol) }}</div>
+                } @else {
+                  <ng-container
+                    *ngTemplateOutlet="cellContent; context: { $implicit: row, column: mediaCol }"
+                  ></ng-container>
+                }
               </div>
             }
 
             <div class="dg-card-identity">
               @if (cardTitleColumn(); as titleCol) {
-                <ng-container
-                  *ngTemplateOutlet="cellContent; context: { $implicit: row, column: titleCol }"
-                ></ng-container>
+                @if ((titleCol.cellType || 'text') === 'avatar') {
+                  <p class="dg-primary">{{ displayValue(row, titleCol) }}</p>
+                  @if (displaySubtitle(row, titleCol); as subtitle) {
+                    <p class="dg-secondary">{{ subtitle }}</p>
+                  }
+                } @else {
+                  <ng-container
+                    *ngTemplateOutlet="cellContent; context: { $implicit: row, column: titleCol }"
+                  ></ng-container>
+                }
               }
               @if (cardBadgeColumns().length) {
                 <div class="dg-card-tags">

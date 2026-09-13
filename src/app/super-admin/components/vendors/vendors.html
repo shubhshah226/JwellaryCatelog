@@ -161,15 +161,21 @@
               />
             </label>
 
-            <label class="form-field checkbox-field span-2">
-              <input
-                type="checkbox"
-                id="priceVisibleDefault"
-                name="priceVisibleDefault"
-                [(ngModel)]="vendorForm.priceVisibleDefault"
-              />
-              <span>Show Prices by Default</span>
-            </label>
+            <div class="toggle-field span-2">
+              <div class="toggle-copy">
+                <span class="toggle-title">Show Prices by Default</span>
+                <span class="toggle-desc">When on, product prices are visible in catalogs.</span>
+              </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="priceVisibleDefault"
+                  name="priceVisibleDefault"
+                  [(ngModel)]="vendorForm.priceVisibleDefault"
+                />
+                <span class="switch-slider" aria-hidden="true"></span>
+              </label>
+            </div>
 
             @if (drawerMode() === 'edit') {
               <label class="form-field">

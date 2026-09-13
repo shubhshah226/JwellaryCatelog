@@ -15,50 +15,60 @@
       <button type="button" class="retry-btn" (click)="loadProfile()">Retry</button>
     </div>
   } @else if (profile(); as p) {
-    <form class="profile-card" (submit)="$event.preventDefault()">
-      <div class="field-grid">
-        <label class="field">
-          <span>Full Name</span>
-          <input type="text" [value]="p.fullName || '—'" readonly />
-        </label>
+    <div class="profile-card">
+      <div class="profile-summary">
+        <div class="profile-avatar" aria-hidden="true">
+          {{ profileInitial(p.fullName) }}
+        </div>
+        <div class="profile-summary-text">
+          <p class="profile-summary-name">{{ p.fullName || '—' }}</p>
+          <p class="profile-summary-role">{{ formatRole(p.userRole) }}</p>
+        </div>
+      </div>
 
-        <label class="field">
-          <span>Email</span>
-          <input type="email" [value]="p.email || '—'" readonly />
-        </label>
+      <dl class="detail-list">
+        <div class="detail-row">
+          <dt>Full Name</dt>
+          <dd>{{ p.fullName || '—' }}</dd>
+        </div>
 
-        <label class="field">
-          <span>User Role</span>
-          <input type="text" [value]="formatRole(p.userRole)" readonly />
-        </label>
+        <div class="detail-row">
+          <dt>Email</dt>
+          <dd>{{ p.email || '—' }}</dd>
+        </div>
 
-        <label class="field">
-          <span>Account Status</span>
-          <input type="text" [value]="formatStatus(p.accountStatus)" readonly />
-        </label>
+        <div class="detail-row">
+          <dt>User Role</dt>
+          <dd>{{ formatRole(p.userRole) }}</dd>
+        </div>
 
-        <label class="field">
-          <span>User ID</span>
-          <input type="text" [value]="p.userId || '—'" readonly />
-        </label>
+        <div class="detail-row">
+          <dt>Account Status</dt>
+          <dd>{{ formatStatus(p.accountStatus) }}</dd>
+        </div>
+
+        <div class="detail-row">
+          <dt>User ID</dt>
+          <dd>{{ p.userId || '—' }}</dd>
+        </div>
 
         @if (!isSuperAdmin(p.userRole)) {
-          <label class="field">
-            <span>Tenant ID</span>
-            <input type="text" [value]="p.tenantId || '—'" readonly />
-          </label>
+          <div class="detail-row">
+            <dt>Tenant ID</dt>
+            <dd>{{ p.tenantId || '—' }}</dd>
+          </div>
 
-          <label class="field">
-            <span>Business Name</span>
-            <input type="text" [value]="p.businessName || '—'" readonly />
-          </label>
+          <div class="detail-row">
+            <dt>Business Name</dt>
+            <dd>{{ p.businessName || '—' }}</dd>
+          </div>
         }
 
-        <label class="field">
-          <span>Last Login</span>
-          <input type="text" [value]="formatLastLogin(p.lastLoginAt)" readonly />
-        </label>
-      </div>
-    </form>
+        <div class="detail-row">
+          <dt>Last Login</dt>
+          <dd>{{ formatLastLogin(p.lastLoginAt) }}</dd>
+        </div>
+      </dl>
+    </div>
   }
 </section>

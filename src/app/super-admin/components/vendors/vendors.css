@@ -897,41 +897,89 @@ tbody tr:hover {
   margin-left: 0.35rem;
 }
 
-.checkbox-field {
+.toggle-field {
+  grid-column: span 2;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 0.65rem;
-  width: fit-content;
-  max-width: 100%;
-  cursor: pointer;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-muted);
 }
 
-.checkbox-field span {
-  margin: 0;
-  font-weight: 500;
+.toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.toggle-title {
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--app-text);
 }
 
-/* Reset .form-field input styles so this stays a real checkbox, not a wide toggle-like box */
-.checkbox-field input[type='checkbox'] {
-  width: 1.05rem;
-  height: 1.05rem;
-  margin: 0;
-  padding: 0;
-  flex-shrink: 0;
-  border: none;
-  border-radius: 0.2rem;
-  background: transparent;
-  box-shadow: none;
-  accent-color: var(--app-text, #ffffff);
-  cursor: pointer;
-  appearance: auto;
+.toggle-desc {
+  font-size: 0.78rem;
+  color: var(--app-text-muted);
+  line-height: 1.35;
 }
 
-.checkbox-field input[type='checkbox']:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 35%, transparent);
+.switch {
+  position: relative;
+  display: inline-flex;
+  width: 46px;
+  height: 28px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--app-btn-bg, #1f1f1f);
+  border: 1px solid var(--app-border-strong);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--app-text-muted, #a3a3a3);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--app-text, #ffffff);
+  border-color: var(--app-text, #ffffff);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(18px);
+  background: var(--app-bg, #000000);
+}
+
+.switch input:focus-visible + .switch-slider {
+  outline: 2px solid var(--app-text, #ffffff);
+  outline-offset: 2px;
 }
 
 .creds-backdrop {

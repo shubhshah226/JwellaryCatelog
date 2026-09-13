@@ -153,42 +153,36 @@
           </div>
         }
 
-        @if (isAdmin) {
-          <div class="user-menu-wrap">
-            <button
-              type="button"
-              class="user-profile user-menu-trigger"
-              [attr.aria-expanded]="userMenuOpen()"
-              aria-haspopup="menu"
-              aria-label="Account menu"
-              (click)="toggleUserMenu($event)"
-            >
-              <div class="avatar">{{ user?.firstName?.charAt(0) }}{{ user?.lastName?.charAt(0) }}</div>
-              <div class="user-info">
-                <p class="user-name">{{ user?.name }}</p>
-                <p class="user-role">{{ roleLabel }}</p>
-              </div>
-              <i class="fa-solid fa-chevron-down user-menu-caret" aria-hidden="true"></i>
-            </button>
-
-            @if (userMenuOpen()) {
-              <div class="user-menu-panel" role="menu" aria-label="Account" (click)="$event.stopPropagation()">
-                <button type="button" class="user-menu-item" role="menuitem" (click)="goToUserProfile()">
-                  <i class="fa-solid fa-user" aria-hidden="true"></i>
-                  <span>User Profile</span>
-                </button>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="user-profile">
+        <div class="user-menu-wrap">
+          <button
+            type="button"
+            class="user-profile user-menu-trigger"
+            [attr.aria-expanded]="userMenuOpen()"
+            aria-haspopup="menu"
+            aria-label="Account menu"
+            (click)="toggleUserMenu($event)"
+          >
             <div class="avatar">{{ user?.firstName?.charAt(0) }}{{ user?.lastName?.charAt(0) }}</div>
             <div class="user-info">
               <p class="user-name">{{ user?.name }}</p>
               <p class="user-role">{{ roleLabel }}</p>
             </div>
-          </div>
-        }
+            <i class="fa-solid fa-chevron-down user-menu-caret" aria-hidden="true"></i>
+          </button>
+
+          @if (userMenuOpen()) {
+            <div class="user-menu-panel" role="menu" aria-label="Account" (click)="$event.stopPropagation()">
+              <div class="user-menu-identity">
+                <p class="user-name">{{ user?.name }}</p>
+                <p class="user-role">{{ roleLabel }}</p>
+              </div>
+              <button type="button" class="user-menu-item" role="menuitem" (click)="goToUserProfile()">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                <span>{{ isAdmin ? 'User Profile' : 'Business Profile' }}</span>
+              </button>
+            </div>
+          }
+        </div>
 
         <button type="button" class="logout-btn" (click)="logout()" aria-label="Logout">
           <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>

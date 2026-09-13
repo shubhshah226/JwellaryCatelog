@@ -460,6 +460,11 @@ button.user-menu-trigger {
   border-radius: 10px;
   padding: 0.25rem 0.45rem;
   text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  overflow: visible;
 }
 
 button.user-menu-trigger:hover,
@@ -468,9 +473,16 @@ button.user-menu-trigger[aria-expanded='true'] {
 }
 
 .user-menu-caret {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--app-text-muted);
-  margin-left: 0.15rem;
+  margin-left: 0.2rem;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+button.user-menu-trigger[aria-expanded='true'] .user-menu-caret {
+  transform: rotate(180deg);
+  color: var(--app-text);
 }
 
 .user-menu-panel {
@@ -511,6 +523,21 @@ button.user-menu-trigger[aria-expanded='true'] {
 
 .user-menu-item:hover {
   background: color-mix(in srgb, var(--app-text) 8%, transparent);
+}
+
+.user-menu-identity {
+  display: none;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-bottom: 1px solid var(--app-border);
+  margin-bottom: 0.25rem;
+}
+
+.user-menu-identity .user-name {
+  font-size: 0.88rem;
+}
+
+.user-menu-identity .user-role {
+  margin-top: 0.1rem;
 }
 
 .avatar {
@@ -707,6 +734,7 @@ button.user-menu-trigger[aria-expanded='true'] {
   .header-right {
     gap: 0.3rem;
     flex: 0 0 auto;
+    max-width: min(58%, 14rem);
   }
 
   .notification-btn,
@@ -715,8 +743,63 @@ button.user-menu-trigger[aria-expanded='true'] {
     height: 34px;
   }
 
+  .user-menu-wrap {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .user-profile {
-    display: none;
+    display: flex;
+    max-width: 100%;
+    gap: 0.4rem;
+    padding: 0.15rem 0.25rem;
+  }
+
+  .user-profile .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 7.5rem;
+  }
+
+  .user-name,
+  .user-role {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-name {
+    font-size: 0.78rem;
+  }
+
+  .user-role {
+    font-size: 0.66rem;
+  }
+
+  .user-menu-caret {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-left: 0.1rem;
+    font-size: 0.7rem;
+    color: var(--app-text);
+    opacity: 0.85;
+  }
+
+  .user-menu-identity {
+    display: block;
+  }
+
+  .user-menu-panel {
+    min-width: 200px;
+    right: -0.25rem;
   }
 
   .logout-btn {
@@ -734,9 +817,5 @@ button.user-menu-trigger[aria-expanded='true'] {
 
   .dashboard-shell.sidebar-open .sidebar-backdrop {
     display: block;
-  }
-
-  .user-info {
-    display: none;
   }
 }

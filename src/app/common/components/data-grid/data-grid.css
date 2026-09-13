@@ -424,10 +424,15 @@ th {
   flex-shrink: 0;
   width: 52px;
   height: 52px;
+  overflow: hidden;
 }
 
 .dg-card-media .dg-avatar-cell {
   gap: 0;
+}
+
+.dg-card-media .dg-avatar-cell > div:not(.dg-avatar) {
+  display: none;
 }
 
 .dg-card-media .dg-avatar,
@@ -463,24 +468,36 @@ th {
 .dg-card-identity {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow: hidden;
 }
 
 .dg-card-identity .dg-primary {
   font-size: 0.95rem;
   line-height: 1.3;
   margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dg-card-identity .dg-secondary {
-  margin-top: 0.15rem;
+  margin: 0.15rem 0 0;
   font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dg-card-identity > div {
+  min-width: 0;
 }
 
 .dg-card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-  margin-top: 0.4rem;
+  margin-top: 0;
 }
 
 .dg-card-menu {
@@ -554,9 +571,9 @@ th {
   gap: 0.4rem;
   padding: 0.45rem 0.6rem;
   border-radius: 10px;
-  border: 1px solid var(--app-border-strong);
-  background: var(--app-surface-muted);
-  color: var(--app-text);
+  border: 1px solid var(--app-text);
+  background: var(--app-text);
+  color: var(--app-bg);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 650;
@@ -565,18 +582,22 @@ th {
 
 .dg-card-footer-btn i {
   font-size: 0.8rem;
-  color: var(--app-accent);
+  color: inherit;
 }
 
 .dg-card-footer-btn.danger,
 .dg-card-footer-btn[class*='revoke'] {
-  background: color-mix(in srgb, var(--app-danger) 12%, transparent);
-  border-color: color-mix(in srgb, var(--app-danger) 28%, transparent);
-  color: var(--app-danger);
+  background: transparent;
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
 }
 
 .dg-card-footer-btn.danger i {
-  color: var(--app-danger);
+  color: inherit;
+}
+
+.dg-card-footer:has(> :only-child) {
+  grid-template-columns: 1fr;
 }
 
 .dg-card-footer-btn:disabled {

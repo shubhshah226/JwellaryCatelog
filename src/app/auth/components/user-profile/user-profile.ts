@@ -1,5 +1,4 @@
 ﻿import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { normalizeAppRole } from '@common/utils/jwt.util';
 import { formatInIndia } from '@common/utils/date-time.util';
 import { AuthService } from '../../services/auth.service';
@@ -7,7 +6,6 @@ import { UserProfile } from '../../models/user.model';
 
 @Component({
   selector: 'app-user-profile',
-  imports: [FormsModule],
   templateUrl: './user-profile.html',
   styleUrl: './user-profile.css',
 })
@@ -68,5 +66,10 @@ export class UserProfilePage implements OnInit {
       return '—';
     }
     return formatInIndia(value) || value;
+  }
+
+  profileInitial(fullName: string | null | undefined): string {
+    const name = (fullName || '').trim();
+    return name ? name.charAt(0).toUpperCase() : 'U';
   }
 }

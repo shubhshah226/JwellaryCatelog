@@ -229,9 +229,6 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   toggleUserMenu(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isAdmin) {
-      return;
-    }
     this.notificationsOpen.set(false);
     this.userMenuOpen.update((open) => !open);
   }
@@ -242,7 +239,8 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   goToUserProfile(): void {
     this.closeUserMenu();
-    void this.router.navigateByUrl('/superAdmin/user-profile');
+    const route = this.isAdmin ? '/superAdmin/user-profile' : '/vendor/profile';
+    void this.router.navigateByUrl(route);
   }
 
   closeNotifications(): void {

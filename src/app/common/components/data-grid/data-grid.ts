@@ -164,9 +164,17 @@ export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterV
     );
   });
 
-  /** Title column for mobile cards (skip media columns). */
+  /**
+   * Title column for mobile cards.
+   * When media is an avatar column, reuse it for name/subtitle text (circle stays in media).
+   */
   readonly cardTitleColumn = computed(() => {
-    const mediaKey = this.cardMediaColumn()?.key;
+    const media = this.cardMediaColumn();
+    if (media && (media.cellType || 'text') === 'avatar') {
+      return media;
+    }
+
+    const mediaKey = media?.key;
     return (
       this.config().columns.find(
         (c) => c.key !== mediaKey && (c.cellType || 'text') !== 'badge'
