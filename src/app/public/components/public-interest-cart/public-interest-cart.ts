@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PhoneDigitsDirective } from '@common/directives/phone-digits.directive';
+import { phoneFieldError, sanitizePhoneDigits } from '@common/utils/phone.util';
 import { ProductViewerModal } from '../../components/product-viewer-modal/product-viewer-modal';
 import { PublicProduct, PublicStoreContext } from '../../models/storefront.model';
 import { CartProduct, InterestCartService } from '../../services/interest-cart.service';
@@ -9,7 +11,7 @@ import { formatRs, hasDisplayPrice, StorefrontService } from '../../services/sto
 
 @Component({
   selector: 'app-public-interest-cart',
-  imports: [FormsModule, RouterLink, ProductViewerModal],
+  imports: [FormsModule, RouterLink, ProductViewerModal, PhoneDigitsDirective],
   templateUrl: './public-interest-cart.html',
   styleUrl: './public-interest-cart.css',
 })
@@ -88,35 +90,11 @@ export class PublicInterestCart implements OnInit {
   }
 
   onPhoneInput(value: string): void {
-    this.guestPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+    this.guestPhone = sanitizePhoneDigits(value);
   }
 
-  onPhoneKeydown(event: KeyboardEvent): void {
-    const allowed = [
-      'Backspace',
-      'Delete',
-      'Tab',
-      'Escape',
-      'Enter',
-      'ArrowLeft',
-      'ArrowRight',
-      'ArrowUp',
-      'ArrowDown',
-      'Home',
-      'End',
-    ];
-    if (allowed.includes(event.key) || event.ctrlKey || event.metaKey) {
-      return;
-    }
-    if (!/^\d$/.test(event.key)) {
-      event.preventDefault();
-    }
-  }
-
-  onPhonePaste(event: ClipboardEvent): void {
-    event.preventDefault();
-    const text = event.clipboardData?.getData('text') ?? '';
-    this.onPhoneInput(`${this.guestPhone}${text}`);
+  phoneError(): string {
+    return phoneFieldError(this.guestPhone, { required: false, label: 'Phone' });
   }
 
   removeItem(productId: string): void {
@@ -176,16 +154,17 @@ export class PublicInterestCart implements OnInit {
     }
 
     const name = this.guestName.trim();
-    const phone = this.guestPhone.trim();
-    if (!name || !phone) {
+    if (!name) {
       this.errorMessage.set('Please enter your name and phone number.');
       return;
     }
-    if (!/^\d{10}$/.test(phone)) {
-      this.errorMessage.set('Phone must be a 10-digit number.');
+    const phoneError = phoneFieldError(this.guestPhone, { required: true, label: 'Phone' });
+    if (phoneError) {
+      this.errorMessage.set(phoneError);
       return;
     }
 
+    const phone = this.guestPhone.trim();
     this.isSubmitting.set(true);
     this.errorMessage.set('');
 

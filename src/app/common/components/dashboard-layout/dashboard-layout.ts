@@ -112,13 +112,14 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     this.themeService.init();
     this.syncSidebarWithViewport();
     this.loadVendorBrand();
-    this.loadNotifications();
+    this.refreshNotificationsIfDashboard(this.router.url);
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
+      .subscribe((event) => {
         this.notificationsOpen.set(false);
         this.userMenuOpen.set(false);
         this.queueMobileScrollSync();
+        this.refreshNotificationsIfDashboard(event.urlAfterRedirects);
       });
   }
 
@@ -220,11 +221,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.userMenuOpen.set(false);
-    const next = !this.notificationsOpen();
-    this.notificationsOpen.set(next);
-    if (next && !this.notifications().length) {
-      this.loadNotifications();
-    }
+    this.notificationsOpen.update((open) => !open);
   }
 
   toggleUserMenu(event?: Event): void {
@@ -239,7 +236,7 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   goToUserProfile(): void {
     this.closeUserMenu();
-    const route = this.isAdmin ? '/superAdmin/user-profile' : '/vendor/profile';
+    const route = this.isAdmin ? '/superAdmin/user-profile' : '/vendor/user-profile';
     void this.router.navigateByUrl(route);
   }
 
@@ -302,6 +299,16 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.userMenuOpen() && !target?.closest('.user-menu-wrap')) {
       this.closeUserMenu();
+    }
+  }
+
+  private refreshNotificationsIfDashboard(url: string): void {
+    if (this.isAdmin) {
+      return;
+    }
+    const path = url.split('?')[0].split('#')[0];
+    if (path === '/vendor/dashboard') {
+      this.loadNotifications();
     }
   }
 

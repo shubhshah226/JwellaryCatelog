@@ -545,6 +545,14 @@
   margin: 0 0 0.75rem;
 }
 
+.field-error {
+  display: block;
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
 .trust-row {
   display: grid;
   gap: 0.55rem;

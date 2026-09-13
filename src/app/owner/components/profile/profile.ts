@@ -1,13 +1,15 @@
 ﻿import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
+import { PhoneDigitsDirective } from '@common/directives/phone-digits.directive';
+import { phoneFieldError, sanitizePhoneDigits } from '@common/utils/phone.util';
 import { ToastService } from '@common/services/toast.service';
 import { VendorAccount } from '@common/models/vendor.model';
 import { VendorDataService } from '../../services/vendor-data.service';
 
 @Component({
   selector: 'app-vendor-profile',
-  imports: [FormsModule],
+  imports: [FormsModule, PhoneDigitsDirective],
   templateUrl: './profile.html',
   styleUrls: ['../../shared/vendor-page.css', './profile.css'],
 })
@@ -137,7 +139,12 @@ export class VendorProfile implements OnInit, OnDestroy {
   }
 
   onPhoneChange(value: string): void {
-    this.editPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+    this.editPhone = sanitizePhoneDigits(value);
+  }
+
+  phoneError(): string {
+    // Inline: only when user started typing an incomplete number
+    return phoneFieldError(this.editPhone, { required: false, label: 'Phone' });
   }
 
   saveProfile(): void {
@@ -149,12 +156,13 @@ export class VendorProfile implements OnInit, OnDestroy {
       this.formError.set('Business name is required.');
       return;
     }
-    if (!this.editEmail.trim() || !this.editPhone.trim()) {
-      this.formError.set('Email and phone are required.');
+    if (!this.editEmail.trim()) {
+      this.formError.set('Email is required.');
       return;
     }
-    if (!/^\d{10}$/.test(this.editPhone.trim())) {
-      this.formError.set('Phone must be a 10-digit number.');
+    const phoneError = phoneFieldError(this.editPhone, { required: true, label: 'Phone' });
+    if (phoneError) {
+      this.formError.set(phoneError);
       return;
     }
 

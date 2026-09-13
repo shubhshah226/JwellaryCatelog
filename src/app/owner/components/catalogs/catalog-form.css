@@ -434,6 +434,13 @@
   margin: 0;
 }
 
+.field-error {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--app-danger, #f87171);
+}
+
 .mf-error {
   padding: 0.65rem 0.8rem;
   border-radius: 10px;

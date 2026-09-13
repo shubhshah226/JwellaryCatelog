@@ -150,9 +150,9 @@
             <span>Phone <em>*</em></span>
             <input
               type="tel"
+              appPhoneDigits
               inputmode="numeric"
               maxlength="10"
-              pattern="[0-9]{10}"
               [(ngModel)]="editPhone"
               (ngModelChange)="onPhoneChange($event)"
               name="editPhone"
@@ -160,6 +160,9 @@
               required
               autocomplete="tel"
             />
+            @if (phoneError()) {
+              <small class="field-error">{{ phoneError() }}</small>
+            }
           </label>
         </div>
       </section>

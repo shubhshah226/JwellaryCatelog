@@ -8,6 +8,8 @@ import {
 } from '@common/components/data-grid/data-grid.types';
 import { ConfirmDialogService } from '@common/services/confirm-dialog.service';
 import { ToastService } from '@common/services/toast.service';
+import { PhoneDigitsDirective } from '@common/directives/phone-digits.directive';
+import { phoneFieldError, sanitizePhoneDigits } from '@common/utils/phone.util';
 import {
   ResetOwnerPasswordParamModel,
   UpdateTenantStatusParamModel,
@@ -24,7 +26,7 @@ type CredentialsModalMode = 'created' | 'reset';
 
 @Component({
   selector: 'app-vendors',
-  imports: [FormsModule, DecimalPipe, DataGridComponent],
+  imports: [FormsModule, DecimalPipe, DataGridComponent, PhoneDigitsDirective],
   templateUrl: './vendors.html',
   styleUrl: './vendors.css',
 })
@@ -200,7 +202,14 @@ export class Vendors implements OnInit {
 
   /** Digits only, max 10. */
   onContactPhoneChange(value: string): void {
-    this.vendorForm.contactPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+    this.vendorForm.contactPhone = sanitizePhoneDigits(value);
+  }
+
+  contactPhoneError(): string {
+    return phoneFieldError(this.vendorForm.contactPhone, {
+      required: false,
+      label: 'Contact phone',
+    });
   }
 
   brandColorPickerValue(): string {
@@ -398,9 +407,9 @@ export class Vendors implements OnInit {
       return;
     }
 
-    const phone = (this.vendorForm.contactPhone || '').trim();
-    if (phone && !/^\d{10}$/.test(phone)) {
-      this.formError.set('Contact phone must be a 10-digit number.');
+    const phoneError = phoneFieldError(this.vendorForm.contactPhone, { label: 'Contact phone' });
+    if (phoneError) {
+      this.formError.set(phoneError);
       return;
     }
 

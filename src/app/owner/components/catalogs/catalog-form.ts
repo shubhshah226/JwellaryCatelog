@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Product } from '@common/models/dashboard.model';
+import { PhoneDigitsDirective } from '@common/directives/phone-digits.directive';
+import { phoneFieldError, sanitizePhoneDigits } from '@common/utils/phone.util';
 import { resolveShareUrl } from '@common/utils/store-code.util';
 import { ToastService } from '@common/services/toast.service';
 import { ProductService } from '../../services/product.service';
@@ -11,7 +13,7 @@ import { VendorDataService } from '../../services/vendor-data.service';
 
 @Component({
   selector: 'app-vendor-catalog-form',
-  imports: [FormsModule],
+  imports: [FormsModule, PhoneDigitsDirective],
   templateUrl: './catalog-form.html',
   styleUrls: ['../../shared/vendor-page.css', './catalog-form.css'],
 })
@@ -166,7 +168,14 @@ export class VendorCatalogForm implements OnInit {
   }
 
   onCustomerPhoneChange(value: string): void {
-    this.formCustomerPhone = (value || '').replace(/\D/g, '').slice(0, 10);
+    this.formCustomerPhone = sanitizePhoneDigits(value);
+  }
+
+  customerPhoneError(): string {
+    return phoneFieldError(this.formCustomerPhone, {
+      required: false,
+      label: 'Customer phone',
+    });
   }
 
   copyShareLink(): void {
@@ -194,9 +203,9 @@ export class VendorCatalogForm implements OnInit {
       this.formError.set('Select at least one product.');
       return;
     }
-    const customerPhone = this.formCustomerPhone.trim();
-    if (customerPhone && !/^\d{10}$/.test(customerPhone)) {
-      this.formError.set('Customer phone must be a 10-digit number.');
+    const phoneError = phoneFieldError(this.formCustomerPhone, { label: 'Customer phone' });
+    if (phoneError) {
+      this.formError.set(phoneError);
       return;
     }
     if (!this.formNeverExpires) {

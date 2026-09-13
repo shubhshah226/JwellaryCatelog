@@ -115,13 +115,17 @@
               <input
                 type="tel"
                 name="contactPhone"
+                appPhoneDigits
                 inputmode="numeric"
                 maxlength="10"
-                pattern="[0-9]{10}"
+                autocomplete="tel"
                 placeholder="10-digit mobile"
                 [(ngModel)]="vendorForm.contactPhone"
                 (ngModelChange)="onContactPhoneChange($event)"
               />
+              @if (contactPhoneError()) {
+                <small class="field-error">{{ contactPhoneError() }}</small>
+              }
             </label>
 
             <label class="form-field">

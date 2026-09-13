@@ -154,18 +154,19 @@
                 <i class="fa-solid fa-phone" aria-hidden="true"></i>
                 <input
                   type="tel"
+                  appPhoneDigits
                   inputmode="numeric"
-                  pattern="[0-9]*"
                   maxlength="10"
                   [ngModel]="guestPhone"
                   (ngModelChange)="onPhoneInput($event)"
-                  (keydown)="onPhoneKeydown($event)"
-                  (paste)="onPhonePaste($event)"
                   name="guestPhone"
                   placeholder="10-digit mobile"
                   autocomplete="tel"
                 />
               </div>
+              @if (phoneError()) {
+                <small class="field-error">{{ phoneError() }}</small>
+              }
             </label>
 
             <label class="note-field">

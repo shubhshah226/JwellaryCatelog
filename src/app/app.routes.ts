@@ -187,6 +187,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./owner/components/profile/profile').then((m) => m.VendorProfile),
       },
+      {
+        path: 'user-profile',
+        loadComponent: () =>
+          import('./auth/components/user-profile/user-profile').then(
+            (m) => m.UserProfilePage
+          ),
+      },
       { path: 'change-password', redirectTo: '/common/changepassword', pathMatch: 'full' },
     ],
   },

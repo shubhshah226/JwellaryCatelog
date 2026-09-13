@@ -65,15 +65,18 @@
             <span>Customer phone</span>
             <input
               type="tel"
+              appPhoneDigits
               inputmode="numeric"
               maxlength="10"
-              pattern="[0-9]{10}"
               [(ngModel)]="formCustomerPhone"
               (ngModelChange)="onCustomerPhoneChange($event)"
               name="customerPhone"
               placeholder="10-digit mobile (optional)"
               [disabled]="isRevoked()"
             />
+            @if (customerPhoneError()) {
+              <small class="field-error">{{ customerPhoneError() }}</small>
+            }
           </label>
         </div>
       </section>
