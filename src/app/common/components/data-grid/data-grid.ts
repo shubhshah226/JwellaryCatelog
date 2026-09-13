@@ -259,8 +259,7 @@ export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterV
   applyFilters(): void {
     this.appliedFilters.set({ ...this.draftFilters() });
     this.currentPage.set(1);
-    this.selectedIds.set(new Set());
-    this.emitSelection();
+    // Keep row selection across filter/search changes (e.g. catalog product pick).
   }
 
   resetFilters(): void {
@@ -337,6 +336,30 @@ export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterV
       updated.add(id);
     } else {
       updated.delete(id);
+    }
+    this.selectedIds.set(updated);
+    this.emitSelection();
+  }
+
+  /** Clicking a selectable row toggles selection (ignores buttons/links/menus). */
+  onRowClick(row: T, event: MouseEvent): void {
+    if (!this.config().selectable) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        'button, a, input, select, textarea, label, .dg-actions, .dg-actions-menu, .dg-card-footer'
+      )
+    ) {
+      return;
+    }
+    const updated = new Set(this.selectedIds());
+    const id = this.rowId(row);
+    if (updated.has(id)) {
+      updated.delete(id);
+    } else {
+      updated.add(id);
     }
     this.selectedIds.set(updated);
     this.emitSelection();

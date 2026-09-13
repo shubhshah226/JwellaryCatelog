@@ -41,21 +41,20 @@
                     (dragend)="onPhotoDragEnd()"
                   >
                     @if (photoPreview(slot)) {
-                      <img [src]="photoPreview(slot)" [alt]="$index === 0 ? 'Cover' : 'Backup'" />
+                      <img [src]="photoPreview(slot)" [alt]="$index === 0 ? 'Cover' : 'Photo ' + ($index + 1)" />
                     } @else {
                       <div class="pfp-photo-placeholder" aria-hidden="true">
                         <i class="fa-solid fa-image"></i>
-                        <span>Saved</span>
                       </div>
                     }
                     <span class="photo-order">{{ $index + 1 }}</span>
-                    <span class="primary-badge" [class.backup-badge]="$index > 0">
-                      {{ $index === 0 ? 'Cover' : 'Backup' }}
-                    </span>
+                    @if ($index === 0) {
+                      <span class="primary-badge">Cover</span>
+                    }
                     <button
                       type="button"
                       class="remove-img"
-                      (click)="removePhoto($index); $event.stopPropagation()"
+                      (click)="confirmRemovePhoto($index); $event.stopPropagation()"
                       aria-label="Remove photo"
                     >
                       <i class="fa-solid fa-xmark"></i>
@@ -95,11 +94,6 @@
               {{ photoSlots().length ? 'Add more' : 'Upload photos' }}
               <input type="file" accept="image/*" multiple (change)="onPhotosSelected($event)" hidden />
             </label>
-            @if (mode() === 'edit' && existingImageCount() > 0) {
-              <small class="field-hint">
-                Drag to reorder · first photo is the cover. You can remove or add more photos.
-              </small>
-            }
           </div>
         </section>
 
@@ -142,7 +136,6 @@
                 name="price"
                 min="0"
                 inputmode="decimal"
-                placeholder="Optional"
               />
             </label>
 
@@ -171,7 +164,7 @@
                 (ngModelChange)="onPurityChange($event)"
                 name="purityId"
               >
-                <option [ngValue]="null">Optional</option>
+                <option [ngValue]="null">None</option>
                 @for (p of purityOptionsForForm(); track p.id) {
                   <option [ngValue]="p.id">{{ p.name }}</option>
                 }
@@ -212,7 +205,7 @@
                 (ngModelChange)="onColorChange($event)"
                 name="colorId"
               >
-                <option [ngValue]="null">Optional</option>
+                <option [ngValue]="null">None</option>
                 @for (c of colorOptionsForForm(); track c.id) {
                   <option [ngValue]="c.id">{{ c.name }}</option>
                 }

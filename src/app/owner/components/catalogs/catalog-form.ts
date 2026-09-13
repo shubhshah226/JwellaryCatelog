@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { Product } from '@common/models/dashboard.model';
+import { PRODUCT_STOCK_STATUSES, Product } from '@common/models/dashboard.model';
 import { PhoneDigitsDirective } from '@common/directives/phone-digits.directive';
 import { phoneFieldError, sanitizePhoneDigits } from '@common/utils/phone.util';
 import { resolveShareUrl } from '@common/utils/store-code.util';
@@ -40,7 +40,13 @@ export class VendorCatalogForm implements OnInit {
   /** Products on the catalog when edit opened (used to compute add/remove diffs). */
   readonly initialProductIds = signal<Set<string>>(new Set());
   readonly productSearch = signal('');
+  readonly filterCategory = signal('all');
+  readonly filterMetal = signal('all');
+  readonly filterStock = signal('all');
+  readonly showSelectedOnly = signal(false);
   readonly loadingProducts = signal(false);
+  /** Step 1 = details, Step 2 = full-page product picker */
+  readonly step = signal<'details' | 'products'>('details');
 
   formName = '';
   formCustomerName = '';
@@ -50,11 +56,83 @@ export class VendorCatalogForm implements OnInit {
   formExpiryDays: number | null = 30;
   private defaultExpiryDays = 30;
 
-  /** Selected catalog products first, then the rest â€” all products still listed. */
+  readonly selectedProducts = computed(() => {
+    const selected = this.selectedProductIds();
+    return this.allProducts().filter((p) => selected.has(String(p.id)));
+  });
+
+  readonly categoryFilterOptions = computed(() => {
+    const names = [
+      ...new Set(
+        this.allProducts()
+          .map((p) => (p.category || '').trim())
+          .filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+    return [{ label: 'All Categories', value: 'all' }, ...names.map((n) => ({ label: n, value: n }))];
+  });
+
+  readonly metalFilterOptions = computed(() => {
+    const names = [
+      ...new Set(
+        this.allProducts()
+          .map((p) => (p.metalType || '').trim())
+          .filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+    return [{ label: 'All Metals', value: 'all' }, ...names.map((n) => ({ label: n, value: n }))];
+  });
+
+  readonly stockFilterOptions = computed(() => [
+    { label: 'All Stock', value: 'all' },
+    ...PRODUCT_STOCK_STATUSES.map((s) => ({ label: s.label, value: s.value })),
+  ]);
+
+  /** Selected catalog products first, then the rest — selected stay visible when filtering. */
   readonly filteredPickerProducts = computed(() => {
     const q = this.productSearch().trim().toLowerCase();
     const selected = this.selectedProductIds();
+    const category = this.filterCategory();
+    const metal = this.filterMetal();
+    const stock = this.filterStock();
+    const selectedOnly = this.showSelectedOnly();
+
     let list = [...this.allProducts()];
+    list = list.filter((p) => {
+      const id = String(p.id);
+      const isSelected = selected.has(id);
+      if (selectedOnly && !isSelected) {
+        return false;
+      }
+
+      // Keep already-selected products visible while browsing filters/search.
+      if (isSelected) {
+        return true;
+      }
+
+      if (category !== 'all' && (p.category || '').trim() !== category) {
+        return false;
+      }
+      if (metal !== 'all' && (p.metalType || '').trim() !== metal) {
+        return false;
+      }
+      if (stock !== 'all') {
+        const status = (p.stockStatus || p.status || '').trim();
+        if (status !== stock) {
+          return false;
+        }
+      }
+      if (!q) {
+        return true;
+      }
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.sku ?? '').toLowerCase().includes(q) ||
+        (p.category ?? '').toLowerCase().includes(q) ||
+        (p.metalType ?? '').toLowerCase().includes(q)
+      );
+    });
+
     list.sort((a, b) => {
       const aSel = selected.has(String(a.id)) ? 0 : 1;
       const bSel = selected.has(String(b.id)) ? 0 : 1;
@@ -63,16 +141,18 @@ export class VendorCatalogForm implements OnInit {
       }
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
-    if (!q) {
-      return list;
-    }
-    return list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? '').toLowerCase().includes(q) ||
-        (p.category ?? '').toLowerCase().includes(q)
-    );
+    return list;
   });
+
+  readonly filteredVisibleCount = computed(() => this.filteredPickerProducts().length);
+  readonly hasActiveFilters = computed(
+    () =>
+      !!this.productSearch().trim() ||
+      this.filterCategory() !== 'all' ||
+      this.filterMetal() !== 'all' ||
+      this.filterStock() !== 'all' ||
+      this.showSelectedOnly()
+  );
 
   readonly selectedCount = computed(() => this.selectedProductIds().size);
 
@@ -129,7 +209,34 @@ export class VendorCatalogForm implements OnInit {
     if (this.isSubmitting()) {
       return;
     }
+    if (this.step() === 'products') {
+      this.step.set('details');
+      this.formError.set('');
+      return;
+    }
     void this.router.navigate(['/vendor/catalogs']);
+  }
+
+  goToProductsStep(): void {
+    const name = this.formName.trim();
+    if (!name) {
+      this.formError.set('Catalog name is required.');
+      return;
+    }
+    const phoneError = phoneFieldError(this.formCustomerPhone, { label: 'Customer phone' });
+    if (phoneError) {
+      this.formError.set(phoneError);
+      return;
+    }
+    if (!this.formNeverExpires) {
+      const days = Number(this.formExpiryDays);
+      if (!Number.isFinite(days) || days <= 0) {
+        this.formError.set('Enter catalog expiry in days, or turn on Never expires.');
+        return;
+      }
+    }
+    this.formError.set('');
+    this.step.set('products');
   }
 
   isProductSelected(id: string): boolean {
@@ -167,6 +274,14 @@ export class VendorCatalogForm implements OnInit {
     this.selectedProductIds.set(new Set());
   }
 
+  resetProductFilters(): void {
+    this.productSearch.set('');
+    this.filterCategory.set('all');
+    this.filterMetal.set('all');
+    this.filterStock.set('all');
+    this.showSelectedOnly.set(false);
+  }
+
   onCustomerPhoneChange(value: string): void {
     this.formCustomerPhone = sanitizePhoneDigits(value);
   }
@@ -184,11 +299,7 @@ export class VendorCatalogForm implements OnInit {
       this.formError.set('Save the catalog first to get a share link.');
       return;
     }
-    void navigator.clipboard.writeText(link).then(() => {
-      this.shareCopied.set(true);
-      this.toast.success('Share link copied.');
-      setTimeout(() => this.shareCopied.set(false), 2000);
-    });
+    void this.copyLinkToClipboard(link, 'Share link copied.');
   }
 
   submit(): void {
@@ -249,8 +360,11 @@ export class VendorCatalogForm implements OnInit {
         .subscribe({
           next: () => {
             this.isSubmitting.set(false);
-            this.toast.success('Catalog updated.');
-            this.goBack();
+            const link = resolveShareUrl(this.shareLink(), this.storeCode() || undefined);
+            void this.finishWithCopiedLink(
+              link,
+              link ? 'Catalog updated. Share link copied.' : 'Catalog updated.'
+            );
           },
           error: () => {
             this.isSubmitting.set(false);
@@ -267,15 +381,35 @@ export class VendorCatalogForm implements OnInit {
           this.storeCode() || undefined,
           catalog.shortCode
         );
-        this.toast.success(
-          link ? 'Catalog created. Share link is ready on the Catalogs page.' : 'Catalog created.'
+        void this.finishWithCopiedLink(
+          link,
+          link ? 'Catalog created. Share link copied.' : 'Catalog created.'
         );
-        this.goBack();
       },
       error: () => {
         this.isSubmitting.set(false);
       },
     });
+  }
+
+  private async finishWithCopiedLink(link: string, successMessage: string): Promise<void> {
+    if (link) {
+      await this.copyLinkToClipboard(link, successMessage);
+    } else {
+      this.toast.success(successMessage);
+    }
+    void this.router.navigate(['/vendor/catalogs']);
+  }
+
+  private async copyLinkToClipboard(link: string, successMessage: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(link);
+      this.shareCopied.set(true);
+      this.toast.success(successMessage);
+      setTimeout(() => this.shareCopied.set(false), 2000);
+    } catch {
+      this.toast.success(successMessage.replace('Share link copied.', 'Share link is ready.'));
+    }
   }
 
   private loadProductsForCreate(): void {
@@ -368,6 +502,8 @@ export class VendorCatalogForm implements OnInit {
         this.allProducts.set(
           this.mergeProductLists(this.withImageUrls(products), catalogProducts)
         );
+        // Edit opens on the product grid; details stay available via Back.
+        this.step.set('products');
         this.isLoading.set(false);
         this.loadingProducts.set(false);
       },

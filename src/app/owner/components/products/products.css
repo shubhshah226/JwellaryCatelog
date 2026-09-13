@@ -873,7 +873,7 @@
 .share-check input {
   width: 1rem;
   height: 1rem;
-  accent-color: var(--app-accent);
+  accent-color: var(--app-text);
 }
 
 .form-row {

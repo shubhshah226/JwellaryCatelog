@@ -12,7 +12,7 @@ import {
   DataGridSelectionEvent,
 } from '@common/components/data-grid/data-grid.types';
 import { ToastService } from '@common/services/toast.service';
-import { FilterOptions, MasterDataService } from '../../services/master-data.service';
+import { ConfirmDialogService } from '@common/services/confirm-dialog.service';
 import { ProductService } from '../../services/product.service';
 
 @Component({
@@ -24,8 +24,8 @@ import { ProductService } from '../../services/product.service';
 export class VendorProducts implements OnInit {
   private readonly router = inject(Router);
   private readonly productService = inject(ProductService);
-  private readonly masterDataService = inject(MasterDataService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild(DataGridComponent) private dataGrid?: DataGridComponent<Product>;
@@ -33,7 +33,6 @@ export class VendorProducts implements OnInit {
   readonly isLoading = signal(true);
   readonly errorMessage = signal('');
   readonly allProducts = signal<Product[]>([]);
-  readonly filterOptions = signal<FilterOptions | null>(null);
 
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly selectedCount = computed(() => this.selectedIds().size);
@@ -58,30 +57,36 @@ export class VendorProducts implements OnInit {
   }
 
   readonly gridConfig = computed<DataGridConfig<Product>>(() => {
-    const opts = this.filterOptions();
+    const products = this.allProducts();
+    const categoryNames = [
+      ...new Set(
+        products
+          .map((p) => (p.category || '').trim())
+          .filter((name) => !!name)
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+    const metalNames = [
+      ...new Set(
+        products
+          .map((p) => (p.metalType || '').trim())
+          .filter((name) => !!name)
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+
     const categoryOptions = [
       { label: 'All Categories', value: 'all' },
-      ...(opts?.categories ?? [])
-        .filter((c) => c.status === 'active')
-        .map((c) => ({ label: c.name, value: c.name }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
+      ...categoryNames.map((name) => ({ label: name, value: name })),
     ];
     const metalOptions = [
       { label: 'All Metals', value: 'all' },
-      ...(opts?.metalTypes ?? [])
-        .filter((m) => m.status === 'active')
-        .map((m) => ({ label: m.name, value: m.name }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
+      ...metalNames.map((name) => ({ label: name, value: name })),
     ];
     const stockOptions = [
       { label: 'All Stock', value: 'all' },
-      ...(opts?.stockStatuses ?? PRODUCT_STOCK_STATUSES.map((s) => s.value)).map((value) => {
-        const known = PRODUCT_STOCK_STATUSES.find((s) => s.value === value);
-        return {
-          label: known?.label || value.replace(/_/g, ' '),
-          value,
-        };
-      }),
+      ...PRODUCT_STOCK_STATUSES.map((s) => ({
+        label: s.label,
+        value: s.value,
+      })),
     ];
 
     return {
@@ -238,13 +243,6 @@ export class VendorProducts implements OnInit {
 
   ngOnInit(): void {
     this.loadProducts();
-    this.masterDataService
-      .getFilterOptions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (opts) => this.filterOptions.set(opts),
-        error: () => this.filterOptions.set(null),
-      });
   }
 
   loadProducts(): void {
@@ -326,7 +324,20 @@ export class VendorProducts implements OnInit {
     });
   }
 
-  setAccountStatus(product: Product, status: 'active' | 'inactive'): void {
+  async setAccountStatus(product: Product, status: 'active' | 'inactive'): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: status === 'inactive' ? 'Set Inactive' : 'Activate Product',
+      message:
+        status === 'inactive'
+          ? `Set "${product.name}" as inactive? It will be hidden from new catalogs until activated again.`
+          : `Activate "${product.name}"?`,
+      confirmLabel: status === 'inactive' ? 'Set Inactive' : 'Activate',
+      cancelLabel: 'Cancel',
+      tone: status === 'inactive' ? 'danger' : 'default',
+    });
+    if (!confirmed) {
+      return;
+    }
     this.productService.updateProductStatus([product.id], status).subscribe({
       next: () => {
         this.allProducts.update((list) =>
@@ -337,8 +348,15 @@ export class VendorProducts implements OnInit {
     });
   }
 
-  deleteProduct(product: Product): void {
-    if (!confirm(`Delete "${product.name}"?`)) {
+  async deleteProduct(product: Product): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Delete Product',
+      message: `Are you sure you want to delete "${product.name}"?`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     this.productService.deleteProduct(product.id).subscribe({

@@ -6,6 +6,7 @@ import {
   ProductFormData,
   createEmptyProductForm,
 } from '@common/models/dashboard.model';
+import { ConfirmDialogService } from '@common/services/confirm-dialog.service';
 import { ToastService } from '@common/services/toast.service';
 import { MasterDataItem, MasterDataService } from '../../services/master-data.service';
 import { ProductExistingImage, ProductService } from '../../services/product.service';
@@ -26,6 +27,7 @@ export class VendorProductForm implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly masterDataService = inject(MasterDataService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly mode = signal<'add' | 'edit'>('add');
   readonly productId = signal<string | null>(null);
@@ -223,6 +225,23 @@ export class VendorProductForm implements OnInit {
       });
     });
     input.value = '';
+  }
+
+  async confirmRemovePhoto(index: number): Promise<void> {
+    const isCover = index === 0;
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Remove Photo',
+      message: isCover
+        ? 'Remove the cover photo? The next photo will become the cover.'
+        : 'Remove this photo from the product?',
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) {
+      return;
+    }
+    this.removePhoto(index);
   }
 
   removePhoto(index: number): void {

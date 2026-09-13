@@ -220,7 +220,7 @@
               <span class="toggle-title">Show prices by default</span>
               <span class="toggle-desc">When on, product prices are visible in catalogs.</span>
             </div>
-            <label class="switch">
+            <label class="switch" [class.on]="editPriceVisibleDefault">
               <input
                 type="checkbox"
                 name="editPriceVisibleDefault"

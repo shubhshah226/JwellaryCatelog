@@ -8,6 +8,7 @@ import {
   DataGridActionEvent,
   DataGridConfig,
 } from '@common/components/data-grid/data-grid.types';
+import { ConfirmDialogService } from '@common/services/confirm-dialog.service';
 import { resolveShareUrl } from '@common/utils/store-code.util';
 import { ToastService } from '@common/services/toast.service';
 import { VendorDataService } from '../../services/vendor-data.service';
@@ -22,6 +23,7 @@ export class VendorCatalogs implements OnInit {
   private readonly vendorData = inject(VendorDataService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isLoading = signal(true);
@@ -198,12 +200,15 @@ export class VendorCatalogs implements OnInit {
     });
   }
 
-  revokeCatalog(catalog: Catalog): void {
-    if (
-      !confirm(
-        `Revoke catalog "${catalog.name}"? The share link will stop working. Products stay in Manage Products.`
-      )
-    ) {
+  async revokeCatalog(catalog: Catalog): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'Revoke Catalog',
+      message: `Revoke "${catalog.name}"? The share link will stop working. Products stay in Manage Products.`,
+      confirmLabel: 'Revoke',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     this.vendorData.revokeCatalog(catalog.id).subscribe({

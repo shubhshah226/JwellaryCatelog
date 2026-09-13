@@ -46,10 +46,70 @@
         <p>{{ activeMeta().description }}</p>
         <p class="option-example">{{ activeMeta().example }}</p>
       </div>
-      <button type="button" class="btn btn-primary master-add-btn" (click)="openAddPage($event)">
-        {{ activeMeta().addLabel }}
-      </button>
+      @if (!formOpen()) {
+        <button type="button" class="btn btn-primary master-add-btn" (click)="openAddForm($event)">
+          {{ activeMeta().addLabel }}
+        </button>
+      }
     </div>
+
+    @if (formOpen()) {
+      <form
+        class="master-composer"
+        [class.is-add]="formMode() === 'add'"
+        [class.is-edit]="formMode() === 'edit'"
+        (ngSubmit)="submitForm()"
+      >
+        <div class="composer-label">
+          <span class="composer-mode">{{ formMode() === 'edit' ? 'Editing' : 'New' }}</span>
+          <strong>{{ formTitle() }}</strong>
+        </div>
+
+        <div class="composer-fields">
+          <label class="composer-name">
+            <span class="sr-only">{{ activeMeta().label }} name</span>
+            <input
+              #nameInput
+              type="text"
+              name="masterName"
+              [(ngModel)]="formName"
+              [placeholder]="activeMeta().placeholder"
+              required
+              [disabled]="isSubmitting()"
+            />
+          </label>
+
+          <label class="composer-active" [class.on]="formIsActive">
+            <input
+              type="checkbox"
+              name="formIsActive"
+              [(ngModel)]="formIsActive"
+              [disabled]="isSubmitting()"
+            />
+            <span class="composer-active-ui" aria-hidden="true"></span>
+            <span class="composer-active-text">{{ formIsActive ? 'Active' : 'Inactive' }}</span>
+          </label>
+        </div>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="composer-actions">
+          <button
+            type="button"
+            class="btn btn-outline"
+            (click)="closeForm()"
+            [disabled]="isSubmitting()"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Saving...' : formMode() === 'edit' ? 'Update' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    }
 
     <div class="option-stats">
       <span><strong>{{ totalCount() }}</strong> total</span>

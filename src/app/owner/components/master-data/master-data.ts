@@ -1,15 +1,22 @@
-﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Observable, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { DataGridComponent } from '@common/components/data-grid/data-grid';
 import {
   DataGridActionEvent,
   DataGridConfig,
 } from '@common/components/data-grid/data-grid.types';
+import { ConfirmDialogService } from '@common/services/confirm-dialog.service';
 import { ToastService } from '@common/services/toast.service';
-import { MasterDataItem, MasterDataService } from '../../services/master-data.service';
+import {
+  AddCategoryParamModel,
+  CategoryParamModel,
+  MasterDataItem,
+  MasterDataService,
+} from '../../services/master-data.service';
 
-/** UI sections â€” categories use category APIs; others use /master/masterList. */
+/** UI sections — categories use category APIs; others use /master/masterList. */
 export type MasterTab = 'categories' | 'metals' | 'purities' | 'colors';
 
 interface TabMeta {
@@ -21,6 +28,8 @@ interface TabMeta {
   example: string;
   addLabel: string;
   icon: string;
+  placeholder: string;
+  masterType: string | null;
 }
 
 const TAB_META: Record<MasterTab, TabMeta> = {
@@ -33,6 +42,8 @@ const TAB_META: Record<MasterTab, TabMeta> = {
     example: 'Examples: Ring, Necklace, Bracelet',
     addLabel: '+ Add Category',
     icon: 'fa-solid fa-tags',
+    placeholder: 'e.g. Ring',
+    masterType: null,
   },
   metals: {
     label: 'Metal Type',
@@ -43,6 +54,8 @@ const TAB_META: Record<MasterTab, TabMeta> = {
     example: 'Examples: Gold, Silver, Platinum',
     addLabel: '+ Add Metal Type',
     icon: 'fa-solid fa-coins',
+    placeholder: 'e.g. Gold',
+    masterType: 'metal_type',
   },
   purities: {
     label: 'Purity',
@@ -53,6 +66,8 @@ const TAB_META: Record<MasterTab, TabMeta> = {
     example: 'Examples: 22K, 18K, 925',
     addLabel: '+ Add Purity',
     icon: 'fa-solid fa-certificate',
+    placeholder: 'e.g. 22K',
+    masterType: 'purity',
   },
   colors: {
     label: 'Color',
@@ -63,6 +78,8 @@ const TAB_META: Record<MasterTab, TabMeta> = {
     example: 'Examples: Yellow, Rose Gold, White',
     addLabel: '+ Add Color',
     icon: 'fa-solid fa-palette',
+    placeholder: 'e.g. Rose Gold',
+    masterType: 'color',
   },
 };
 
@@ -70,13 +87,16 @@ const VALID_TABS = Object.keys(TAB_META) as MasterTab[];
 
 @Component({
   selector: 'app-vendor-master-data',
-  imports: [DataGridComponent],
+  imports: [FormsModule, DataGridComponent],
   templateUrl: './master-data.html',
   styleUrls: ['../../shared/vendor-page.css', './master-data.css'],
 })
 export class VendorMasterData implements OnInit {
+  @ViewChild('nameInput') private nameInput?: ElementRef<HTMLInputElement>;
+
   private readonly masterData = inject(MasterDataService);
   private readonly toast = inject(ToastService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -88,6 +108,15 @@ export class VendorMasterData implements OnInit {
   readonly metalTypes = signal<MasterDataItem[]>([]);
   readonly purities = signal<MasterDataItem[]>([]);
   readonly colors = signal<MasterDataItem[]>([]);
+
+  readonly formOpen = signal(false);
+  readonly formMode = signal<'add' | 'edit'>('add');
+  readonly editingId = signal<string | null>(null);
+  readonly isSubmitting = signal(false);
+  readonly formError = signal('');
+
+  formName = '';
+  formIsActive = true;
 
   readonly activeRows = computed(() => {
     switch (this.activeTab()) {
@@ -110,52 +139,13 @@ export class VendorMasterData implements OnInit {
     () => this.activeRows().filter((i) => i.status === 'active').length
   );
 
+  readonly formTitle = computed(() => {
+    const label = this.activeMeta().label;
+    return this.formMode() === 'edit' ? `Edit ${label}` : `Add ${label}`;
+  });
+
   readonly gridConfig = computed<DataGridConfig<MasterDataItem>>(() => {
-    const tab = this.activeTab();
-    const meta = TAB_META[tab];
-    const isCategories = tab === 'categories';
-
-    const columns: DataGridConfig<MasterDataItem>['columns'] = [
-      {
-        key: 'name',
-        header: meta.header,
-        sortable: true,
-        cellType: 'text',
-        value: (row) => row.name,
-        sortValue: (row) => row.name,
-      },
-    ];
-
-    if (isCategories) {
-      columns.push(
-        {
-          key: 'parentName',
-          header: 'Parent',
-          sortable: true,
-          cellType: 'text',
-          value: (row) => row.parentName || 'Top level',
-          sortValue: (row) => row.parentName || '',
-        },
-        {
-          key: 'sortOrder',
-          header: 'Display order',
-          sortable: true,
-          cellType: 'text',
-          value: (row) => (row.sortOrder != null ? row.sortOrder : 'â€”'),
-          sortValue: (row) => row.sortOrder ?? Number.MAX_SAFE_INTEGER,
-        }
-      );
-    }
-
-    columns.push({
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      cellType: 'badge',
-      value: (row) => row.status,
-      badgeClass: (row) => `status-${row.status}`,
-      sortValue: (row) => row.status,
-    });
+    const meta = TAB_META[this.activeTab()];
 
     return {
       rowId: 'id',
@@ -169,7 +159,7 @@ export class VendorMasterData implements OnInit {
           key: 'search',
           type: 'search',
           placeholder: `Search ${meta.plural}...`,
-          searchFields: isCategories ? ['name', 'parentName'] : ['name'],
+          searchFields: ['name'],
         },
         {
           key: 'status',
@@ -184,7 +174,25 @@ export class VendorMasterData implements OnInit {
           ],
         },
       ],
-      columns,
+      columns: [
+        {
+          key: 'name',
+          header: meta.header,
+          sortable: true,
+          cellType: 'text',
+          value: (row) => row.name,
+          sortValue: (row) => row.name,
+        },
+        {
+          key: 'status',
+          header: 'Status',
+          sortable: true,
+          cellType: 'badge',
+          value: (row) => row.status,
+          badgeClass: (row) => `status-${row.status}`,
+          sortValue: (row) => row.status,
+        },
+      ],
       actions: [
         { id: 'edit', label: 'Edit', icon: 'fa-solid fa-pen' },
         { id: 'delete', label: 'Delete', icon: 'fa-solid fa-trash' },
@@ -219,6 +227,7 @@ export class VendorMasterData implements OnInit {
 
   setTab(tab: MasterTab): void {
     this.activeTab.set(tab);
+    this.closeForm();
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab },
@@ -250,33 +259,93 @@ export class VendorMasterData implements OnInit {
     });
   }
 
-  openAddPage(event?: Event): void {
+  openAddForm(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    void this.router.navigate(['/vendor/master-data/new'], {
-      queryParams: { type: this.activeTab() },
-    });
+    this.formMode.set('add');
+    this.editingId.set(null);
+    this.formName = '';
+    this.formIsActive = true;
+    this.formError.set('');
+    this.formOpen.set(true);
+    this.focusNameInput(false);
+  }
+
+  openEditForm(item: MasterDataItem): void {
+    this.formMode.set('edit');
+    this.editingId.set(item.id);
+    this.formName = item.name;
+    this.formIsActive = item.status !== 'inactive';
+    this.formError.set('');
+    this.formOpen.set(true);
+    this.focusNameInput(true);
+  }
+
+  closeForm(): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+    this.formOpen.set(false);
+    this.editingId.set(null);
+    this.formError.set('');
+    this.formName = '';
+    this.formIsActive = true;
   }
 
   onGridAction(event: DataGridActionEvent<MasterDataItem>): void {
     if (event.actionId === 'edit') {
-      this.openEditPage(event.row);
+      this.openEditForm(event.row);
       return;
     }
     if (event.actionId === 'delete') {
-      this.deleteItem(event.row);
+      void this.deleteItem(event.row);
     }
   }
 
-  openEditPage(item: MasterDataItem): void {
-    void this.router.navigate([`/vendor/master-data/${item.id}/edit`], {
-      queryParams: { type: this.activeTab() },
+  submitForm(): void {
+    const name = this.formName.trim();
+    if (!name) {
+      this.formError.set(`${this.activeMeta().label} name is required.`);
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.formError.set('');
+
+    const tab = this.activeTab();
+    const label = TAB_META[tab].label;
+    const status = this.formIsActive ? 'active' : 'inactive';
+    const editingId = this.editingId();
+
+    const request =
+      this.formMode() === 'edit' && editingId
+        ? this.buildUpdateRequest(tab, editingId, name, status)
+        : this.buildCreateRequest(tab, name, status);
+
+    request.pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: (saved) => {
+        this.upsertInList(tab, saved);
+        this.toast.success(
+          this.formMode() === 'edit'
+            ? `${label} updated successfully.`
+            : `${label} added successfully.`
+        );
+        this.isSubmitting.set(false);
+        this.closeForm();
+      },
     });
   }
 
-  deleteItem(item: MasterDataItem): void {
-    const label = TAB_META[this.activeTab()].label.toLowerCase();
-    if (!confirm(`Remove ${label} "${item.name}"?`)) {
+  async deleteItem(item: MasterDataItem): Promise<void> {
+    const label = TAB_META[this.activeTab()].label;
+    const confirmed = await this.confirmDialog.confirm({
+      title: `Delete ${label}`,
+      message: `Are you sure you want to delete "${item.name}"? This will deactivate it from product options.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -293,9 +362,106 @@ export class VendorMasterData implements OnInit {
     request.subscribe({
       next: () => {
         this.removeFromList(tab, item.id);
+        if (this.editingId() === item.id) {
+          this.isSubmitting.set(false);
+          this.closeForm();
+        }
         this.toast.success(`${TAB_META[tab].label} removed successfully.`);
       },
     });
+  }
+
+  private focusNameInput(selectText: boolean): void {
+    setTimeout(() => {
+      const input = this.nameInput?.nativeElement;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      if (selectText) {
+        input.select();
+      }
+      input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 0);
+  }
+
+  private buildCreateRequest(
+    tab: MasterTab,
+    name: string,
+    status: 'active' | 'inactive'
+  ): Observable<MasterDataItem> {
+    if (tab === 'categories') {
+      const category = new CategoryParamModel();
+      category.categoryName = name;
+      category.parentId = null;
+      category.sortOrder = null;
+
+      const param = new AddCategoryParamModel();
+      param.tenantId = null;
+      param.categories = [category];
+
+      return this.masterData.createCategory(param).pipe(
+        switchMap((created) => {
+          if (status === 'active') {
+            return of(created);
+          }
+          return this.masterData.updateCategory(created.id, { name, status });
+        })
+      );
+    }
+
+    const masterType = TAB_META[tab].masterType!;
+    return this.masterData.createMaster(masterType, name, status).pipe(
+      switchMap((created) => {
+        if (status === 'active') {
+          return of(created);
+        }
+        return this.masterData.updateMaster(created.id, { name, status });
+      })
+    );
+  }
+
+  private buildUpdateRequest(
+    tab: MasterTab,
+    id: string,
+    name: string,
+    status: 'active' | 'inactive'
+  ): Observable<MasterDataItem> {
+    if (tab === 'categories') {
+      return this.masterData.updateCategory(id, {
+        name,
+        status,
+        parentId: null,
+        sortOrder: null,
+      });
+    }
+    return this.masterData.updateMaster(id, { name, status });
+  }
+
+  private upsertInList(tab: MasterTab, item: MasterDataItem): void {
+    const upsert = (list: MasterDataItem[]) => {
+      const index = list.findIndex((row) => row.id === item.id);
+      if (index === -1) {
+        return [item, ...list];
+      }
+      const next = [...list];
+      next[index] = { ...list[index], ...item };
+      return next;
+    };
+
+    switch (tab) {
+      case 'metals':
+        this.metalTypes.update(upsert);
+        break;
+      case 'purities':
+        this.purities.update(upsert);
+        break;
+      case 'colors':
+        this.colors.update(upsert);
+        break;
+      default:
+        this.categories.update(upsert);
+    }
   }
 
   private removeFromList(tab: MasterTab, id: string): void {

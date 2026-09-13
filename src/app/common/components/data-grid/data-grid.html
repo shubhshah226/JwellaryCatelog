@@ -109,13 +109,18 @@
       </thead>
       <tbody>
         @for (row of paginatedRows(); track trackRow($index, row)) {
-          <tr>
+          <tr
+            [class.dg-row-selectable]="config().selectable"
+            [class.dg-row-selected]="config().selectable && isSelected(row)"
+            (click)="onRowClick(row, $event)"
+          >
             @if (config().selectable) {
               <td class="dg-col-check">
                 <input
                   type="checkbox"
                   [checked]="isSelected(row)"
                   (change)="toggleSelect(row, $event)"
+                  (click)="$event.stopPropagation()"
                 />
               </td>
             }
@@ -158,7 +163,12 @@
 
     <div class="dg-cards-list">
       @for (row of paginatedRows(); track trackRow($index, row)) {
-        <article class="dg-card" [class.dg-card-selected]="isSelected(row)">
+        <article
+          class="dg-card"
+          [class.dg-card-selected]="isSelected(row)"
+          [class.dg-card-selectable]="config().selectable"
+          (click)="onRowClick(row, $event)"
+        >
           <div class="dg-card-top">
             @if (config().selectable) {
               <input
@@ -166,6 +176,7 @@
                 class="dg-card-check"
                 [checked]="isSelected(row)"
                 (change)="toggleSelect(row, $event)"
+                (click)="$event.stopPropagation()"
               />
             }
 

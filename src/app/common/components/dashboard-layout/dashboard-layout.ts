@@ -190,18 +190,6 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (/\/products\/[^/]+\/edit/.test(url)) {
       return 'Edit Product';
     }
-    if (url.includes('/master-data/new')) {
-      if (url.includes('type=metals')) return 'Add Metal Type';
-      if (url.includes('type=purities')) return 'Add Purity';
-      if (url.includes('type=colors')) return 'Add Color';
-      return 'Add Category';
-    }
-    if (/\/master-data\/[^/]+\/edit/.test(url)) {
-      if (url.includes('type=metals')) return 'Edit Metal Type';
-      if (url.includes('type=purities')) return 'Edit Purity';
-      if (url.includes('type=colors')) return 'Edit Color';
-      return 'Edit Category';
-    }
     const current = this.visibleNavItems().find((item) => this.isNavActive(item.route));
     return current?.label ?? 'Dashboard';
   }

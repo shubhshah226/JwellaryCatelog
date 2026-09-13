@@ -158,17 +158,13 @@ export const routes: Routes = [
       },
       {
         path: 'master-data/new',
-        loadComponent: () =>
-          import('./owner/components/master-data/master-data-form').then(
-            (m) => m.VendorMasterDataForm
-          ),
+        redirectTo: 'master-data',
+        pathMatch: 'full',
       },
       {
         path: 'master-data/:id/edit',
-        loadComponent: () =>
-          import('./owner/components/master-data/master-data-form').then(
-            (m) => m.VendorMasterDataForm
-          ),
+        redirectTo: 'master-data',
+        pathMatch: 'full',
       },
       {
         path: 'master-data',
@@ -198,7 +194,14 @@ export const routes: Routes = [
     ],
   },
 
-  // Public shared catalog
+  // Public shared catalog — /c/{token}
+  {
+    path: 'c/:token/cart',
+    loadComponent: () =>
+      import('./public/components/public-interest-cart/public-interest-cart').then(
+        (m) => m.PublicInterestCart
+      ),
+  },
   {
     path: 'c/:token',
     loadComponent: () =>
@@ -207,39 +210,10 @@ export const routes: Routes = [
       ),
   },
 
-  // Legacy public storefront routes — /:storeCode/...
+  // Unknown / invalid URLs
   {
-    path: ':storeCode',
-    children: [
-      {
-        path: 'home',
-        redirectTo: 'products',
-        pathMatch: 'full',
-      },
-      {
-        path: 'products',
-        loadComponent: () =>
-          import('./public/components/public-products/public-products').then(
-            (m) => m.PublicProducts
-          ),
-      },
-      {
-        path: 'c/:shortCode',
-        loadComponent: () =>
-          import('./public/components/public-products/public-products').then(
-            (m) => m.PublicProducts
-          ),
-      },
-      {
-        path: 'cart',
-        loadComponent: () =>
-          import('./public/components/public-interest-cart/public-interest-cart').then(
-            (m) => m.PublicInterestCart
-          ),
-      },
-      { path: '', redirectTo: 'products', pathMatch: 'full' },
-    ],
+    path: '**',
+    loadComponent: () =>
+      import('./common/components/not-found/not-found').then((m) => m.NotFoundPage),
   },
-
-  { path: '**', redirectTo: '' },
 ];

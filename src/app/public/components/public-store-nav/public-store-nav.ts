@@ -85,6 +85,6 @@ export class PublicStoreNav {
 
   goCart(): void {
     this.closeMenu();
-    void this.router.navigate(['/', this.storeCode(), 'cart']);
+    void this.router.navigate(['/c', this.storeCode(), 'cart']);
   }
 }

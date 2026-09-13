@@ -1,0 +1,84 @@
+:host {
+  display: block;
+  min-height: 100svh;
+}
+
+.not-found-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    var(--app-bg, #000);
+  color: var(--app-text, #fff);
+}
+
+.not-found-card {
+  width: 100%;
+  max-width: 28rem;
+  text-align: center;
+  padding: 2.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.12));
+  background: var(--app-surface, #141414);
+}
+
+.code {
+  margin: 0;
+  font-size: 3.25rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--app-text-muted, #a3a3a3);
+}
+
+.not-found-card h1 {
+  margin: 0.85rem 0 0.5rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.message {
+  margin: 0 auto 1.35rem;
+  max-width: 22rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--app-text-muted, #a3a3a3);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border: 1px solid var(--app-text, #fff);
+  background: var(--app-text, #fff);
+  color: var(--app-bg, #000);
+}
+
+.btn-outline {
+  border: 1px solid var(--app-border-strong, rgba(255, 255, 255, 0.2));
+  background: transparent;
+  color: var(--app-text, #fff);
+}
+
+.btn-outline:hover {
+  background: var(--app-hover-bg, rgba(255, 255, 255, 0.08));
+}

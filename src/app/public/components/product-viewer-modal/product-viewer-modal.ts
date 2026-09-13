@@ -105,7 +105,7 @@ export class ProductViewerModal implements OnDestroy {
 
   goToCart(): void {
     this.close();
-    void this.router.navigate(['/', this.storeCode(), 'cart']);
+    void this.router.navigate(['/c', this.storeCode(), 'cart']);
   }
 
   viewedProduct(): PublicProduct | null {

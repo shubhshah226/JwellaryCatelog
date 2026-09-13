@@ -40,7 +40,10 @@ export class PublicInterestCart implements OnInit {
   readonly cartCount = this.cart.count;
 
   ngOnInit(): void {
-    const storeCode = this.route.snapshot.paramMap.get('storeCode') ?? '';
+    const storeCode =
+      this.route.snapshot.paramMap.get('token') ||
+      this.route.snapshot.paramMap.get('storeCode') ||
+      '';
     this.cart.setStore(storeCode);
 
     this.storefrontService.getStoreContext(storeCode).subscribe({

@@ -129,7 +129,7 @@
           }
           <a
             class="icon-action cart"
-            [routerLink]="['/', ctx.storeCode, 'cart']"
+            [routerLink]="['/c', ctx.storeCode, 'cart']"
             [attr.aria-label]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
           >
             <i class="fa-regular fa-heart" aria-hidden="true"></i>
@@ -268,7 +268,7 @@
           <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
           Categories
         </button>
-        <a class="dock-btn cart" [routerLink]="['/', ctx.storeCode, 'cart']">
+        <a class="dock-btn cart" [routerLink]="['/c', ctx.storeCode, 'cart']">
           <i class="fa-regular fa-heart" aria-hidden="true"></i>
           Interest
           @if (cart.count()) {

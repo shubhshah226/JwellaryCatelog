@@ -170,7 +170,7 @@
                 <span class="toggle-title">Show Prices by Default</span>
                 <span class="toggle-desc">When on, product prices are visible in catalogs.</span>
               </div>
-              <label class="switch">
+              <label class="switch" [class.on]="vendorForm.priceVisibleDefault">
                 <input
                   type="checkbox"
                   id="priceVisibleDefault"

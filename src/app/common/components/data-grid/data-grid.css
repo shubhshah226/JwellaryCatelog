@@ -130,6 +130,22 @@ th {
   white-space: nowrap;
 }
 
+.dg-row-selectable {
+  cursor: pointer;
+}
+
+.dg-row-selectable:hover {
+  background: var(--app-hover-bg);
+}
+
+.dg-row-selected {
+  background: var(--app-accent-soft);
+}
+
+.dg-card-selectable {
+  cursor: pointer;
+}
+
 .dg-sort-btn {
   display: inline-flex;
   align-items: center;
@@ -150,6 +166,10 @@ th {
 
 .dg-col-check {
   width: 42px;
+}
+
+.dg-col-check input {
+  accent-color: var(--app-text);
 }
 
 .dg-col-actions {
@@ -417,7 +437,7 @@ th {
   height: 1.05rem;
   margin-top: 1.05rem;
   flex-shrink: 0;
-  accent-color: var(--app-accent);
+  accent-color: var(--app-text);
 }
 
 .dg-card-media {

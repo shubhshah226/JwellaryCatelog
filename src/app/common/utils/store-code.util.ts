@@ -1,10 +1,3 @@
-export function buildPublicStoreUrl(storeCode: string): string {
-  if (typeof window === 'undefined') {
-    return `/${storeCode}/products`;
-  }
-  return `${window.location.origin}/${storeCode}/products`;
-}
-
 /** Absolute public share URL — API shape: /c/{token}. */
 export function buildCatalogShareUrl(token: string): string {
   const path = `/c/${encodeURIComponent(token)}`;
