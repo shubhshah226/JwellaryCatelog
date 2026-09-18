@@ -95,8 +95,8 @@ export class VendorProfile implements OnInit, OnDestroy {
       input.value = '';
       return;
     }
-    if (file.size > 2_000_000) {
-      this.logoError.set('Image must be under 2MB.');
+    if (file.size > 10_000_000) {
+      this.logoError.set('Image must be under 10MB.');
       input.value = '';
       return;
     }

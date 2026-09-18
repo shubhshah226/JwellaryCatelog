@@ -97,6 +97,7 @@
               {{ photoSlots().length ? 'Add more' : 'Upload photos' }}
               <input type="file" accept="image/*" multiple (change)="onPhotosSelected($event)" hidden />
             </label>
+            <small class="field-hint">JPG, PNG or WEBP · max 10MB each</small>
           </div>
         </section>
 

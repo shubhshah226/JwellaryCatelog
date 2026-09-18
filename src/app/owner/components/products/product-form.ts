@@ -395,8 +395,8 @@ export class VendorProductForm implements OnInit {
       this.toast.error('Please select an image file.');
       return;
     }
-    if (file.size > 5_000_000) {
-      this.toast.error('Each image must be under 5MB.');
+    if (file.size > 10_000_000) {
+      this.toast.error('Each image must be under 10MB.');
       return;
     }
     const reader = new FileReader();
