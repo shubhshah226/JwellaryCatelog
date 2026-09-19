@@ -74,7 +74,18 @@ export class StorefrontService {
   /** In the new API, the route param is the catalog share token. */
   getStoreContext(token: string): Observable<PublicStoreContext | null> {
     return this.fetchCatalog(token).pipe(
-      map((res) => (res ? this.toContext(token, res) : null))
+      map((res) => {
+        if (!res) {
+          return null;
+        }
+        // Drop interest-cart lines for products no longer returned (inactive / removed).
+        const ids =
+          res.status === 'active'
+            ? (res.items ?? []).map((item) => String(item.productId || '')).filter(Boolean)
+            : [];
+        this.interestCart.retainOnly(ids);
+        return this.toContext(token, res);
+      })
     );
   }
 
@@ -319,9 +330,13 @@ export class StorefrontService {
   }
 
   private fetchCatalog(token: string): Observable<PublicCatalogApiResponse | null> {
-    return this.api.post<PublicCatalogApiResponse>('/public/fetchCatalog', { token }).pipe(
-      map((res) => res ?? null)
-    );
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+    });
+    return this.api
+      .post<PublicCatalogApiResponse>('/public/fetchCatalog', { token }, undefined, headers)
+      .pipe(map((res) => res ?? null));
   }
 
   private toContext(token: string, res: PublicCatalogApiResponse): PublicStoreContext {

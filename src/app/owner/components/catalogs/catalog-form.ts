@@ -76,10 +76,12 @@ export class VendorCatalogForm implements OnInit {
     return list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   });
 
-  /** Products not currently on the catalog — shown in the add drawer. */
+  /** Products not currently on the catalog — shown in the add drawer (active only). */
   readonly availableProducts = computed(() => {
     const selected = this.selectedProductIds();
-    return this.allProducts().filter((p) => !selected.has(String(p.id)));
+    return this.allProducts().filter(
+      (p) => !selected.has(String(p.id)) && p.accountStatus !== 'inactive'
+    );
   });
 
   readonly categoryFilterOptions = computed(() => {

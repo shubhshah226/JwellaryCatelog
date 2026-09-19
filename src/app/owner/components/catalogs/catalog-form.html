@@ -314,7 +314,9 @@
                     <div class="picker-info">
                       <span class="picker-name">{{ product.name }}</span>
                       <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
-                      @if (product.category) {
+                      @if (product.accountStatus === 'inactive') {
+                        <span class="picker-hidden">Hidden from customers</span>
+                      } @else if (product.category) {
                         <span class="picker-cat">{{ product.category }}</span>
                       }
                     </div>

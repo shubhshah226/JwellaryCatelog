@@ -1,6 +1,7 @@
 ﻿import { DecimalPipe } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   OnDestroy,
   OnInit,
@@ -9,6 +10,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CatalogShareService } from '@common/services/catalog-share.service';
@@ -28,6 +30,7 @@ export class PublicProducts implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly storefrontService = inject(StorefrontService);
   private readonly catalogShareService = inject(CatalogShareService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly cart = inject(InterestCartService);
   private observer: IntersectionObserver | null = null;
   private sentinelEl: HTMLElement | null = null;
@@ -102,6 +105,18 @@ export class PublicProducts implements OnInit, OnDestroy {
     if (shortCode) {
       this.shortCode = shortCode;
       this.reloadSharedCatalog();
+      this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+        const next =
+          params.get('shortCode') || params.get('token') || params.get('storeCode') || '';
+        if (!next || next === this.shortCode) {
+          return;
+        }
+        this.shortCode = next;
+        this.storeCode = next;
+        this.cart.setStore(next);
+        this.notFound.set(false);
+        this.reloadSharedCatalog();
+      });
       return;
     }
 
@@ -358,6 +373,12 @@ export class PublicProducts implements OnInit, OnDestroy {
     }
     this.isLoading.set(true);
     this.unavailableMessage.set('');
+    // Clear immediately so a prior load cannot keep showing inactive products
+    // while the next fetchCatalog is in flight.
+    this.products.set([]);
+    this.sharedAllProducts = [];
+    this.totalCount.set(0);
+    this.hasMore.set(false);
     this.storefrontService.getSharedCatalog(this.storeCode || this.shortCode, this.shortCode).subscribe({
       next: (data) => {
         if (!data) {

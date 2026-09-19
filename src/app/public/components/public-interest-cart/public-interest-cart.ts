@@ -199,11 +199,12 @@ export class PublicInterestCart implements OnInit {
   private loadSuggestions(token: string): void {
     this.storefrontService.getSharedCatalog(token, token).subscribe({
       next: (data) => {
-        if (!data?.products?.length) {
+        // getSharedCatalog already retainOnly()'s active ids (including []).
+        this.allCatalogProducts = data?.products ?? [];
+        if (!this.allCatalogProducts.length) {
           this.suggestions.set([]);
           return;
         }
-        this.allCatalogProducts = data.products;
         this.refreshSuggestions();
       },
       error: () => this.suggestions.set([]),

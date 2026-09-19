@@ -334,7 +334,7 @@ export class VendorProducts implements OnInit {
       title: status === 'inactive' ? 'Set Inactive' : 'Activate Product',
       message:
         status === 'inactive'
-          ? `Set "${product.name}" as inactive? It will be hidden from new catalogs until activated again.`
+          ? `Set "${product.name}" as inactive? Customers will no longer see it on any share link until you activate it again.`
           : `Activate "${product.name}"?`,
       confirmLabel: status === 'inactive' ? 'Set Inactive' : 'Activate',
       cancelLabel: 'Cancel',

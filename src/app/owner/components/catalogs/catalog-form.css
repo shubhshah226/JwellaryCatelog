@@ -1066,6 +1066,16 @@
   white-space: nowrap;
 }
 
+.picker-hidden {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--app-danger, #f87171);
+}
+
+.selected-product-row:has(.picker-hidden) {
+  opacity: 0.72;
+}
+
 .picker-hint {
   margin: 0;
   font-size: 0.82rem;
