@@ -194,11 +194,7 @@ export class VendorCatalogForm implements OnInit {
   }
 
   productImage(product: Product): string {
-    return (
-      product.imageUrl ||
-      this.productService.panelImageUrl(product.primaryImageId, 'grid') ||
-      ''
-    );
+    return product.imageUrl || this.productService.panelImageUrl(product.primaryImageId, 'grid') || '';
   }
 
   onProductImgError(event: Event): void {

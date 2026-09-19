@@ -1,7 +1,7 @@
 ﻿import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize, of, switchMap } from 'rxjs';
+import { finalize, forkJoin, of, switchMap } from 'rxjs';
 import {
   PRODUCT_STOCK_STATUSES,
   ProductFormData,
@@ -40,6 +40,8 @@ export class VendorProductForm implements OnInit {
   readonly purities = signal<MasterDataItem[]>([]);
   readonly colors = signal<MasterDataItem[]>([]);
   readonly photoSlots = signal<PhotoSlot[]>([]);
+  /** Blob URLs for existing photos (Token header fetch). */
+  readonly existingPreviewUrls = signal<Record<string, string>>({});
   readonly dragPhotoIndex = signal<number | null>(null);
   readonly existingImageCount = signal(0);
 
@@ -319,7 +321,7 @@ export class VendorProductForm implements OnInit {
     if (slot.kind === 'new') {
       return slot.dataUrl;
     }
-    return this.productService.panelImageUrl(slot.imageId, 'grid');
+    return this.existingPreviewUrls()[slot.imageId] || this.productService.panelImageUrl(slot.imageId, 'grid');
   }
 
   isExistingPhoto(slot: PhotoSlot): boolean {
@@ -392,6 +394,7 @@ export class VendorProductForm implements OnInit {
       this.productForm.metalType = metals[0].name;
     }
     this.photoSlots.set([]);
+    this.existingPreviewUrls.set({});
     this.initialExistingIds = new Set();
     this.existingImageCount.set(0);
   }
@@ -408,11 +411,36 @@ export class VendorProductForm implements OnInit {
         this.photoSlots.set(slots);
         this.initialExistingIds = new Set(images.map((i) => i.imageId));
         this.existingImageCount.set(images.length);
+        this.loadExistingPreviews(images.map((i) => i.imageId));
         this.isLoading.set(false);
       },
       error: () => {
         this.pageError.set('Unable to load product.');
         this.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadExistingPreviews(imageIds: string[]): void {
+    if (!imageIds.length) {
+      this.existingPreviewUrls.set({});
+      return;
+    }
+    forkJoin(
+      imageIds.map((imageId) =>
+        this.productService.loadPanelImage(imageId, 'grid').pipe(
+          switchMap((url) => of({ imageId, url }))
+        )
+      )
+    ).subscribe({
+      next: (rows) => {
+        const map: Record<string, string> = {};
+        for (const row of rows) {
+          if (row.url) {
+            map[row.imageId] = row.url;
+          }
+        }
+        this.existingPreviewUrls.set(map);
       },
     });
   }

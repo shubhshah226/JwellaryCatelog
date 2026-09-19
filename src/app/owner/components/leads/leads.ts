@@ -1,6 +1,7 @@
 ﻿import { CurrencyPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, map, of } from 'rxjs';
 import { formatInIndia, relativeTimeFromUtc } from '@common/utils/date-time.util';
 import { resolveShareUrl } from '@common/utils/store-code.util';
 import { Enquiry, EnquiryStatus } from '@common/models/dashboard.model';
@@ -125,19 +126,41 @@ export class VendorLeads implements OnInit {
     this.detailLoading.set(true);
     this.vendorData.getLeadDetail(lead.id).subscribe({
       next: (detail) => {
-        const withImages: Enquiry = {
-          ...detail,
-          items: (detail.items || []).map((item) => ({
-            ...item,
-            imageUrl: this.productService.panelImageUrl(item.imageUrl, 'grid') || undefined,
-          })),
-        };
-        this.activeLead.set(withImages);
-        this.allLeads.update((list) =>
-          list.map((row) => (row.id === withImages.id ? { ...row, ...withImages } : row))
-        );
-        this.applyFilters();
-        this.detailLoading.set(false);
+        const items = detail.items || [];
+        if (!items.length) {
+          this.activeLead.set(detail);
+          this.allLeads.update((list) =>
+            list.map((row) => (row.id === detail.id ? { ...row, ...detail } : row))
+          );
+          this.applyFilters();
+          this.detailLoading.set(false);
+          return;
+        }
+        forkJoin(
+          items.map((item) => {
+            const imageId = (item.imageUrl || '').trim();
+            if (!imageId || imageId.startsWith('blob:') || imageId.startsWith('http')) {
+              return of(item);
+            }
+            return this.productService.loadPanelImage(imageId, 'grid').pipe(
+              map((url) => ({ ...item, imageUrl: url || undefined }))
+            );
+          })
+        ).subscribe({
+          next: (withImages) => {
+            const enriched: Enquiry = { ...detail, items: withImages };
+            this.activeLead.set(enriched);
+            this.allLeads.update((list) =>
+              list.map((row) => (row.id === enriched.id ? { ...row, ...enriched } : row))
+            );
+            this.applyFilters();
+            this.detailLoading.set(false);
+          },
+          error: () => {
+            this.activeLead.set(detail);
+            this.detailLoading.set(false);
+          },
+        });
       },
       error: () => {
         this.detailLoading.set(false);

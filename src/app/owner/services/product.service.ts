@@ -1,9 +1,19 @@
-﻿import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, concatMap, from, map, of, switchMap, throwError, toArray } from 'rxjs';
+﻿import { HttpHeaders } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import {
+  Observable,
+  catchError,
+  concatMap,
+  forkJoin,
+  from,
+  map,
+  of,
+  switchMap,
+  throwError,
+  toArray,
+} from 'rxjs';
 import { ApiClientError } from '@common/api/api.types';
 import { ApiHttpService } from '@common/api/api-http.service';
-import { AuthService } from '../../auth/services/auth.service';
-import { environment } from '../../../environments/environment';
 import { Product, ProductFormData, ProductStatus } from '@common/models/dashboard.model';
 
 interface ApiProductListItem {
@@ -58,7 +68,7 @@ interface ProductActionResponse {
   message?: string | null;
 }
 
-/** Existing saved photo (ids only â€” panel has no authenticated image stream). */
+/** Existing saved photo (ids only — bytes loaded via authenticated header request). */
 export interface ProductExistingImage {
   imageId: string;
   isPrimary: boolean;
@@ -75,20 +85,57 @@ export interface ProductDetail {
 })
 export class ProductService {
   private readonly api = inject(ApiHttpService);
-  private readonly auth = inject(AuthService);
+  /** objectURL cache keyed by `${imageId}:${size}` — auth via Token header on fetch. */
+  private readonly panelImageCache = new Map<string, string>();
 
-  /** Authenticated panel image URL for <img src>. */
+  /**
+   * Load a panel product image with the Token header (via HttpClient interceptor).
+   * Returns a blob: URL suitable for <img src>. Cached per imageId+size.
+   */
+  loadPanelImage(
+    imageId: string | null | undefined,
+    size: 'grid' | 'full' = 'grid'
+  ): Observable<string> {
+    const id = (imageId || '').trim();
+    if (!id) {
+      return of('');
+    }
+    const cacheKey = `${id}:${size}`;
+    const cached = this.panelImageCache.get(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+    const headers = new HttpHeaders({
+      'X-Skip-Loader': 'true',
+      'X-Skip-Error-Toast': 'true',
+    });
+    return this.api.getBlob(`/product/productImage/${encodeURIComponent(id)}/${size}`, undefined, headers).pipe(
+      map((blob) => {
+        if (!blob || !blob.size || (blob.type && !blob.type.startsWith('image/'))) {
+          return '';
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        this.panelImageCache.set(cacheKey, objectUrl);
+        return objectUrl;
+      }),
+      catchError(() => of(''))
+    );
+  }
+
+  /** @deprecated Prefer loadPanelImage — sync URLs cannot send a Token header. */
   panelImageUrl(imageId: string | null | undefined, size: 'grid' | 'full' = 'grid'): string {
     const id = (imageId || '').trim();
     if (!id) {
       return '';
     }
-    const base = (environment.apiUrl || '').replace(/\/$/, '');
-    // Prefer cookie auth (set at login via withCredentials). Also pass Token in the
-    // query so images still load after a page refresh when only localStorage session exists.
-    const token = this.auth.getAccessToken();
-    const url = `${base}/product/productImage/${encodeURIComponent(id)}/${size}`;
-    return token ? `${url}?Token=${encodeURIComponent(token)}` : url;
+    return this.panelImageCache.get(`${id}:${size}`) || '';
+  }
+
+  revokePanelImages(): void {
+    for (const url of this.panelImageCache.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.panelImageCache.clear();
   }
 
   getVendorProducts(): Observable<Product[]> {
@@ -101,6 +148,7 @@ export class ProductService {
       })
       .pipe(
         map((res) => (res?.products ?? []).map((p) => this.normalizeListItem(p))),
+        switchMap((products) => this.attachPanelImages(products)),
         catchError((err: unknown) => this.mapHttpError(err, 'Failed to load products.'))
       );
   }
@@ -109,9 +157,9 @@ export class ProductService {
     return this.api
       .post<ApiProductDetailResponse>('/product/productDetail', { productId })
       .pipe(
-        map((res) => {
+        switchMap((res) => {
           if (!res?.product?.productId) {
-            throw new Error(res?.message || 'Product not found.');
+            return throwError(() => new Error(res?.message || 'Product not found.'));
           }
           const images = [...(res.images ?? [])]
             .map((img, index) => ({
@@ -126,14 +174,26 @@ export class ProductService {
               }
               return a.sortOrder - b.sortOrder;
             });
-          return {
-            product: this.normalizeListItem({
-              ...res.product,
-              primaryImageId: images.find((i) => i.isPrimary)?.imageId || images[0]?.imageId,
-              description: res.product.description,
-            }),
-            images,
-          };
+          const primaryImageId =
+            images.find((i) => i.isPrimary)?.imageId || images[0]?.imageId || null;
+          const product = this.normalizeListItem({
+            ...res.product,
+            primaryImageId,
+            description: res.product.description,
+          });
+          if (!primaryImageId) {
+            return of({ product, images });
+          }
+          return this.loadPanelImage(primaryImageId, 'grid').pipe(
+            map((imageUrl) => ({
+              product: {
+                ...product,
+                imageUrl,
+                images: imageUrl ? [imageUrl] : [],
+              },
+              images,
+            }))
+          );
         }),
         catchError((err: unknown) => this.mapHttpError(err, 'Failed to load product.'))
       );
@@ -506,6 +566,7 @@ export class ProductService {
         raw['image_id'] ||
         ''
     ).trim() || null;
+    // imageUrl filled asynchronously via loadPanelImage (Token header).
     const imageUrl = this.panelImageUrl(primaryImageId, 'grid');
     return {
       id: String(product.productId || ''),
@@ -530,6 +591,30 @@ export class ProductService {
       imageUrl,
       images: imageUrl ? [imageUrl] : [],
     };
+  }
+
+  /** Fetch cover thumbs with Token header and attach blob URLs. */
+  private attachPanelImages(products: Product[]): Observable<Product[]> {
+    if (!products.length) {
+      return of(products);
+    }
+    return forkJoin(
+      products.map((product) => {
+        if (!product.primaryImageId) {
+          return of(product);
+        }
+        if (product.imageUrl) {
+          return of(product);
+        }
+        return this.loadPanelImage(product.primaryImageId, 'grid').pipe(
+          map((imageUrl) => ({
+            ...product,
+            imageUrl,
+            images: imageUrl ? [imageUrl] : [],
+          }))
+        );
+      })
+    );
   }
 
   private normalizeStatus(status?: string | null): ProductStatus {
