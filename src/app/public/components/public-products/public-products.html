@@ -192,12 +192,6 @@
             } @else {
               <p class="hero-for">Browse pieces and save favourites to send one enquiry.</p>
             }
-            @if (vendorAddress(ctx.vendor); as addr) {
-              <p class="hero-address">
-                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                {{ addr }}
-              </p>
-            }
           </div>
           <div class="hero-meta">
             <span class="meta-pill">{{ totalCount() }} {{ totalCount() === 1 ? 'piece' : 'pieces' }}</span>
