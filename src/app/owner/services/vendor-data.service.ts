@@ -46,21 +46,36 @@ interface ApiCatalogActionResponse {
 
 interface ApiEnquiry {
   enquiryId?: string;
+  enquiry_id?: string;
   catalogId?: string;
+  catalog_id?: string;
   customerName?: string | null;
+  customer_name?: string | null;
   customerPhone?: string | null;
+  customer_phone?: string | null;
   customerNote?: string | null;
+  customer_note?: string | null;
   itemCount?: number;
+  item_count?: number;
   totalPrice?: number;
+  total_price?: number;
   pricedItemCount?: number;
+  priced_item_count?: number;
   enquiryStatus?: string;
+  enquiry_status?: string;
   createdAt?: string;
+  created_at?: string;
   updatedAt?: string;
+  updated_at?: string;
   token?: string;
   catalogTitle?: string | null;
+  catalog_title?: string | null;
   priceVisible?: boolean;
+  price_visible?: boolean;
   viewCount?: number;
+  view_count?: number;
   previewImageId?: string | null;
+  preview_image_id?: string | null;
 }
 
 interface ApiEnquiryItem {
@@ -95,6 +110,7 @@ interface ApiBusinessProfile {
   ownerName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  address?: string | null;
   city?: string | null;
   logoUri?: string | null;
   brandColor?: string | null;
@@ -118,6 +134,7 @@ export interface UpdateBusinessProfilePayload {
   ownerName?: string | null;
   contactEmail: string;
   contactPhone: string;
+  address?: string | null;
   city?: string | null;
   brandColor?: string | null;
   currency?: string | null;
@@ -455,6 +472,7 @@ export class VendorDataService {
       ownerName: payload.ownerName?.trim() || null,
       contactEmail: payload.contactEmail.trim(),
       contactPhone: payload.contactPhone.trim(),
+      address: payload.address?.trim() || null,
       city: payload.city?.trim() || null,
       brandColor: payload.brandColor?.trim() || null,
       currency: payload.currency?.trim() || null,
@@ -490,6 +508,7 @@ export class VendorDataService {
               ownerName: payload.ownerName,
               contactEmail: payload.contactEmail,
               contactPhone: payload.contactPhone,
+              address: payload.address,
               city: payload.city,
               brandColor: payload.brandColor,
               currency: payload.currency,
@@ -546,6 +565,7 @@ export class VendorDataService {
       subscription: '',
       subscriptionType: 'renewal',
       joinedOn: '',
+      address: profile.address || '',
       city: profile.city || '',
       // Keep raw s3:// uri â€” display via /public/businessLogo/{catalogToken}
       logoUrl: logoUri || opts?.fallbackLogo || '',
@@ -618,35 +638,38 @@ export class VendorDataService {
     items?: ApiEnquiryItem[] | null,
     catalogUrl?: string | null
   ): Enquiry {
-    const name = e.customerName || 'Customer';
-    const status = this.mapEnquiryStatus(e.enquiryStatus || 'new');
+    const name = e.customerName || e.customer_name || 'Customer';
+    const status = this.mapEnquiryStatus(e.enquiryStatus || e.enquiry_status || 'new');
     const leadItems = (items ?? []).map((item) => this.normalizeEnquiryItem(item));
+    const itemCount = Number(e.itemCount ?? e.item_count ?? leadItems.length);
+    const catalogTitle = e.catalogTitle || e.catalog_title || undefined;
+    const token = e.token;
     return {
-      id: String(e.enquiryId || ''),
+      id: String(e.enquiryId || e.enquiry_id || ''),
       vendorId: this.getVendorId(),
       customerName: name,
-      customerPhone: e.customerPhone || '',
+      customerPhone: e.customerPhone || e.customer_phone || '',
       initials: name
         .split(/\s+/)
         .filter(Boolean)
         .slice(0, 2)
         .map((p) => p[0]?.toUpperCase() || '')
         .join(''),
-      message: e.customerNote || '',
+      message: e.customerNote || e.customer_note || '',
       status,
-      timeAgo: relativeTimeFromUtc(e.createdAt || '') || '',
-      createdAt: e.createdAt,
-      updatedAt: e.updatedAt,
-      itemCount: Number(e.itemCount ?? leadItems.length),
-      productName: e.catalogTitle || `${e.itemCount ?? leadItems.length} products`,
+      timeAgo: relativeTimeFromUtc(e.createdAt || e.created_at || '') || '',
+      createdAt: e.createdAt || e.created_at,
+      updatedAt: e.updatedAt || e.updated_at,
+      itemCount,
+      productName: catalogTitle || `${itemCount} products`,
       interestType: 'enquiry',
-      catalogId: e.catalogId,
-      token: e.token,
-      catalogUrl: catalogUrl || (e.token ? `/c/${e.token}` : undefined),
-      catalogTitle: e.catalogTitle || undefined,
-      totalPrice: e.totalPrice,
-      pricedItemCount: e.pricedItemCount,
-      viewCount: e.viewCount,
+      catalogId: e.catalogId || e.catalog_id,
+      token,
+      catalogUrl: catalogUrl || (token ? `/c/${token}` : undefined),
+      catalogTitle,
+      totalPrice: e.totalPrice ?? e.total_price,
+      pricedItemCount: e.pricedItemCount ?? e.priced_item_count,
+      viewCount: e.viewCount ?? e.view_count,
       items: leadItems,
     };
   }

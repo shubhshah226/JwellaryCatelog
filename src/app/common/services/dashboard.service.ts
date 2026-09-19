@@ -1,6 +1,6 @@
-﻿import { Injectable, inject } from '@angular/core';
+﻿import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import { ApiHttpService } from '@common/api/api-http.service';
 import { AuthService } from '../../auth/services/auth.service';
 import { DashboardData, DashboardSummary, StatCard } from '../models/dashboard.model';
@@ -53,12 +53,17 @@ export interface OwnerDashboardPayload {
 
 interface ApiNotification {
   notificationId?: string;
+  notification_id?: string;
   notificationType?: string;
+  notification_type?: string;
   title?: string | null;
   body?: string | null;
   refId?: string | null;
+  ref_id?: string | null;
   isRead?: boolean;
+  is_read?: boolean;
   createdAt?: string;
+  created_at?: string;
 }
 
 interface OwnerDashboardSummary {
@@ -83,6 +88,14 @@ export class DashboardService {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
+  /** Shared owner notification state (updated by getOwnerDashboard). */
+  readonly ownerUnreadCount = signal(0);
+  readonly ownerNotifications = signal<DashboardNotification[]>([]);
+  readonly ownerDashboardLoading = signal(false);
+
+  /** In-flight share so layout + page never hit the API twice at once. */
+  private ownerDashboardInFlight$: Observable<OwnerDashboardPayload> | null = null;
+
   /** Raw platform summary from POST /admin/platformSummary */
   getDashboard(): Observable<DashboardSummary> {
     return this.api.post<PlatformSummary>('/admin/platformSummary', {}).pipe(
@@ -103,11 +116,41 @@ export class DashboardService {
     );
   }
 
-  /** POST /dashboard/dashboardSummary â€” full owner payload including notifications. */
-  getOwnerDashboard(): Observable<OwnerDashboardPayload> {
-    return this.api.post<OwnerDashboardSummary>('/dashboard/dashboardSummary', {}).pipe(
-      map((res) => this.normalizeOwnerPayload(res))
-    );
+  /** POST /dashboard/dashboardSummary — full owner payload including notifications. */
+  getOwnerDashboard(force = false): Observable<OwnerDashboardPayload> {
+    if (force) {
+      this.ownerDashboardInFlight$ = null;
+    }
+    if (!this.ownerDashboardInFlight$) {
+      this.ownerDashboardLoading.set(true);
+      this.ownerDashboardInFlight$ = this.api.post<OwnerDashboardSummary>('/dashboard/dashboardSummary', {}).pipe(
+        map((res) => this.normalizeOwnerPayload(res)),
+        tap((payload) => this.applyOwnerNotifications(payload)),
+        finalize(() => {
+          this.ownerDashboardLoading.set(false);
+          this.ownerDashboardInFlight$ = null;
+        }),
+        shareReplay({ bufferSize: 1, refCount: true })
+      );
+    }
+    return this.ownerDashboardInFlight$;
+  }
+
+  applyOwnerNotifications(payload: OwnerDashboardPayload): void {
+    this.ownerNotifications.set(payload.notifications.filter((n) => !n.isRead));
+    this.ownerUnreadCount.set(payload.summary.unreadCount);
+  }
+
+  setOwnerUnreadCount(count: number): void {
+    this.ownerUnreadCount.set(count);
+  }
+
+  clearOwnerNotifications(): void {
+    this.ownerNotifications.set([]);
+  }
+
+  removeOwnerNotification(id: string): void {
+    this.ownerNotifications.update((list) => list.filter((n) => n.id !== id));
   }
 
   /** POST /dashboard/markRead â€” mark selected (or all unread) notifications. */
@@ -176,13 +219,13 @@ export class DashboardService {
         unreadCount: Number(s.unreadCount ?? 0),
       },
       notifications: (res?.notifications ?? []).map((n) => ({
-        id: String(n.notificationId || ''),
-        type: (n.notificationType || '').toLowerCase(),
+        id: String(n.notificationId || n.notification_id || ''),
+        type: (n.notificationType || n.notification_type || '').toLowerCase(),
         title: n.title || 'Notification',
         body: n.body || '',
-        refId: n.refId ? String(n.refId) : null,
-        isRead: !!n.isRead,
-        createdAt: n.createdAt,
+        refId: (n.refId || n.ref_id) ? String(n.refId || n.ref_id) : null,
+        isRead: !!(n.isRead ?? n.is_read),
+        createdAt: n.createdAt || n.created_at,
       })),
     };
   }

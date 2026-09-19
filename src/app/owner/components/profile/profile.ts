@@ -29,6 +29,7 @@ export class VendorProfile implements OnInit, OnDestroy {
   editOwnerName = '';
   editEmail = '';
   editPhone = '';
+  editAddress = '';
   editCity = '';
   editBrandColor = '#004e8a';
   editCurrency = 'INR';
@@ -176,6 +177,7 @@ export class VendorProfile implements OnInit, OnDestroy {
           ownerName: this.editOwnerName.trim() || null,
           contactEmail: this.editEmail.trim(),
           contactPhone: this.editPhone.trim(),
+          address: this.editAddress.trim() || null,
           city: this.editCity.trim() || null,
           brandColor: this.brandColorPickerValue(),
           currency: this.editCurrency || 'INR',
@@ -221,6 +223,7 @@ export class VendorProfile implements OnInit, OnDestroy {
     this.editOwnerName = p.contactPerson || '';
     this.editEmail = p.email || '';
     this.editPhone = p.phone || '';
+    this.editAddress = p.address || '';
     this.editCity = p.city || '';
     this.editBrandColor = this.normalizeBrandColor(p.brandColor || '') || '#004e8a';
     this.editCurrency = p.currency || 'INR';

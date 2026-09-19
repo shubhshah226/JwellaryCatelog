@@ -501,6 +501,21 @@
   resize: vertical;
 }
 
+.field-shell input:-webkit-autofill,
+.field-shell input:-webkit-autofill:hover,
+.field-shell input:-webkit-autofill:focus,
+.field-shell input:-webkit-autofill:active,
+.field-shell textarea:-webkit-autofill,
+.field-shell textarea:-webkit-autofill:hover,
+.field-shell textarea:-webkit-autofill:focus,
+.field-shell textarea:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--ink, #161311) !important;
+  caret-color: var(--ink, #161311) !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
 .field-shell:focus-within {
   border-color: color-mix(in srgb, var(--store-primary) 55%, transparent);
   background: #fff;

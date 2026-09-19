@@ -263,6 +263,38 @@
   grid-column: 1 / -1;
 }
 
+.form-row-status-desc {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem 0.9rem;
+  align-items: start;
+}
+
+.form-field-status-sm {
+  min-width: 0;
+  max-width: none;
+}
+
+.form-field-desc {
+  min-width: 0;
+}
+
+.form-field-desc textarea {
+  min-height: 4.5rem;
+}
+
+/* Side-by-side Status + Description from tablet up */
+@media (min-width: 560px) {
+  .form-row-status-desc {
+    grid-template-columns: minmax(9.5rem, 11rem) minmax(0, 1fr);
+  }
+
+  .form-field-desc textarea {
+    min-height: 2.85rem;
+  }
+}
+
 .field-hint {
   margin-top: 0.2rem;
   font-size: 0.78rem;
@@ -400,6 +432,33 @@
   .pfp-form {
     padding-bottom: 6rem;
   }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    min-height: 2.95rem;
+    font-size: 1rem;
+  }
+
+  .pfp-footer {
+    gap: 0.55rem;
+  }
+
+  .pfp-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Narrow phones: stack Status above Description */
+@media (max-width: 559px) {
+  .form-row-status-desc {
+    grid-template-columns: 1fr;
+  }
+
+  .form-field-desc textarea {
+    min-height: 4.75rem;
+  }
 }
 
 /* Desktop: photos left, fields right, 2-col fields */
@@ -432,6 +491,14 @@
   .form-row {
     grid-template-columns: 1fr 1fr;
     gap: 0.85rem 0.9rem;
+  }
+
+  .form-row-status-desc {
+    grid-template-columns: 11rem minmax(0, 1fr);
+  }
+
+  .form-field-desc textarea {
+    min-height: 2.85rem;
   }
 
   .pfp-footer {

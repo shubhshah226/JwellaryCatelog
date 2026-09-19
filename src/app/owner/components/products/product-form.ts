@@ -1,6 +1,7 @@
 ﻿import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize, of, switchMap } from 'rxjs';
 import {
   PRODUCT_STOCK_STATUSES,
   ProductFormData,
@@ -43,6 +44,8 @@ export class VendorProductForm implements OnInit {
   readonly existingImageCount = signal(0);
 
   private initialExistingIds = new Set<string>();
+  /** Loaded product on/off — API add always starts active. */
+  private initialIsActive = true;
 
   productForm: ProductFormData = createEmptyProductForm();
   readonly stockStatuses = PRODUCT_STOCK_STATUSES;
@@ -171,6 +174,7 @@ export class VendorProductForm implements OnInit {
     this.isSubmitting.set(true);
 
     if (this.mode() === 'edit' && this.productId()) {
+      const productId = this.productId()!;
       const currentExistingIds = slots
         .filter((s): s is Extract<PhotoSlot, { kind: 'existing' }> => s.kind === 'existing')
         .map((s) => s.imageId);
@@ -182,35 +186,56 @@ export class VendorProductForm implements OnInit {
       const primaryImageId = cover?.kind === 'existing' ? cover.imageId : null;
 
       this.productService
-        .updateProduct(this.productId()!, this.productForm, {
+        .updateProduct(productId, this.productForm, {
           newImageFiles,
           removedImageIds,
           primaryImageId,
           preferFirstNewAsPrimary: cover?.kind === 'new',
         })
+        .pipe(
+          switchMap(() => this.applyActiveStatusAfterSave(productId)),
+          finalize(() => this.isSubmitting.set(false))
+        )
         .subscribe({
           next: () => {
-            this.isSubmitting.set(false);
             this.toast.success('Product updated successfully.');
             void this.router.navigateByUrl('/vendor/products');
-          },
-          error: () => {
-            this.isSubmitting.set(false);
           },
         });
       return;
     }
 
-    this.productService.createProduct(this.productForm).subscribe({
-      next: () => {
-        this.isSubmitting.set(false);
-        this.toast.success('Product added successfully.');
-        void this.router.navigateByUrl('/vendor/products');
-      },
-      error: () => {
-        this.isSubmitting.set(false);
-      },
-    });
+    this.productService
+      .createProduct(this.productForm)
+      .pipe(
+        switchMap((created) => this.applyActiveStatusAfterSave(created.id)),
+        finalize(() => this.isSubmitting.set(false))
+      )
+      .subscribe({
+        next: () => {
+          this.toast.success('Product added successfully.');
+          void this.router.navigateByUrl('/vendor/products');
+        },
+      });
+  }
+
+  /**
+   * addProduct/updateProduct do not accept isActive/status.
+   * Active/inactive is applied via POST /product/updateProductStatus.
+   */
+  private applyActiveStatusAfterSave(productId: string) {
+    const desired: 'active' | 'inactive' = this.productForm.isActive ? 'active' : 'inactive';
+    if (this.mode() === 'add') {
+      // Insert always writes status = 'active'
+      if (desired === 'active') {
+        return of(null);
+      }
+      return this.productService.updateProductStatus([productId], 'inactive');
+    }
+    if (this.productForm.isActive === this.initialIsActive) {
+      return of(null);
+    }
+    return this.productService.updateProductStatus([productId], desired);
   }
 
   onPhotosSelected(event: Event): void {
@@ -355,6 +380,7 @@ export class VendorProductForm implements OnInit {
 
   private resetForAdd(): void {
     this.productForm = createEmptyProductForm();
+    this.initialIsActive = true;
     const cats = this.categories().filter((c) => c.status === 'active');
     const metals = this.metalTypes().filter((m) => m.status === 'active');
     if (cats.length) {
@@ -374,6 +400,7 @@ export class VendorProductForm implements OnInit {
     this.productService.getProductDetail(id).subscribe({
       next: ({ product, images }) => {
         this.productForm = this.productService.mapToForm(product);
+        this.initialIsActive = this.productForm.isActive;
         const slots: PhotoSlot[] = images.map((img: ProductExistingImage) => ({
           kind: 'existing' as const,
           imageId: img.imageId,

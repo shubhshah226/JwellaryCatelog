@@ -68,6 +68,12 @@
             {{ ctx.vendor.phone }}
           </a>
         }
+        @if (vendorAddress(ctx.vendor); as addr) {
+          <p class="side-address">
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <span>{{ addr }}</span>
+          </p>
+        }
       </div>
 
       <div class="side-nav">
@@ -185,6 +191,12 @@
               <p class="hero-for">{{ ctx.catalogTitle }}</p>
             } @else {
               <p class="hero-for">Browse pieces and save favourites to send one enquiry.</p>
+            }
+            @if (vendorAddress(ctx.vendor); as addr) {
+              <p class="hero-address">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                {{ addr }}
+              </p>
             }
           </div>
           <div class="hero-meta">

@@ -20,6 +20,7 @@ interface ApiTenant {
   ownerName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  address?: string | null;
   city?: string | null;
   logoUri?: string | null;
   brandColor?: string | null;
@@ -97,6 +98,7 @@ export class VendorService {
       ownerName: form.ownerName.trim() || null,
       ownerEmail: form.ownerEmail.trim(),
       contactPhone: form.contactPhone.trim() || null,
+      address: form.address?.trim() || null,
       city: form.city.trim() || null,
       brandColor: form.brandColor.trim() || null,
       currency: form.currency.trim() || 'INR',
@@ -156,6 +158,7 @@ export class VendorService {
       ownerName: form.ownerName.trim() || null,
       contactEmail: form.ownerEmail.trim() || null,
       contactPhone: form.contactPhone.trim() || null,
+      address: form.address?.trim() || null,
       city: form.city.trim() || null,
       brandColor: form.brandColor.trim() || null,
       currency: form.currency.trim() || null,
@@ -280,6 +283,7 @@ export class VendorService {
       subscription: '',
       subscriptionType: status === 'inactive' ? 'expiry' : 'renewal',
       joinedOn: tenant.createdAt ? String(tenant.createdAt) : '',
+      address: (tenant.address || '').trim(),
       city: (tenant.city || '').trim(),
       logoUrl: tenant.logoUri || undefined,
       brandColor: this.normalizeHexColor(tenant.brandColor) || '#8B0000',

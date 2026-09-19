@@ -678,8 +678,10 @@ tbody tr:hover {
 }
 
 .form-field input:not([type='checkbox']),
-.form-field select {
+.form-field select,
+.form-field textarea {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.7rem 0.85rem;
   border-radius: 10px;
   border: 1px solid var(--app-border-strong);
@@ -690,12 +692,20 @@ tbody tr:hover {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-field input:not([type='checkbox'])::placeholder {
+.form-field textarea {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.form-field input:not([type='checkbox'])::placeholder,
+.form-field textarea::placeholder {
   color: var(--app-text-subtle);
 }
 
 .form-field input:not([type='checkbox']):focus,
-.form-field select:focus {
+.form-field select:focus,
+.form-field textarea:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--app-accent) 50%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 12%, transparent);

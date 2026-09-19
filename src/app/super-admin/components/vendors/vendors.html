@@ -129,6 +129,16 @@
             </label>
 
             <label class="form-field">
+              <span>Address</span>
+              <textarea
+                name="address"
+                rows="2"
+                placeholder="Shop / street address"
+                [(ngModel)]="vendorForm.address"
+              ></textarea>
+            </label>
+
+            <label class="form-field">
               <span>City</span>
               <input type="text" name="city" placeholder="Surat" [(ngModel)]="vendorForm.city" />
             </label>

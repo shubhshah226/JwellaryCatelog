@@ -177,7 +177,7 @@ export class PublicProducts implements OnInit, OnDestroy {
   }
 
   vendorAddress(vendor: PublicVendor): string {
-    return [vendor.address, vendor.city, vendor.state, vendor.pincode]
+    return [vendor.address, vendor.city]
       .map((x) => (x ?? '').trim())
       .filter(Boolean)
       .join(', ');

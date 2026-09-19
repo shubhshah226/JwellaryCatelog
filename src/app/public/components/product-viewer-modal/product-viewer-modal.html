@@ -109,48 +109,77 @@
               </ul>
             }
 
+            <div class="pvm-cta-block">
+              @if (!isInCart()) {
+                <button type="button" class="pvm-btn primary" (click)="addToCart()">
+                  <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                  Add to interest list
+                </button>
+              } @else {
+                <div class="pvm-added-state" aria-live="polite">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i>
+                  <span>{{
+                    justAdded()
+                      ? successMessage() || 'Added to interest list.'
+                      : 'Already in your interest list'
+                  }}</span>
+                </div>
+                <button type="button" class="pvm-btn primary" (click)="goToCart()">
+                  Open interest list
+                  @if (interestCart.count()) {
+                    <span class="pvm-btn-count">{{ interestCart.count() }}</span>
+                  }
+                </button>
+              }
+
+              @if (contactPhone()) {
+                <a class="pvm-btn ghost" [href]="'tel:' + contactPhone()">
+                  <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                  Call jeweller
+                </a>
+              }
+
+              <p class="pvm-hint">Save pieces you like, then send one enquiry.</p>
+            </div>
+
             @if (item.description) {
               <p class="pvm-desc">{{ item.description }}</p>
             }
 
-            @if (justAdded() && isInCart()) {
-              <div class="pvm-success" aria-live="polite">
-                <i class="fa-solid fa-check" aria-hidden="true"></i>
-                <p>{{ successMessage() || 'Added to your interest list.' }}</p>
-              </div>
-            }
+            <ul class="pvm-assurances" aria-label="Shopping tips">
+              <li>
+                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                <div>
+                  <strong>Confirm with the jeweller</strong>
+                  <span>Weight, purity, and final price are verified with the store.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                <div>
+                  <strong>Enquire, don’t buy online</strong>
+                  <span>Save pieces you like, then send one enquiry — no payment here.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-camera" aria-hidden="true"></i>
+                <div>
+                  <strong>Real store photos</strong>
+                  <span>Images are shared by the jeweller for this design.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i>
+                <div>
+                  <strong>Making &amp; availability</strong>
+                  <span>Ask about ready stock, make-to-order time, and resizing.</span>
+                </div>
+              </li>
+            </ul>
+
             @if (errorMessage()) {
               <p class="pvm-error">{{ errorMessage() }}</p>
             }
-          </div>
-
-          <div class="pvm-cta-block">
-            @if (!isInCart()) {
-              <button type="button" class="pvm-btn primary" (click)="addToCart()">
-                <i class="fa-regular fa-heart" aria-hidden="true"></i>
-                Add to interest list
-              </button>
-            } @else {
-              <div class="pvm-added-state">
-                <i class="fa-solid fa-check" aria-hidden="true"></i>
-                <span>Already in your interest list</span>
-              </div>
-              <button type="button" class="pvm-btn primary" (click)="goToCart()">
-                Open interest list
-                @if (interestCart.count()) {
-                  <span class="pvm-btn-count">{{ interestCart.count() }}</span>
-                }
-              </button>
-            }
-
-            @if (contactPhone()) {
-              <a class="pvm-btn ghost" [href]="'tel:' + contactPhone()">
-                <i class="fa-solid fa-phone" aria-hidden="true"></i>
-                Call jeweller
-              </a>
-            }
-
-            <p class="pvm-hint">Save pieces you like, then send one enquiry.</p>
           </div>
         </aside>
       </div>

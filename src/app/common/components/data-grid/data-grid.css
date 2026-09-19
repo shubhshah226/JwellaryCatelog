@@ -1,5 +1,8 @@
 :host {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dg-filters-card,
@@ -7,6 +10,8 @@
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: 14px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dg-filters-card {
@@ -16,7 +21,7 @@
 
 .dg-filters-grid {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
 }
@@ -104,30 +109,53 @@
 }
 
 .dg-table-wrap {
+  /* overflow-x:auto forces overflow-y to auto too, which clips tooltips.
+     Keep horizontal scroll without clipping vertical/side tips. */
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: clip;
+  width: 100%;
+  max-width: 100%;
+  padding-block: 0.15rem;
 }
 
 table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  table-layout: fixed;
 }
 
 th,
 td {
-  padding: 0.85rem 1rem;
-  text-align: left;
+  padding: 0.65rem 0.5rem;
+  text-align: center;
   border-bottom: 1px solid var(--app-border);
   vertical-align: middle;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+}
+
+th.dg-align-left,
+td.dg-align-left {
+  text-align: left;
+}
+
+th.dg-align-left .dg-sort-btn {
+  justify-content: flex-start;
+}
+
+/* Truncate body cells only — headers must stay readable */
+td {
+  overflow: hidden;
 }
 
 th {
   color: var(--app-text);
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .dg-row-selectable {
@@ -149,7 +177,9 @@ th {
 .dg-sort-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  gap: 0.25rem;
+  max-width: 100%;
   border: none;
   background: transparent;
   color: inherit;
@@ -160,27 +190,105 @@ th {
 }
 
 .dg-sort-icon {
-  opacity: 0.7;
-  font-size: 0.75rem;
+  opacity: 0.55;
+  font-size: 0.65rem;
+  flex-shrink: 0;
 }
 
+/* Narrow utility columns */
 .dg-col-check {
-  width: 42px;
+  width: 3rem;
+  padding-inline: 0.4rem;
 }
 
 .dg-col-check input {
   accent-color: var(--app-text);
 }
 
+.dg-col-photo {
+  width: 4.25rem;
+  min-width: 4.25rem;
+  max-width: 4.25rem;
+  padding-inline: 0.35rem;
+  overflow: visible;
+}
+
+td.dg-col-photo,
+th.dg-col-photo {
+  overflow: visible;
+}
+
+/* Product photo thumbs (template cells from Manage Products) */
+.product-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #eef2f7, #e2e8f0);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin: 0 auto;
+  position: relative;
+}
+
+.product-thumb.has-preview {
+  cursor: zoom-in;
+}
+
+.product-thumb.has-preview:hover {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-thumb-fallback {
+  color: #94a3b8;
+  font-size: 1rem;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Equal-ish content columns — product/category get a bit more for text */
+.dg-col-product,
+.dg-col-category {
+  width: 16%;
+}
+
+.dg-col-price,
+.dg-col-stock,
+.dg-col-status,
+.dg-col-count {
+  width: 12%;
+}
+
 .dg-col-actions {
-  width: 72px;
-  text-align: right;
+  width: 5.5rem;
+  min-width: 5.5rem;
+  padding-inline: 0.4rem;
+  /* Let action tooltips paint outside the cell */
+  overflow: visible;
+}
+
+td.dg-col-actions,
+th.dg-col-actions {
+  overflow: visible;
 }
 
 .dg-avatar-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .dg-avatar {
@@ -200,23 +308,42 @@ th {
   margin: 0;
   color: var(--app-text);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dg-secondary {
   margin: 0.15rem 0 0;
   color: var(--app-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dg-stack {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: inherit;
 }
 
 .dg-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.65rem;
+  justify-content: center;
+  max-width: 100%;
+  padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   background: rgba(148, 163, 184, 0.15);
   color: var(--app-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .dg-badge.status-active {
@@ -252,7 +379,8 @@ th {
 .dg-actions-wrap {
   position: relative;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  overflow: visible;
 }
 
 .dg-menu-dots {
@@ -262,6 +390,8 @@ th {
   cursor: pointer;
   font-size: 1.1rem;
   padding: 0.25rem;
+  overflow: visible;
+  z-index: 2;
 }
 
 .dg-actions-dropdown {
@@ -326,6 +456,7 @@ th {
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-top: 1px solid var(--app-border);
+  overflow: visible;
 }
 
 .dg-table-footer > p {
@@ -338,6 +469,7 @@ th {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  overflow: visible;
 }
 
 .dg-page-btn {
@@ -524,6 +656,7 @@ th {
   position: relative;
   flex-shrink: 0;
   margin-top: 0.1rem;
+  overflow: visible;
 }
 
 .dg-card-menu .dg-menu-dots {

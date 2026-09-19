@@ -77,18 +77,18 @@ export class ProductService {
   private readonly api = inject(ApiHttpService);
   private readonly auth = inject(AuthService);
 
-  /** Authenticated panel image URL for <img src> (Token as query). */
+  /** Authenticated panel image URL for <img src>. */
   panelImageUrl(imageId: string | null | undefined, size: 'grid' | 'full' = 'grid'): string {
     const id = (imageId || '').trim();
     if (!id) {
       return '';
     }
-    const token = this.auth.getAccessToken();
-    if (!token) {
-      return '';
-    }
     const base = (environment.apiUrl || '').replace(/\/$/, '');
-    return `${base}/product/productImage/${encodeURIComponent(id)}/${size}?Token=${encodeURIComponent(token)}`;
+    // Prefer cookie auth (set at login via withCredentials). Also pass Token in the
+    // query so images still load after a page refresh when only localStorage session exists.
+    const token = this.auth.getAccessToken();
+    const url = `${base}/product/productImage/${encodeURIComponent(id)}/${size}`;
+    return token ? `${url}?Token=${encodeURIComponent(token)}` : url;
   }
 
   getVendorProducts(): Observable<Product[]> {
@@ -369,6 +369,7 @@ export class ProductService {
       color: product.color ?? '',
       colorId: product.colorId ?? null,
       status: this.normalizeStatus(product.status || product.stockStatus),
+      isActive: product.accountStatus !== 'inactive',
     };
   }
 
@@ -497,7 +498,14 @@ export class ProductService {
     const accountStatus =
       (product.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
     const stockRaw = product.stockStatus || 'in_stock';
-    const primaryImageId = product.primaryImageId ? String(product.primaryImageId) : null;
+    const raw = product as ApiProductListItem & Record<string, unknown>;
+    const primaryImageId = String(
+      product.primaryImageId ||
+        raw['primary_image_id'] ||
+        raw['imageId'] ||
+        raw['image_id'] ||
+        ''
+    ).trim() || null;
     const imageUrl = this.panelImageUrl(primaryImageId, 'grid');
     return {
       id: String(product.productId || ''),

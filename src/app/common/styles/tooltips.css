@@ -5,6 +5,16 @@
   position: relative;
 }
 
+/* Grid action tips: raise above table chrome */
+.dg-menu-dots[data-tooltip]::after,
+.dg-menu-dots[data-tooltip]::before,
+.dg-btn-icon[data-tooltip]::after,
+.dg-btn-icon[data-tooltip]::before,
+.dg-page-btn[data-tooltip]::after,
+.dg-page-btn[data-tooltip]::before {
+  z-index: 4000;
+}
+
 [data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;

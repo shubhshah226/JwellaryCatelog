@@ -44,6 +44,7 @@ export class ApiHttpService {
         params: this.toParams(params),
         headers: reqHeaders,
         responseType: 'blob',
+        withCredentials: true,
       })
       .pipe(catchError((err) => this.fail(err, reqHeaders)));
   }
@@ -78,7 +79,7 @@ export class ApiHttpService {
   /** Multipart upload helper (does not set Content-Type — browser sets boundary). */
   postFormData<T>(path: string, formData: FormData, headers?: HttpHeaders): Observable<T> {
     return this.http
-      .post<ApiResponse<T>>(this.url(path), formData, { headers })
+      .post<ApiResponse<T>>(this.url(path), formData, { headers, withCredentials: true })
       .pipe(
         map((res) => this.unwrap(res)),
         catchError((err) => this.fail(err, headers))
@@ -109,6 +110,8 @@ export class ApiHttpService {
       body,
       params: this.toParams(params),
       headers,
+      // Required so login Set-Cookie (image auth) is stored cross-origin.
+      withCredentials: true,
     });
   }
 

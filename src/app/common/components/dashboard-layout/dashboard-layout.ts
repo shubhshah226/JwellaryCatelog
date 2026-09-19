@@ -60,10 +60,12 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
 
   readonly notificationsOpen = signal(false);
   readonly userMenuOpen = signal(false);
-  readonly notifications = signal<DashboardNotification[]>([]);
-  readonly unreadCount = signal(0);
-  readonly notificationsLoading = signal(false);
   readonly markReadBusy = signal(false);
+
+  /** Shared with dashboard page via DashboardService (single /dashboardSummary call). */
+  readonly notifications = this.dashboardService.ownerNotifications;
+  readonly unreadCount = this.dashboardService.ownerUnreadCount;
+  readonly notificationsLoading = this.dashboardService.ownerDashboardLoading;
 
   /** Only unread items appear in the panel. */
   readonly unreadNotifications = computed(() =>
@@ -112,14 +114,13 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     this.themeService.init();
     this.syncSidebarWithViewport();
     this.loadVendorBrand();
-    this.refreshNotificationsIfDashboard(this.router.url);
+    this.loadOwnerNotifications();
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe((event) => {
+      .subscribe(() => {
         this.notificationsOpen.set(false);
         this.userMenuOpen.set(false);
         this.queueMobileScrollSync();
-        this.refreshNotificationsIfDashboard(event.urlAfterRedirects);
       });
   }
 
@@ -209,7 +210,19 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.userMenuOpen.set(false);
-    this.notificationsOpen.update((open) => !open);
+    const opening = !this.notificationsOpen();
+    this.notificationsOpen.set(opening);
+    if (opening) {
+      this.loadOwnerNotifications(true);
+    }
+  }
+
+  /** Shared getOwnerDashboard — deduped with the dashboard page via shareReplay. */
+  private loadOwnerNotifications(force = false): void {
+    if (this.isAdmin) {
+      return;
+    }
+    this.dashboardService.getOwnerDashboard(force).subscribe({ error: () => undefined });
   }
 
   toggleUserMenu(event?: Event): void {
@@ -243,8 +256,8 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     this.markReadBusy.set(true);
     this.dashboardService.markNotificationsRead().subscribe({
       next: (res) => {
-        this.unreadCount.set(res.unreadCount);
-        this.notifications.set([]);
+        this.dashboardService.setOwnerUnreadCount(res.unreadCount);
+        this.dashboardService.clearOwnerNotifications();
         this.markReadBusy.set(false);
       },
       error: () => this.markReadBusy.set(false),
@@ -268,8 +281,8 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (!item.isRead) {
       this.dashboardService.markNotificationsRead([item.id]).subscribe({
         next: (res) => {
-          this.unreadCount.set(res.unreadCount);
-          this.notifications.update((list) => list.filter((n) => n.id !== item.id));
+          this.dashboardService.setOwnerUnreadCount(res.unreadCount);
+          this.dashboardService.removeOwnerNotification(item.id);
           go();
         },
         error: () => go(),
@@ -288,35 +301,6 @@ export class DashboardLayout implements OnInit, AfterViewInit, OnDestroy {
     if (this.userMenuOpen() && !target?.closest('.user-menu-wrap')) {
       this.closeUserMenu();
     }
-  }
-
-  private refreshNotificationsIfDashboard(url: string): void {
-    if (this.isAdmin) {
-      return;
-    }
-    const path = url.split('?')[0].split('#')[0];
-    if (path === '/vendor/dashboard') {
-      this.loadNotifications();
-    }
-  }
-
-  private loadNotifications(): void {
-    if (this.isAdmin) {
-      return;
-    }
-    this.notificationsLoading.set(true);
-    this.dashboardService.getOwnerDashboard().subscribe({
-      next: (payload) => {
-        this.notifications.set(payload.notifications.filter((n) => !n.isRead));
-        this.unreadCount.set(payload.summary.unreadCount);
-        this.notificationsLoading.set(false);
-      },
-      error: () => {
-        this.notifications.set([]);
-        this.unreadCount.set(0);
-        this.notificationsLoading.set(false);
-      },
-    });
   }
 
   private loadVendorBrand(): void {

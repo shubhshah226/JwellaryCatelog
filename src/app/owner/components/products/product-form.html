@@ -133,17 +133,6 @@
             </label>
 
             <label class="form-field">
-              <span>Price (Rs)</span>
-              <input
-                type="number"
-                [(ngModel)]="productForm.price"
-                name="price"
-                min="0"
-                inputmode="decimal"
-              />
-            </label>
-
-            <label class="form-field">
               <span>Metal <em>*</em></span>
               <select
                 [ngModel]="productForm.metalTypeId"
@@ -159,6 +148,17 @@
               @if (!metalTypes().length) {
                 <small class="field-hint">Add metal types in Product Options first.</small>
               }
+            </label>
+
+            <label class="form-field">
+              <span>Price (Rs)</span>
+              <input
+                type="number"
+                [(ngModel)]="productForm.price"
+                name="price"
+                min="0"
+                inputmode="decimal"
+              />
             </label>
 
             <label class="form-field">
@@ -225,15 +225,30 @@
               </select>
             </label>
 
-            <label class="form-field form-field-span2">
-              <span>Description</span>
-              <textarea
-                [(ngModel)]="productForm.description"
-                name="description"
-                rows="2"
-                placeholder="Optional notes"
-              ></textarea>
-            </label>
+            <div class="form-row-status-desc">
+              <label class="form-field form-field-status-sm">
+                <span>Status</span>
+                <select
+                  [ngModel]="productForm.isActive ? 'active' : 'inactive'"
+                  (ngModelChange)="productForm.isActive = $event === 'active'"
+                  name="isActive"
+                  [disabled]="isSubmitting()"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label class="form-field form-field-desc">
+                <span>Description</span>
+                <textarea
+                  [(ngModel)]="productForm.description"
+                  name="description"
+                  rows="2"
+                  placeholder="Optional notes"
+                ></textarea>
+              </label>
+            </div>
           </div>
         </section>
       </div>

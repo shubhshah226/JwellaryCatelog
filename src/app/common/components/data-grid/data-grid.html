@@ -59,7 +59,7 @@
 
       <div class="dg-filter-actions">
         <button type="button" class="dg-btn dg-btn-primary" (click)="applyFilters()">Filter</button>
-        <button type="button" class="dg-btn dg-btn-icon" (click)="resetFilters()" aria-label="Reset filters" data-tooltip="Reset filters">
+        <button type="button" class="dg-btn dg-btn-icon" (click)="resetFilters()" aria-label="Reset filters" data-tooltip="Reset filters" data-tooltip-pos="bottom">
           <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
         </button>
       </div>
@@ -233,6 +233,7 @@
                   class="dg-menu-dots"
                   aria-label="More actions"
                   data-tooltip="More actions"
+                  data-tooltip-pos="left"
                   [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
                   (click)="toggleActionsMenu(row, $event, 'secondary')"
                 >
@@ -313,6 +314,7 @@
           [disabled]="currentPage() === 1"
           aria-label="Previous page"
           data-tooltip="Previous page"
+          data-tooltip-pos="top"
         >
           <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
         </button>
@@ -324,6 +326,7 @@
             (click)="goToPage(page)"
             [attr.aria-label]="'Go to page ' + page"
             [attr.data-tooltip]="'Page ' + page"
+            data-tooltip-pos="top"
           >
             {{ page }}
           </button>
@@ -336,6 +339,7 @@
             (click)="goToPage(totalPages())"
             [attr.aria-label]="'Go to page ' + totalPages()"
             [attr.data-tooltip]="'Page ' + totalPages()"
+            data-tooltip-pos="top"
           >
             {{ totalPages() }}
           </button>
@@ -347,6 +351,7 @@
           [disabled]="currentPage() === totalPages()"
           aria-label="Next page"
           data-tooltip="Next page"
+          data-tooltip-pos="top"
         >
           <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
         </button>
@@ -400,7 +405,7 @@
       </div>
     </div>
   } @else if ((column.cellType || 'text') === 'stack') {
-    <div>
+    <div class="dg-stack">
       <p class="dg-primary">{{ displayValue(row, column) }}</p>
       @if (displaySubtitle(row, column)) {
         <p class="dg-secondary">{{ displaySubtitle(row, column) }}</p>
@@ -428,6 +433,7 @@
       class="dg-menu-dots"
       aria-label="Row actions"
       data-tooltip="Actions"
+      data-tooltip-pos="left"
       [attr.aria-expanded]="openActionsMenuId() === rowId(row)"
       (click)="toggleActionsMenu(row, $event, 'all')"
     >

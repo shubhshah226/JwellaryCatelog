@@ -45,7 +45,7 @@ export class DataGridComponent<T = unknown> implements OnInit, OnDestroy, AfterV
   readonly action = output<DataGridActionEvent<T>>();
   readonly selectionChange = output<DataGridSelectionEvent>();
 
-  @ContentChildren(DataGridCellDirective)
+  @ContentChildren(DataGridCellDirective, { descendants: true })
   cellTemplates!: QueryList<DataGridCellDirective>;
 
   @ViewChild('actionsPortal')

@@ -154,19 +154,21 @@ export class VendorProducts implements OnInit {
           header: 'Product',
           sortable: true,
           cellType: 'stack',
+          className: 'dg-col-product',
           value: (row) => row.name,
-          subtitle: (row) => row.sku || 'â€”',
+          subtitle: (row) => row.sku || '—',
         },
         {
           key: 'category',
           header: 'Category',
           sortable: true,
           cellType: 'stack',
-          value: (row) => row.category || 'â€”',
+          className: 'dg-col-category',
+          value: (row) => row.category || '—',
           subtitle: (row) =>
             [row.metalType, row.purity, row.weight ? `${row.weight}g` : '']
               .filter(Boolean)
-              .join(' Â· ') || 'â€”',
+              .join(' · ') || '—',
         },
         {
           key: 'price',
@@ -174,6 +176,7 @@ export class VendorProducts implements OnInit {
           sortable: true,
           cellType: 'template',
           templateKey: 'price',
+          className: 'dg-col-price',
           sortValue: (row) => row.price ?? -1,
         },
         {
@@ -181,7 +184,8 @@ export class VendorProducts implements OnInit {
           header: 'Stock',
           sortable: true,
           cellType: 'badge',
-          value: (row) => this.stockLabel(row.stockStatus || row.status),
+          className: 'dg-col-stock',
+          value: (row) => this.stockLabelShort(row.stockStatus || row.status),
           badgeClass: (row) => `status-${this.normalizeStockKey(row.stockStatus || row.status)}`,
           sortValue: (row) => row.stockStatus || row.status || '',
         },
@@ -190,18 +194,11 @@ export class VendorProducts implements OnInit {
           header: 'Status',
           sortable: true,
           cellType: 'badge',
-          value: (row) => (row.accountStatus === 'inactive' ? 'Inactive' : 'Active'),
+          className: 'dg-col-status',
+          value: (row) => (row.accountStatus === 'inactive' ? 'Off' : 'On'),
           badgeClass: (row) =>
             row.accountStatus === 'inactive' ? 'status-inactive' : 'status-active',
           sortValue: (row) => row.accountStatus || 'active',
-        },
-        {
-          key: 'imageCount',
-          header: 'Photos',
-          sortable: true,
-          cellType: 'text',
-          value: (row) => row.imageCount ?? 0,
-          sortValue: (row) => row.imageCount ?? 0,
         },
       ],
       actions: [
@@ -307,6 +304,14 @@ export class VendorProducts implements OnInit {
 
   stockLabel(status?: string | null): string {
     return this.productService.stockLabel(status);
+  }
+
+  /** Compact labels so stock badges fit the grid column. */
+  stockLabelShort(status?: string | null): string {
+    const key = this.normalizeStockKey(status);
+    if (key === 'out_of_stock') return 'Out';
+    if (key === 'make_to_order') return 'MTO';
+    return 'In stock';
   }
 
   setStock(product: Product, stockStatus: 'in_stock' | 'out_of_stock' | 'make_to_order'): void {

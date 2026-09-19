@@ -40,6 +40,8 @@ interface PublicCatalogApiResponse {
     logoUrl?: string | null;
     brandColor?: string | null;
     contactPhone?: string | null;
+    address?: string | null;
+    city?: string | null;
     currency?: string | null;
   } | null;
   catalog?: {
@@ -344,6 +346,8 @@ export class StorefrontService {
         id: token as unknown as number,
         name,
         phone: business?.contactPhone || undefined,
+        address: business?.address || undefined,
+        city: business?.city || undefined,
       },
       config,
       isAvailable: res.status === 'active',

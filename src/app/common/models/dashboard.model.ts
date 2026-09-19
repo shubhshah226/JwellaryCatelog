@@ -103,6 +103,11 @@ export interface ProductFormData {
   color: string;
   colorId: string | null;
   status: ProductStatus;
+  /**
+   * Product on/off (API field `status` via /product/updateProductStatus).
+   * Not accepted on addProduct/updateProduct body — applied after save.
+   */
+  isActive: boolean;
 }
 
 export function createEmptyProductForm(): ProductFormData {
@@ -125,6 +130,7 @@ export function createEmptyProductForm(): ProductFormData {
     color: '',
     colorId: null,
     status: 'in_stock',
+    isActive: true,
   };
 }
 
