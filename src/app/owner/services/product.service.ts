@@ -199,7 +199,7 @@ export class ProductService {
       );
   }
 
-  createProduct(form: ProductFormData): Observable<Product> {
+  createProduct(form: ProductFormData, imageFiles?: File[]): Observable<Product> {
     const weight = this.parseWeight(form.weight);
     if (weight == null || weight <= 0) {
       return throwError(() => new Error('Weight in grams is required.'));
@@ -212,7 +212,8 @@ export class ProductService {
       return throwError(() => new Error('Please select a category.'));
     }
 
-    const files = this.collectImageFiles(form);
+    // Prefer original File objects — base64 round-trip can corrupt bytes.
+    const files = imageFiles?.length ? imageFiles : this.collectImageFiles(form);
     if (!files.length) {
       return throwError(() => new Error('Please add at least one product image.'));
     }
@@ -221,7 +222,7 @@ export class ProductService {
     const formData = new FormData();
     formData.append('product', JSON.stringify(productJson));
     for (const file of files) {
-      formData.append('images', file, file.name);
+      formData.append('images', file, file.name || 'photo.jpg');
     }
 
     return this.api.postFormData<ProductActionResponse>('/product/addProduct', formData).pipe(
@@ -661,18 +662,27 @@ export class ProductService {
     if (!url?.startsWith('data:')) {
       return null;
     }
-    const parts = url.split(',');
-    if (parts.length < 2) {
+    const comma = url.indexOf(',');
+    if (comma < 0) {
       return null;
     }
-    const mimeMatch = parts[0].match(/data:(.*?);/);
+    const header = url.slice(0, comma);
+    const data = url.slice(comma + 1).replace(/\s/g, '');
+    const mimeMatch = header.match(/data:([^;]+);/);
     const mime = mimeMatch?.[1] || 'image/jpeg';
-    const binary = atob(parts[1]);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    const ext =
+      mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : mime === 'image/gif' ? 'gif' : 'jpg';
+    try {
+      const binary = atob(data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const safeName = filename.includes('.') ? filename : `${filename}.${ext}`;
+      return new File([bytes], safeName, { type: mime });
+    } catch {
+      return null;
     }
-    return new File([bytes], filename, { type: mime });
   }
 
   private assertSuccess(res: ProductActionResponse | null | undefined, fallback: string): void {

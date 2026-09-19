@@ -14,7 +14,7 @@ import { ProductExistingImage, ProductService } from '../../services/product.ser
 
 type PhotoSlot =
   | { kind: 'existing'; imageId: string }
-  | { kind: 'new'; dataUrl: string };
+  | { kind: 'new'; dataUrl: string; file: File };
 
 @Component({
   selector: 'app-vendor-product-form',
@@ -172,7 +172,9 @@ export class VendorProductForm implements OnInit {
       return;
     }
 
-    this.applyNewPhotosToForm(slots);
+    const newImageFiles = slots
+      .filter((s): s is Extract<PhotoSlot, { kind: 'new' }> => s.kind === 'new')
+      .map((s) => s.file);
     this.isSubmitting.set(true);
 
     if (this.mode() === 'edit' && this.productId()) {
@@ -183,7 +185,6 @@ export class VendorProductForm implements OnInit {
       const removedImageIds = [...this.initialExistingIds].filter(
         (id) => !currentExistingIds.includes(id)
       );
-      const newImageFiles = this.productService.collectImageFiles(this.productForm);
       const cover = slots[0];
       const primaryImageId = cover?.kind === 'existing' ? cover.imageId : null;
 
@@ -203,12 +204,21 @@ export class VendorProductForm implements OnInit {
             this.toast.success('Product updated successfully.');
             void this.router.navigateByUrl('/vendor/products');
           },
+          error: (err: Error) => {
+            this.toast.error(err?.message || 'Failed to update product.');
+          },
         });
       return;
     }
 
+    if (!newImageFiles.length) {
+      this.isSubmitting.set(false);
+      this.toast.error('Please upload at least one photo (first image is the cover).');
+      return;
+    }
+
     this.productService
-      .createProduct(this.productForm)
+      .createProduct(this.productForm, newImageFiles)
       .pipe(
         switchMap((created) => this.applyActiveStatusAfterSave(created.id)),
         finalize(() => this.isSubmitting.set(false))
@@ -217,6 +227,9 @@ export class VendorProductForm implements OnInit {
         next: () => {
           this.toast.success('Product added successfully.');
           void this.router.navigateByUrl('/vendor/products');
+        },
+        error: (err: Error) => {
+          this.toast.error(err?.message || 'Failed to add product.');
         },
       });
   }
@@ -246,11 +259,30 @@ export class VendorProductForm implements OnInit {
     if (!files?.length) {
       return;
     }
-    Array.from(files).forEach((file) => {
+
+    const allowed: File[] = [];
+    const rejected: string[] = [];
+    for (const file of Array.from(files)) {
+      if (this.isAllowedProductImage(file)) {
+        allowed.push(file);
+      } else {
+        rejected.push(file.name);
+      }
+    }
+
+    if (rejected.length) {
+      this.toast.error(
+        rejected.length === 1
+          ? `${rejected[0]} is not allowed. Use JPG, PNG or WEBP only.`
+          : `${rejected.length} files were skipped. Use JPG, PNG or WEBP only.`
+      );
+    }
+
+    for (const file of allowed) {
       this.readFileAsBase64(file, (base64) => {
-        this.photoSlots.update((slots) => [...slots, { kind: 'new', dataUrl: base64 }]);
+        this.photoSlots.update((slots) => [...slots, { kind: 'new', dataUrl: base64, file }]);
       });
-    });
+    }
     input.value = '';
   }
 
@@ -326,15 +358,6 @@ export class VendorProductForm implements OnInit {
 
   isExistingPhoto(slot: PhotoSlot): boolean {
     return slot.kind === 'existing';
-  }
-
-  private applyNewPhotosToForm(slots: PhotoSlot[]): void {
-    const newUrls = slots
-      .filter((s): s is Extract<PhotoSlot, { kind: 'new' }> => s.kind === 'new')
-      .map((s) => s.dataUrl);
-    this.productForm.imageUrl = newUrls[0] ?? '';
-    this.productForm.galleryImages = newUrls.slice(1);
-    this.productForm.images = newUrls;
   }
 
   private syncNamesFromIds(): void {
@@ -446,8 +469,8 @@ export class VendorProductForm implements OnInit {
   }
 
   private readFileAsBase64(file: File, onDone: (base64: string) => void): void {
-    if (!file.type.startsWith('image/')) {
-      this.toast.error('Please select an image file.');
+    if (!this.isAllowedProductImage(file)) {
+      this.toast.error(`${file.name} is not allowed. Use JPG, PNG or WEBP only.`);
       return;
     }
     if (file.size > 10_000_000) {
@@ -465,5 +488,15 @@ export class VendorProductForm implements OnInit {
       this.toast.error('Could not read image file.');
     };
     reader.readAsDataURL(file);
+  }
+
+  /** API accepts JPG / PNG / WEBP only. */
+  private isAllowedProductImage(file: File): boolean {
+    const type = (file.type || '').toLowerCase();
+    if (type === 'image/jpeg' || type === 'image/png' || type === 'image/webp') {
+      return true;
+    }
+    // Some browsers leave type empty — fall back to extension.
+    return /\.(jpe?g|png|webp)$/i.test(file.name);
   }
 }

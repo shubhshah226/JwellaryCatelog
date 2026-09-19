@@ -95,7 +95,13 @@
             <label class="pfp-upload-btn">
               <i class="fa-solid fa-plus"></i>
               {{ photoSlots().length ? 'Add more' : 'Upload photos' }}
-              <input type="file" accept="image/*" multiple (change)="onPhotosSelected($event)" hidden />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                multiple
+                (change)="onPhotosSelected($event)"
+                hidden
+              />
             </label>
             <small class="field-hint">JPG, PNG or WEBP · max 10MB each</small>
           </div>
