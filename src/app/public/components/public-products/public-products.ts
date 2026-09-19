@@ -317,6 +317,7 @@ export class PublicProducts implements OnInit, OnDestroy {
     shareLabel?: string
   ): void {
     this.sharedAllProducts = products;
+    this.cart.retainOnly(products.map((p) => p.id));
     this.isSharedView.set(true);
     this.shareLabel.set(shareLabel || this.buildShareLabel(payload ?? {}));
     this.shareCustomerName.set(payload?.customerName ?? '');

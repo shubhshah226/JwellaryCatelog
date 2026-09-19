@@ -69,6 +69,15 @@ export class InterestCartService {
     return this.itemsSignal().some((p) => p.id === productId);
   }
 
+  /** Drop cart lines that are no longer in the live catalog (e.g. product set inactive). */
+  retainOnly(productIds: Iterable<string>): void {
+    const allowed = new Set([...productIds].map(String));
+    const next = this.itemsSignal().filter((p) => allowed.has(String(p.id)));
+    if (next.length !== this.itemsSignal().length) {
+      this.persist(next);
+    }
+  }
+
   private persist(items: CartProduct[]): void {
     this.itemsSignal.set(items);
     if (!this.activeStoreCode || typeof sessionStorage === 'undefined') {

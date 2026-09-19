@@ -16,6 +16,7 @@ import {
   StorefrontConfig,
   StorefrontFormData,
 } from '../models/storefront.model';
+import { InterestCartService } from './interest-cart.service';
 
 interface PublicCatalogApiItem {
   productId?: string;
@@ -68,6 +69,7 @@ interface PublicProductDetailApiResponse {
 })
 export class StorefrontService {
   private readonly api = inject(ApiHttpService);
+  private readonly interestCart = inject(InterestCartService);
 
   /** In the new API, the route param is the catalog share token. */
   getStoreContext(token: string): Observable<PublicStoreContext | null> {
@@ -84,6 +86,7 @@ export class StorefrontService {
         }
         const context = this.toContext(token, res);
         const products = (res.items ?? []).map((item) => this.fromApiItem(token, item, res.catalog?.priceVisible));
+        this.interestCart.retainOnly(products.map((p) => p.id));
         return {
           ...context,
           featuredProducts: products.slice(0, context.config.homeProductLimit || 8),
@@ -122,6 +125,7 @@ export class StorefrontService {
         let products = (res.items ?? []).map((item) =>
           this.fromApiItem(token, item, res.catalog?.priceVisible)
         );
+        this.interestCart.retainOnly(products.map((p) => p.id));
         products = this.filterPublicProducts(products, {
           search: filters.search,
           category: filters.category,
@@ -180,13 +184,15 @@ export class StorefrontService {
           return null;
         }
         const active = res.status === 'active';
+        const products = active
+          ? (res.items ?? []).map((item) =>
+              this.fromApiItem(shortCode, item, res.catalog?.priceVisible)
+            )
+          : [];
+        this.interestCart.retainOnly(products.map((p) => p.id));
         return {
           context: this.toContext(shortCode, res),
-          products: active
-            ? (res.items ?? []).map((item) =>
-                this.fromApiItem(shortCode, item, res.catalog?.priceVisible)
-              )
-            : [],
+          products,
           shareLabel: res.catalog?.title || 'Shared Catalog',
           status: res.status || 'active',
           message: res.message,
