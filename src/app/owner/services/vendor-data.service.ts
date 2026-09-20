@@ -327,10 +327,30 @@ export class VendorDataService {
     );
   }
 
-  /** POST /catalog/revokeCatalog */
+  /** POST /catalog/updateCatalogStatus — active <-> inactive (reversible). */
+  updateCatalogStatus(
+    catalogId: string,
+    status: 'active' | 'inactive'
+  ): Observable<ApiCatalogActionResponse> {
+    return this.api
+      .post<ApiCatalogActionResponse>('/catalog/updateCatalogStatus', {
+        catalogId,
+        status,
+      })
+      .pipe(
+        map((res) => {
+          if (res && res.success === false) {
+            throw new Error(res.message || 'Unable to update catalog status.');
+          }
+          return res ?? { success: true };
+        })
+      );
+  }
+
+  /** POST /catalog/deleteCatalog — permanent revoke (soft delete). */
   deleteCatalog(id: string): Observable<void> {
     return this.api
-      .post<ApiCatalogActionResponse>('/catalog/revokeCatalog', {
+      .post<ApiCatalogActionResponse>('/catalog/deleteCatalog', {
         catalogId: id,
       })
       .pipe(
@@ -342,6 +362,7 @@ export class VendorDataService {
       );
   }
 
+  /** Alias used by the catalogs grid "Revoke" action. */
   revokeCatalog(id: string): Observable<void> {
     return this.deleteCatalog(id);
   }
@@ -609,7 +630,9 @@ export class VendorDataService {
   private normalizeCatalog(c: ApiCatalog): Catalog {
     const effective = (c.effectiveStatus || c.status || 'active').toLowerCase();
     let status: Catalog['status'] = 'active';
-    if (effective === 'revoked' || effective === 'inactive') {
+    if (effective === 'deleted' || effective === 'revoked') {
+      status = 'deleted';
+    } else if (effective === 'inactive') {
       status = 'inactive';
     } else if (effective === 'expired') {
       status = 'expired';

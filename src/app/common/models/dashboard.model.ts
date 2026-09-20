@@ -1,4 +1,4 @@
-export type CatalogStatus = 'active' | 'inactive' | 'pending' | 'expired';
+export type CatalogStatus = 'active' | 'inactive' | 'pending' | 'expired' | 'deleted';
 export type EnquiryStatus = 'new' | 'contacted' | 'closed_won' | 'closed_lost';
 
 export interface Vendor {

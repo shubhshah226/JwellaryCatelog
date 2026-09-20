@@ -392,11 +392,19 @@ export class VendorCatalogForm implements OnInit {
       const addProductIds = productIds.filter((pid) => !initial.has(pid));
       const removeProductIds = [...initial].filter((pid) => !selected.has(pid));
 
+      if (removeProductIds.length) {
+        this.formError.set(
+          'Designs cannot be removed from a sent catalog. Add more designs, or set the catalog inactive and create a new one.'
+        );
+        this.isSubmitting.set(false);
+        return;
+      }
+
       this.vendorData
         .updateCatalog(id, {
           name,
           addProductIds,
-          removeProductIds,
+          removeProductIds: [],
           ...shareOpts,
         })
         .subscribe({
@@ -408,8 +416,13 @@ export class VendorCatalogForm implements OnInit {
               link ? 'Catalog updated. Share link copied.' : 'Catalog updated.'
             );
           },
-          error: () => {
+          error: (err: unknown) => {
             this.isSubmitting.set(false);
+            const message =
+              err instanceof Error && err.message
+                ? err.message
+                : 'Unable to update catalog.';
+            this.formError.set(message);
           },
         });
       return;

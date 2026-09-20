@@ -82,7 +82,6 @@
                   {{ editAddress && editCity ? editAddress + ', ' + editCity : (editAddress || editCity) }}
                 </span>
               }
-              <span><i class="fa-solid fa-coins" aria-hidden="true"></i> {{ editCurrency || 'INR' }}</span>
             </div>
           </div>
         </div>
@@ -209,14 +208,6 @@
                 (ngModelChange)="onBrandColorChange($event)"
               />
             </div>
-          </label>
-          <label class="field">
-            <span>Currency</span>
-            <select name="editCurrency" [(ngModel)]="editCurrency">
-              <option value="INR">INR</option>
-              <option value="USD">USD</option>
-              <option value="AED">AED</option>
-            </select>
           </label>
           <label class="field">
             <span>Catalog expiry (days)</span>

@@ -32,7 +32,6 @@ export class VendorProfile implements OnInit, OnDestroy {
   editAddress = '';
   editCity = '';
   editBrandColor = '#004e8a';
-  editCurrency = 'INR';
   editCatalogExpiryDays: number | null = 30;
   editPriceVisibleDefault = true;
   editLogoUrl = '';
@@ -180,7 +179,7 @@ export class VendorProfile implements OnInit, OnDestroy {
           address: this.editAddress.trim() || null,
           city: this.editCity.trim() || null,
           brandColor: this.brandColorPickerValue(),
-          currency: this.editCurrency || 'INR',
+          currency: 'INR',
           catalogExpiryDays: this.editCatalogExpiryDays,
           priceVisibleDefault: this.editPriceVisibleDefault,
           // null keeps existing logo on server when no new file is sent
@@ -226,7 +225,6 @@ export class VendorProfile implements OnInit, OnDestroy {
     this.editAddress = p.address || '';
     this.editCity = p.city || '';
     this.editBrandColor = this.normalizeBrandColor(p.brandColor || '') || '#004e8a';
-    this.editCurrency = p.currency || 'INR';
     this.editCatalogExpiryDays = p.catalogExpiryDays ?? 30;
     this.editPriceVisibleDefault = p.priceVisibleDefault ?? true;
   }

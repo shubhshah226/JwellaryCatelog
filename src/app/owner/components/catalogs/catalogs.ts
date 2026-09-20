@@ -61,7 +61,7 @@ export class VendorCatalogs implements OnInit {
         options: [
           { label: 'All Status', value: 'all' },
           { label: 'Active', value: 'active' },
-          { label: 'Inactive', value: 'inactive' },
+          { label: 'Inactive / Revoked', value: 'inactive' },
         ],
       },
     ],
@@ -120,13 +120,14 @@ export class VendorCatalogs implements OnInit {
         id: 'activate',
         label: 'Set Active',
         icon: 'fa-solid fa-check',
-        visible: (row) => !this.isActive(row),
+        // Only reversible inactive — deleted/expired cannot be turned back on.
+        visible: (row) => (row.status || '').toLowerCase() === 'inactive',
       },
       {
         id: 'revoke',
         label: 'Revoke',
         icon: 'fa-solid fa-link-slash',
-        visible: (row) => this.isActive(row),
+        visible: (row) => this.isActive(row) || (row.status || '').toLowerCase() === 'inactive',
       },
     ],
   }));
@@ -223,8 +224,8 @@ export class VendorCatalogs implements OnInit {
     const confirmed = await this.confirmDialog.confirm({
       title: makingInactive ? 'Set Inactive' : 'Set Active',
       message: makingInactive
-        ? `Set "${catalog.name}" as inactive?`
-        : `Set "${catalog.name}" as active?`,
+        ? `Pause "${catalog.name}"? Customers who open the link will not see products until you set it active again.`
+        : `Turn "${catalog.name}" back on? The same share link will work again.`,
       confirmLabel: makingInactive ? 'Set Inactive' : 'Set Active',
       cancelLabel: 'Cancel',
       tone: makingInactive ? 'danger' : 'default',
@@ -233,17 +234,20 @@ export class VendorCatalogs implements OnInit {
       return;
     }
 
-    // TODO: bind activate/inactive catalog API when available.
-    this.allCatalogs.update((list) =>
-      list.map((item) => (item.id === catalog.id ? { ...item, status } : item))
-    );
-    this.toast.success(makingInactive ? 'Catalog set inactive.' : 'Catalog set active.');
+    this.vendorData.updateCatalogStatus(catalog.id, status).subscribe({
+      next: () => {
+        this.allCatalogs.update((list) =>
+          list.map((item) => (item.id === catalog.id ? { ...item, status } : item))
+        );
+        this.toast.success(makingInactive ? 'Catalog set inactive.' : 'Catalog set active.');
+      },
+    });
   }
 
   async revokeCatalog(catalog: Catalog): Promise<void> {
     const confirmed = await this.confirmDialog.confirm({
       title: 'Revoke Catalog',
-      message: `Revoke "${catalog.name}"? The share link will stop working. Products stay in Manage Products.`,
+      message: `Revoke "${catalog.name}" permanently? The share link will stop working and cannot be turned back on. Products stay in Manage Products.`,
       confirmLabel: 'Revoke',
       cancelLabel: 'Cancel',
       tone: 'danger',
@@ -255,7 +259,7 @@ export class VendorCatalogs implements OnInit {
       next: () => {
         this.allCatalogs.update((list) =>
           list.map((item) =>
-            item.id === catalog.id ? { ...item, status: 'inactive' as const } : item
+            item.id === catalog.id ? { ...item, status: 'deleted' as const } : item
           )
         );
         this.toast.success('Catalog revoked.');
@@ -267,6 +271,7 @@ export class VendorCatalogs implements OnInit {
     const s = (status || '').toLowerCase();
     if (s === 'active') return 'Active';
     if (s === 'expired') return 'Expired';
+    if (s === 'deleted') return 'Revoked';
     return 'Inactive';
   }
 
