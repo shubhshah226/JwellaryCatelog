@@ -1,0 +1,338 @@
+@if (isLoading()) {
+  <div class="state-message">Loading vendors...</div>
+} @else if (errorMessage()) {
+  <div class="state-message error">{{ errorMessage() }}</div>
+} @else {
+  <section class="vendors-page" [class.page-blurred]="isDrawerOpen()">
+    <div class="page-header">
+      <div>
+        <h2>Manage Vendors</h2>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-primary" (click)="openAddVendorDrawer()">+ Add Vendor</button>
+      </div>
+    </div>
+
+    @if (stats(); as vendorStats) {
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon purple"><i class="fa-solid fa-store"></i></div>
+          </div>
+          <p class="stat-label">Total Vendors</p>
+          <h3>{{ vendorStats.total }}</h3>
+          <div class="stat-footer">
+            <span class="change up"><i class="fa-solid fa-arrow-up"></i> {{ vendorStats.totalChange }}%</span>
+            <span class="stat-trend purple" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon blue"><i class="fa-solid fa-check"></i></div>
+          </div>
+          <p class="stat-label">Active Vendors</p>
+          <h3>{{ vendorStats.active }}</h3>
+          <div class="stat-footer">
+            <span class="change up"><i class="fa-solid fa-arrow-up"></i> {{ vendorStats.activeChange }}%</span>
+            <span class="stat-trend blue" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-icon orange"><i class="fa-solid fa-pause"></i></div>
+          </div>
+          <p class="stat-label">Inactive Vendors</p>
+          <h3>{{ vendorStats.inactive }}</h3>
+          <div class="stat-footer">
+            <span class="change down"><i class="fa-solid fa-arrow-down"></i> {{ vendorStats.inactiveChange | number:'1.1-1' }}%</span>
+            <span class="stat-trend orange" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
+          </div>
+        </article>
+      </div>
+    }
+
+    <app-data-grid
+      [rows]="allVendors()"
+      [config]="vendorGridConfig()"
+      (action)="onGridAction($event)"
+    />
+  </section>
+
+  @if (isDrawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeVendorDrawer()"></div>
+
+    <aside class="vendor-drawer" role="dialog" aria-labelledby="vendor-drawer-title">
+      <div class="drawer-header">
+        <div>
+          <h3 id="vendor-drawer-title">{{ drawerTitle() }}</h3>
+          <p>{{ drawerSubtitle() }}</p>
+        </div>
+        <button type="button" class="drawer-close" (click)="closeVendorDrawer()" aria-label="Close" data-tooltip="Close">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <form class="drawer-form" (ngSubmit)="submitVendorForm()">
+        <div class="form-section">
+          <h4>Business &amp; Owner</h4>
+          <div class="form-grid">
+            <label class="form-field span-2">
+              <span>Business Name <em>*</em></span>
+              <input
+                type="text"
+                name="businessName"
+                placeholder="e.g. Shree Jewellers"
+                [(ngModel)]="vendorForm.businessName"
+                required
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Owner Name</span>
+              <input
+                type="text"
+                name="ownerName"
+                placeholder="e.g. Meena Shah"
+                [(ngModel)]="vendorForm.ownerName"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Owner Email <em>*</em></span>
+              <input
+                type="email"
+                name="ownerEmail"
+                placeholder="owner@business.test"
+                [(ngModel)]="vendorForm.ownerEmail"
+                required
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Contact Phone</span>
+              <input
+                type="tel"
+                name="contactPhone"
+                appPhoneDigits
+                inputmode="numeric"
+                maxlength="10"
+                autocomplete="tel"
+                placeholder="10-digit mobile"
+                [(ngModel)]="vendorForm.contactPhone"
+                (ngModelChange)="onContactPhoneChange($event)"
+              />
+              @if (contactPhoneError()) {
+                <small class="field-error">{{ contactPhoneError() }}</small>
+              }
+            </label>
+
+            <label class="form-field">
+              <span>Address</span>
+              <textarea
+                name="address"
+                rows="2"
+                placeholder="Shop / street address"
+                [(ngModel)]="vendorForm.address"
+              ></textarea>
+            </label>
+
+            <label class="form-field">
+              <span>City</span>
+              <input type="text" name="city" placeholder="Surat" [(ngModel)]="vendorForm.city" />
+            </label>
+
+            <label class="form-field">
+              <span>Brand Color</span>
+              <div class="color-field">
+                <input
+                  type="color"
+                  name="brandColor"
+                  class="color-swatch-input"
+                  [ngModel]="brandColorPickerValue()"
+                  (ngModelChange)="onBrandColorChange($event)"
+                />
+                <input
+                  type="text"
+                  name="brandColorHex"
+                  class="color-hex-input"
+                  maxlength="7"
+                  placeholder="#8B0000"
+                  [ngModel]="brandColorPickerValue()"
+                  (ngModelChange)="onBrandColorChange($event)"
+                />
+              </div>
+            </label>
+
+            <label class="form-field">
+              <span>Catalog Expiry Days</span>
+              <input
+                type="number"
+                name="catalogExpiryDays"
+                min="1"
+                [(ngModel)]="vendorForm.catalogExpiryDays"
+              />
+            </label>
+
+            <div class="toggle-field span-2">
+              <div class="toggle-copy">
+                <span class="toggle-title">Show Prices by Default</span>
+                <span class="toggle-desc">When on, product prices are visible in catalogs.</span>
+              </div>
+              <label class="switch" [class.on]="vendorForm.priceVisibleDefault">
+                <input
+                  type="checkbox"
+                  id="priceVisibleDefault"
+                  name="priceVisibleDefault"
+                  [(ngModel)]="vendorForm.priceVisibleDefault"
+                />
+                <span class="switch-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            @if (drawerMode() === 'edit') {
+              <label class="form-field">
+                <span>Tenant ID</span>
+                <input type="text" [value]="vendorForm.vendorId ?? ''" disabled />
+              </label>
+            }
+          </div>
+        </div>
+
+        @if (drawerMode() === 'add') {
+          <div class="form-section">
+            <h4>Categories</h4>
+            <div class="chip-row">
+              <input
+                type="text"
+                name="categoryDraft"
+                placeholder="e.g. Ring"
+                [(ngModel)]="categoryDraft"
+                (keyup.enter)="$event.preventDefault(); addCategory()"
+              />
+              <button type="button" class="btn btn-outline" (click)="addCategory()">Add</button>
+            </div>
+            <div class="chip-list">
+              @for (item of vendorForm.categories; track item; let i = $index) {
+                <span class="chip">
+                  {{ item }}
+                  <button type="button" (click)="removeCategory(i)" aria-label="Remove category" data-tooltip="Remove">×</button>
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4>Master Data</h4>
+            <div class="master-block">
+              <label>Metal Types</label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="metalTypeDraft"
+                  placeholder="e.g. Gold"
+                  [(ngModel)]="metalTypeDraft"
+                  (keyup.enter)="$event.preventDefault(); addMetalType()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addMetalType()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.metalTypes; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removeMetalType(i)" aria-label="Remove metal type" data-tooltip="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="master-block">
+              <label>Purities</label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="purityDraft"
+                  placeholder="e.g. 22K"
+                  [(ngModel)]="purityDraft"
+                  (keyup.enter)="$event.preventDefault(); addPurity()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addPurity()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.purities; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removePurity(i)" aria-label="Remove purity" data-tooltip="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="master-block">
+              <label>Colors</label>
+              <div class="chip-row">
+                <input
+                  type="text"
+                  name="colorDraft"
+                  placeholder="e.g. Yellow"
+                  [(ngModel)]="colorDraft"
+                  (keyup.enter)="$event.preventDefault(); addColor()"
+                />
+                <button type="button" class="btn btn-outline" (click)="addColor()">Add</button>
+              </div>
+              <div class="chip-list">
+                @for (item of vendorForm.colors; track item; let i = $index) {
+                  <span class="chip">
+                    {{ item }}
+                    <button type="button" (click)="removeColor(i)" aria-label="Remove color" data-tooltip="Remove">×</button>
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-outline" (click)="closeVendorDrawer()" [disabled]="isSubmitting()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+            {{ submitButtonLabel() }}
+          </button>
+        </div>
+      </form>
+    </aside>
+  }
+
+  @if (createdCredentials(); as creds) {
+    <div class="creds-backdrop" (click)="closeCredentialsModal()"></div>
+    <div class="creds-modal" role="dialog" aria-labelledby="creds-title">
+      <h3 id="creds-title">{{ credentialsModalTitle() }}</h3>
+      <p>
+        @if (credentialsModalMode() === 'reset') {
+          New password for <strong>{{ createdVendorName() }}</strong>. Share it now — it cannot be shown again.
+        } @else {
+          Account for <strong>{{ createdVendorName() }}</strong> is ready.
+          @if (creds.emailSent) {
+            Credentials were emailed to the jeweller.
+          } @else {
+            Email was not sent (SMTP disabled). Share these credentials manually:
+          }
+        }
+      </p>
+      <div class="creds-box">
+        <p><span>Username</span> <strong>{{ creds.username }}</strong></p>
+        <p><span>Password</span> <strong>{{ creds.password }}</strong></p>
+        @if (creds.loginUrl) {
+          <p><span>Login</span> <strong>{{ creds.loginUrl }}</strong></p>
+        }
+      </div>
+      <button type="button" class="btn btn-primary" (click)="closeCredentialsModal()">Done</button>
+    </div>
+  }
+}

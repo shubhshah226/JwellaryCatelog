@@ -1,0 +1,215 @@
+@if (open() && viewedProduct(); as item) {
+  <div
+    class="pvm-backdrop"
+    [style.--pvm-accent]="brandColor() || '#c9a227'"
+    (click)="onBackdropClick($event)"
+  >
+    <div
+      class="pvm-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="item.name"
+      [class.is-saved]="isInCart()"
+    >
+      <button type="button" class="pvm-close" (click)="close()" aria-label="Close" data-tooltip="Close" data-tooltip-pos="left">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="pvm-body">
+        <section class="pvm-visual" aria-label="Product photos">
+          <div #galleryFrame class="pvm-gallery-frame">
+            <div
+              class="pvm-carousel"
+              [class.is-dragging]="isDragging()"
+              [style.transform]="trackTransform()"
+            >
+              @if (displayImages().length) {
+                @for (img of displayImages(); track $index) {
+                  <div class="pvm-slide">
+                    <img
+                      [src]="img"
+                      [alt]="item.name + ' photo ' + ($index + 1)"
+                      draggable="false"
+                    />
+                  </div>
+                }
+              } @else {
+                <div class="pvm-slide">
+                  <div class="pvm-image-placeholder"><i class="fa-solid fa-gem"></i></div>
+                </div>
+              }
+            </div>
+
+            @if (displayImages().length > 1) {
+              <button type="button" class="pvm-nav prev" (click)="prevImage()" aria-label="Previous image" data-tooltip="Previous photo">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button type="button" class="pvm-nav next" (click)="nextImage()" aria-label="Next image" data-tooltip="Next photo">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <span class="pvm-photo-count" aria-hidden="true">
+                {{ activeImageIndex() + 1 }} / {{ displayImages().length }}
+              </span>
+            }
+          </div>
+
+          @if (displayImages().length > 1) {
+            <div class="pvm-thumbs">
+              @for (img of displayImages(); track $index) {
+                <button
+                  type="button"
+                  class="pvm-thumb"
+                  [class.active]="activeImageIndex() === $index"
+                  (click)="selectImage($index)"
+                  [attr.aria-label]="'View photo ' + ($index + 1)"
+                  [attr.data-tooltip]="'Photo ' + ($index + 1)"
+                >
+                  <img [src]="img" [alt]="item.name + ' view ' + ($index + 1)" />
+                </button>
+              }
+            </div>
+          }
+        </section>
+
+        <aside class="pvm-side">
+          <div class="pvm-side-scroll">
+            <div class="pvm-title-row">
+              @if (item.category) {
+                <span class="pvm-category">{{ item.category }}</span>
+              }
+              <p class="pvm-vendor">{{ vendorName() || 'Jewellery' }}</p>
+            </div>
+
+            <h2>{{ item.name }}</h2>
+            <p class="pvm-code">Code {{ skuLabel(item) }}</p>
+
+            @if (hasPrice(item)) {
+              <div class="pvm-price-block">
+                <p class="pvm-price">{{ priceLabel(item) }}</p>
+                @if (item.isSpecialPrice && item.listPrice) {
+                  <p class="pvm-list-price">Catalog {{ formatListRs(item.listPrice) }}</p>
+                }
+              </div>
+            }
+
+            @if (item.metalType || item.purity || item.weight || item.sku) {
+              <ul class="pvm-facts" aria-label="Product highlights">
+                @if (item.metalType) {
+                  <li>{{ item.metalType }}</li>
+                }
+                @if (item.purity) {
+                  <li>{{ item.purity }}</li>
+                }
+                @if (item.weight) {
+                  <li>{{ item.weight }} g</li>
+                }
+                @if (item.sku) {
+                  <li>{{ item.sku }}</li>
+                }
+              </ul>
+            }
+
+            <div class="pvm-cta-block">
+              @if (!isInCart()) {
+                <button type="button" class="pvm-btn primary" (click)="addToCart()">
+                  <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                  Add to interest list
+                </button>
+              } @else {
+                <div class="pvm-added-state" aria-live="polite">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i>
+                  <span>{{
+                    justAdded()
+                      ? successMessage() || 'Added to interest list.'
+                      : 'Already in your interest list'
+                  }}</span>
+                </div>
+                <button type="button" class="pvm-btn primary" (click)="goToCart()">
+                  Open interest list
+                  @if (interestCart.count()) {
+                    <span class="pvm-btn-count">{{ interestCart.count() }}</span>
+                  }
+                </button>
+              }
+
+              @if (contactPhone()) {
+                <a class="pvm-btn ghost" [href]="'tel:' + contactPhone()">
+                  <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                  Call jeweller
+                </a>
+              }
+
+              <p class="pvm-hint">Save pieces you like, then send one enquiry.</p>
+            </div>
+
+            @if (item.description) {
+              <p class="pvm-desc">{{ item.description }}</p>
+            }
+
+            <ul class="pvm-assurances" aria-label="Shopping tips">
+              <li>
+                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                <div>
+                  <strong>Confirm with the jeweller</strong>
+                  <span>Weight, purity, and final price are verified with the store.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-comments" aria-hidden="true"></i>
+                <div>
+                  <strong>Enquire, don’t buy online</strong>
+                  <span>Save pieces you like, then send one enquiry — no payment here.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-camera" aria-hidden="true"></i>
+                <div>
+                  <strong>Real store photos</strong>
+                  <span>Images are shared by the jeweller for this design.</span>
+                </div>
+              </li>
+              <li>
+                <i class="fa-solid fa-hand-holding-heart" aria-hidden="true"></i>
+                <div>
+                  <strong>Making &amp; availability</strong>
+                  <span>Ask about ready stock, make-to-order time, and resizing.</span>
+                </div>
+              </li>
+            </ul>
+
+            @if (errorMessage()) {
+              <p class="pvm-error">{{ errorMessage() }}</p>
+            }
+          </div>
+        </aside>
+      </div>
+
+      <div class="pvm-sticky-bar" aria-label="Quick actions">
+        <div class="pvm-sticky-meta">
+          @if (displayImages()[0]; as thumb) {
+            <img class="pvm-sticky-thumb" [src]="thumb" [alt]="" />
+          }
+          <div class="pvm-sticky-text">
+            <span class="pvm-sticky-name">{{ item.name }}</span>
+            @if (hasPrice(item)) {
+              <span class="pvm-sticky-price">{{ priceLabel(item) }}</span>
+            } @else {
+              <span class="pvm-sticky-price">Ask jeweller</span>
+            }
+          </div>
+        </div>
+        @if (!isInCart()) {
+          <button type="button" class="pvm-sticky-cta" (click)="addToCart()">
+            <i class="fa-regular fa-heart" aria-hidden="true"></i>
+            Add
+          </button>
+        } @else {
+          <button type="button" class="pvm-sticky-cta is-added" (click)="goToCart()">
+            <i class="fa-solid fa-check" aria-hidden="true"></i>
+            Added
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

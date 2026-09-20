@@ -1,0 +1,92 @@
+<div
+  class="store-chrome"
+  [class.menu-open]="menuOpen()"
+  [style.--store-primary]="brandColor() || null"
+>
+  @if (isAvailable() && topBarItems().length) {
+    <div class="trust-topbar">
+      @for (item of topBarItems(); track item.text; let i = $index) {
+        <span class="trust-item">
+          <i [attr.data-i]="i"></i>
+          {{ item.text }}
+        </span>
+      }
+    </div>
+  }
+
+  <header class="store-header">
+    <div class="header-top">
+      <a class="nav-brand" [routerLink]="['/c', storeCode()]" (click)="closeMenu()">
+        @if (logoUrl()) {
+          <img [src]="logoUrl()" [alt]="vendorName()" class="nav-logo" />
+        } @else {
+          <span class="nav-logo-fallback">{{ vendorInitials() }}</span>
+        }
+        <span class="nav-name">{{ vendorName() }}</span>
+      </a>
+
+      @if (isAvailable()) {
+        <div class="nav-actions">
+          @if (contactPhone()) {
+            <a
+              class="icon-btn phone-link"
+              [href]="'tel:' + contactPhone()"
+              [attr.aria-label]="'Call ' + contactPhone()"
+              [attr.data-tooltip]="'Call ' + contactPhone()"
+              data-tooltip-pos="bottom"
+            >
+              <i class="fa-solid fa-phone" aria-hidden="true"></i>
+            </a>
+          }
+          <button
+            type="button"
+            class="icon-btn"
+            (click)="goCart()"
+            [class.active]="isCartActive()"
+            aria-label="Interest list"
+            data-tooltip="Interest list"
+            data-tooltip-pos="bottom"
+          >
+            <i class="fa-solid fa-heart" aria-hidden="true"></i>
+            @if (cart.count()) {
+              <span class="cart-badge">{{ cart.count() }}</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="menu-btn"
+            (click)="toggleMenu()"
+            [attr.aria-label]="menuOpen() ? 'Close menu' : 'Open menu'"
+            [attr.data-tooltip]="menuOpen() ? 'Close menu' : 'Open menu'"
+            data-tooltip-pos="bottom"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (isAvailable()) {
+    <nav class="mobile-drawer" [class.open]="menuOpen()" aria-label="Catalog menu">
+      <button type="button" class="nav-link" (click)="goCatalog()">Catalog</button>
+      <button type="button" class="nav-link" (click)="goCart()">
+        Interest List
+        @if (cart.count()) {
+          ({{ cart.count() }})
+        }
+      </button>
+      @if (contactPhone()) {
+        <a class="nav-link" [href]="'tel:' + contactPhone()" (click)="closeMenu()">
+          Call {{ contactPhone() }}
+        </a>
+      }
+      <button type="button" class="close-menu-btn" (click)="closeMenu()">
+        Close
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </nav>
+  }
+</div>

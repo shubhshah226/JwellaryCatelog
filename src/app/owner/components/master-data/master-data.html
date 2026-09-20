@@ -1,0 +1,133 @@
+<section class="vendor-page product-options-page">
+  <div class="page-header">
+    <div>
+      <h2>Product Options</h2>
+      <p class="page-subtitle">
+        Set up the lists you pick from when adding products — categories, metals, purity, and colors.
+      </p>
+    </div>
+  </div>
+
+  <div class="option-cards" role="tablist" aria-label="Product option types">
+    @for (tab of tabs; track tab) {
+      <button
+        type="button"
+        class="option-card"
+        role="tab"
+        [class.active]="activeTab() === tab"
+        [attr.aria-selected]="activeTab() === tab"
+        (click)="setTab(tab)"
+      >
+        <span class="option-card-icon" aria-hidden="true">
+          <i [class]="tabMeta(tab).icon"></i>
+        </span>
+        <span class="option-card-body">
+          <span class="option-card-title">{{ tabMeta(tab).title }}</span>
+          <span class="option-card-count">{{ tabCount(tab) }} items</span>
+        </span>
+      </button>
+    }
+  </div>
+
+  @if (errorMessage()) {
+    <div class="inline-error">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn btn-outline" (click)="loadAll()">Retry</button>
+    </div>
+  }
+
+  <section class="option-panel">
+    <div class="option-panel-header">
+      <div class="option-panel-intro">
+        <h3>
+          <i [class]="activeMeta().icon" aria-hidden="true"></i>
+          {{ activeMeta().title }}
+        </h3>
+        <p>{{ activeMeta().description }}</p>
+        <p class="option-example">{{ activeMeta().example }}</p>
+      </div>
+      @if (!formOpen()) {
+        <button type="button" class="btn btn-primary master-add-btn" (click)="openAddForm($event)">
+          {{ activeMeta().addLabel }}
+        </button>
+      }
+    </div>
+
+    @if (formOpen()) {
+      <form
+        class="master-composer"
+        [class.is-add]="formMode() === 'add'"
+        [class.is-edit]="formMode() === 'edit'"
+        (ngSubmit)="submitForm()"
+      >
+        <div class="composer-label">
+          <span class="composer-mode">{{ formMode() === 'edit' ? 'Editing' : 'New' }}</span>
+          <strong>{{ formTitle() }}</strong>
+        </div>
+
+        <div class="composer-fields">
+          <label class="composer-name">
+            <span class="sr-only">{{ activeMeta().label }} name</span>
+            <input
+              #nameInput
+              type="text"
+              name="masterName"
+              [(ngModel)]="formName"
+              [placeholder]="activeMeta().placeholder"
+              required
+              [disabled]="isSubmitting()"
+            />
+          </label>
+
+          <label class="composer-active" [class.on]="formIsActive">
+            <input
+              type="checkbox"
+              name="formIsActive"
+              [(ngModel)]="formIsActive"
+              [disabled]="isSubmitting()"
+            />
+            <span class="composer-active-ui" aria-hidden="true"></span>
+            <span class="composer-active-text">{{ formIsActive ? 'Active' : 'Inactive' }}</span>
+          </label>
+        </div>
+
+        @if (formError()) {
+          <p class="form-error">{{ formError() }}</p>
+        }
+
+        <div class="composer-actions">
+          <button
+            type="button"
+            class="btn btn-outline"
+            (click)="closeForm()"
+            [disabled]="isSubmitting()"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Saving...' : formMode() === 'edit' ? 'Update' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    <div class="option-stats">
+      <span><strong>{{ totalCount() }}</strong> total</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span><strong>{{ activeCount() }}</strong> active</span>
+    </div>
+
+    @if (isLoading()) {
+      <div class="state-message">
+        <div class="page-loader-ring" aria-hidden="true"></div>
+        <span>Loading {{ activeMeta().plural }}...</span>
+      </div>
+    } @else {
+      <app-data-grid
+        [rows]="activeRows()"
+        [config]="gridConfig()"
+        (action)="onGridAction($event)"
+      />
+    }
+  </section>
+</section>

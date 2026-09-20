@@ -1,0 +1,152 @@
+<div class="landing">
+  <header class="topbar">
+    <a class="brand" routerLink="/">
+      <span class="brand-mark" aria-hidden="true"><i class="fa-solid fa-gem"></i></span>
+      <span class="brand-name">{{ contact.productName }}</span>
+    </a>
+    <nav class="top-nav" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#for">Who it’s for</a>
+      <a href="#contact" class="nav-contact">Contact</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">A personal project for jewellers</p>
+      <h1>{{ contact.productName }}</h1>
+      <p class="lede">
+        Send curated pieces to a customer in one private link. They browse, save favourites, and
+        send one enquiry — without a public shop or complicated checkout.
+      </p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn primary">Ask about a catalogue</a>
+        <a href="#how" class="btn ghost">See how it works</a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="hero-glow"></div>
+      <div class="hero-panel">
+        <span class="panel-kicker">Shared catalogue</span>
+        <strong>Rings · Necklaces · Bangles</strong>
+        <span class="panel-line">Curated for your customer</span>
+        <ul>
+          <li><i class="fa-solid fa-link"></i> One private link</li>
+          <li><i class="fa-regular fa-heart"></i> Interest list</li>
+          <li><i class="fa-regular fa-envelope"></i> Single enquiry</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section how" id="how">
+    <header class="section-head">
+      <h2>How it works</h2>
+      <p>From designs to a customer conversation — in three steps.</p>
+    </header>
+    <ol class="steps">
+      <li>
+        <span class="step-num">01</span>
+        <h3>Add designs</h3>
+        <p>Upload products with photos, metal, purity, and optional price.</p>
+      </li>
+      <li>
+        <span class="step-num">02</span>
+        <h3>Share a catalogue</h3>
+        <p>Pick pieces for a customer and send a private link by WhatsApp or message.</p>
+      </li>
+      <li>
+        <span class="step-num">03</span>
+        <h3>Receive interest</h3>
+        <p>They mark favourites and confirm one enquiry — you follow up with clarity.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="section for" id="for">
+    <header class="section-head">
+      <h2>Built for jewellers</h2>
+      <p>A quieter way to share work than a noisy public marketplace.</p>
+    </header>
+    <div class="for-grid">
+      <article>
+        <h3>Private by default</h3>
+        <p>Links are token-based. Revoke anytime. Customers only see what you chose to send.</p>
+      </article>
+      <article>
+        <h3>Brand your catalogue</h3>
+        <p>Business name, logo, and brand colour appear on the shared browsing experience.</p>
+      </article>
+      <article>
+        <h3>One enquiry, clear list</h3>
+        <p>Interest carts gather the pieces they care about so you don’t chase scattered chats.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section close" id="contact">
+    <div class="close-copy">
+      <p class="close-kicker">{{ contact.creatorLabel }} {{ contact.creatorName }}</p>
+      <h2>Want a catalogue for your shop?</h2>
+      <p>{{ contact.note }}</p>
+      <div class="contact-actions">
+        <a class="btn primary" [href]="waHref" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+          Message on WhatsApp
+        </a>
+        <a class="btn ghost-light" [href]="telHref">
+          <i class="fa-solid fa-phone" aria-hidden="true"></i>
+          Call {{ contact.phone }}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <span class="footer-mark" aria-hidden="true"><i class="fa-solid fa-gem"></i></span>
+      <div>
+        <strong>{{ contact.productName }}</strong>
+        <p>{{ contact.tagline }}</p>
+      </div>
+    </div>
+
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h3>Creator</h3>
+        <p class="creator-name">
+          <i class="fa-regular fa-user" aria-hidden="true"></i>
+          {{ contact.creatorName }}
+        </p>
+        <p>{{ contact.creatorLabel }} this product — not a jewellery store.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Personal contact</h3>
+        <a [href]="telHref">
+          <i class="fa-solid fa-phone" aria-hidden="true"></i>
+          {{ contact.phone }}
+        </a>
+        <a [href]="mailHref">
+          <i class="fa-regular fa-envelope" aria-hidden="true"></i>
+          {{ contact.email }}
+        </a>
+        <a [href]="waHref" target="_blank" rel="noopener noreferrer">
+          <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+          WhatsApp
+        </a>
+      </div>
+      <div class="footer-col">
+        <h3>Based in</h3>
+        <p>
+          <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+          {{ contact.city }}
+        </p>
+        <p>{{ contact.note }}</p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>{{ contact.productName }} · {{ contact.creatorLabel }} {{ contact.creatorName }}</span>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,285 @@
+@if (isLoading()) {
+  <div class="cart-state">
+    <div class="loader-ring"></div>
+    <p>Loading your interest list…</p>
+  </div>
+} @else if (notFound()) {
+  <div class="cart-state">
+    <h1>Catalog not found</h1>
+    <p>This catalogue link is invalid or no longer available.</p>
+  </div>
+} @else if (context(); as ctx) {
+  <div
+    class="interest-cart-page"
+    [style.--store-primary]="primaryColor()"
+    [style.--store-accent]="accentColor()"
+  >
+    <header class="cart-topbar">
+      <a class="back-link" [routerLink]="catalogBrowseLink(ctx)">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        Catalog
+      </a>
+      <div class="topbar-brand">
+        <span class="topbar-name">{{ ctx.vendor.name }}</span>
+        <span class="topbar-sub">Interest list</span>
+      </div>
+      @if (ctx.vendor.phone) {
+        <a
+          class="topbar-call"
+          [href]="'tel:' + ctx.vendor.phone"
+          aria-label="Call jeweller"
+          data-tooltip="Call jeweller"
+          data-tooltip-pos="bottom"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+      } @else {
+        <span class="topbar-spacer" aria-hidden="true"></span>
+      }
+    </header>
+
+    <main class="cart-main">
+      <header class="page-intro">
+        <div class="intro-copy">
+          <p class="intro-kicker">Your selection</p>
+          <h1>Your interest list</h1>
+          <p class="intro-text">
+            Review selected pieces, then send one enquiry to
+            <strong>{{ ctx.vendor.name }}</strong>.
+          </p>
+        </div>
+        <p class="intro-tagline">Fine jewellery for brighter moments.</p>
+      </header>
+
+      @if (submitted()) {
+        <div class="cart-success">
+          <span class="success-icon"><i class="fa-solid fa-circle-check"></i></span>
+          <h2>Enquiry sent</h2>
+          <p>{{ successMessage() }}</p>
+          <p class="success-sub">They will contact you shortly.</p>
+          <a [routerLink]="catalogBrowseLink(ctx)" class="btn-primary">Continue browsing</a>
+        </div>
+      } @else if (!cartCount()) {
+        <div class="cart-empty">
+          <span class="empty-ico"><i class="fa-regular fa-heart"></i></span>
+          <h2>Nothing saved yet</h2>
+          <p class="hint">Open a piece in the catalog and tap “Add to interest list”.</p>
+          <a [routerLink]="catalogBrowseLink(ctx)" class="btn-primary">Browse catalog</a>
+        </div>
+      } @else {
+        <div class="cart-layout">
+          <section class="cart-section" aria-label="Selected pieces">
+            <div class="section-row">
+              <h2>{{ cartCount() }} piece{{ cartCount() === 1 ? '' : 's' }}</h2>
+              <button type="button" class="clear-all" (click)="clearAll()">
+                <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                Clear all
+              </button>
+            </div>
+
+            <ul class="cart-list">
+              @for (item of cartItems(); track item.id) {
+                <li class="cart-item">
+                  <button
+                    type="button"
+                    class="remove-btn"
+                    (click)="removeItem(item.id)"
+                    aria-label="Remove {{ item.name }}"
+                    [attr.data-tooltip]="'Remove ' + item.name"
+                  >
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                  </button>
+
+                  <div class="item-thumb">
+                    @if (item.imageUrl) {
+                      <img [src]="item.imageUrl" [alt]="item.name" />
+                    } @else {
+                      <span><i class="fa-solid fa-gem"></i></span>
+                    }
+                  </div>
+
+                  <div class="item-body">
+                    <div class="item-head">
+                      <strong>{{ item.name }}</strong>
+                      @if (item.category) {
+                        <span class="item-cat">{{ item.category }}</span>
+                      }
+                    </div>
+                    <p class="item-sku">Code {{ skuLabel(item) }}</p>
+
+                    <div class="item-specs">
+                      @if (item.metalType) {
+                        <span><i class="fa-regular fa-gem" aria-hidden="true"></i> {{ item.metalType }}</span>
+                      }
+                      @if (item.weight != null) {
+                        <span><i class="fa-solid fa-weight-hanging" aria-hidden="true"></i> {{ item.weight }} g</span>
+                      }
+                      @if (item.category) {
+                        <span><i class="fa-solid fa-tag" aria-hidden="true"></i> {{ item.category }}</span>
+                      }
+                      @if (itemPrice(item.price)) {
+                        <span class="item-price">{{ itemPrice(item.price) }}</span>
+                      }
+                    </div>
+
+                    <button type="button" class="view-link" (click)="viewDetails(item)">
+                      View details
+                      <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <aside class="cart-summary" id="enquiry-form">
+            <div class="summary-head">
+              <span class="summary-ico" aria-hidden="true"><i class="fa-regular fa-envelope"></i></span>
+              <div>
+                <h2>Send enquiry</h2>
+                <p class="summary-count">We’ll notify {{ ctx.vendor.name }} with these pieces.</p>
+              </div>
+            </div>
+
+            <label class="note-field">
+              <span>Your name <em>*</em></span>
+              <div class="field-shell">
+                <i class="fa-regular fa-user" aria-hidden="true"></i>
+                <input
+                  type="text"
+                  [(ngModel)]="guestName"
+                  name="guestName"
+                  placeholder="Full name"
+                  autocomplete="name"
+                />
+              </div>
+            </label>
+
+            <label class="note-field">
+              <span>Phone / WhatsApp <em>*</em></span>
+              <div class="field-shell">
+                <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                <input
+                  type="tel"
+                  appPhoneDigits
+                  inputmode="numeric"
+                  maxlength="10"
+                  [ngModel]="guestPhone"
+                  (ngModelChange)="onPhoneInput($event)"
+                  name="guestPhone"
+                  placeholder="10-digit mobile"
+                  autocomplete="tel"
+                />
+              </div>
+              @if (phoneError()) {
+                <small class="field-error">{{ phoneError() }}</small>
+              }
+            </label>
+
+            <label class="note-field">
+              <span>Note <span class="optional">(optional)</span></span>
+              <div class="field-shell textarea">
+                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                <textarea
+                  [(ngModel)]="note"
+                  rows="3"
+                  placeholder="Occasion, budget, preferred metal…"
+                ></textarea>
+              </div>
+            </label>
+
+            @if (errorMessage()) {
+              <p class="cart-error">{{ errorMessage() }}</p>
+            }
+
+            <button
+              type="button"
+              class="btn-interested"
+              (click)="submitInterest()"
+              [disabled]="isSubmitting()"
+            >
+              <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+              {{ isSubmitting() ? 'Sending…' : 'Send interest to jeweller' }}
+            </button>
+            <p class="submit-hint">Creates one lead with all selected products. No payment required.</p>
+
+            <div class="trust-row" aria-label="Trust points">
+              <div class="trust-item">
+                <i class="fa-regular fa-gem" aria-hidden="true"></i>
+                <div>
+                  <strong>Certified jewellery</strong>
+                  <span>100% authentic</span>
+                </div>
+              </div>
+              <div class="trust-item">
+                <i class="fa-solid fa-truck" aria-hidden="true"></i>
+                <div>
+                  <strong>Secure delivery</strong>
+                  <span>Safe &amp; insured</span>
+                </div>
+              </div>
+              <div class="trust-item">
+                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                <div>
+                  <strong>Trusted by customers</strong>
+                  <span>Since years</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          @if (suggestions().length) {
+            <section class="suggest-section" aria-label="More pieces">
+              <h2>You may also like</h2>
+              <div class="suggest-rail">
+                @for (product of suggestions(); track product.id) {
+                  <article class="suggest-card">
+                    <button
+                      type="button"
+                      class="suggest-heart"
+                      (click)="addSuggestion(product)"
+                      [attr.aria-label]="'Add ' + product.name + ' to interest list'"
+                      [attr.data-tooltip]="'Add to interest list'"
+                    >
+                      <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="suggest-media"
+                      (click)="viewDetails(asCartItem(product))"
+                      [attr.aria-label]="'View ' + product.name"
+                      [attr.data-tooltip]="product.name"
+                    >
+                      @if (product.imageUrl) {
+                        <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" />
+                      } @else {
+                        <span><i class="fa-solid fa-gem"></i></span>
+                      }
+                    </button>
+                    <div class="suggest-copy">
+                      <strong>{{ product.name }}</strong>
+                      <span>{{ product.sku || ('P' + product.id) }}</span>
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      }
+    </main>
+
+    <app-product-viewer-modal
+      [open]="viewerOpen()"
+      [product]="selectedProduct()"
+      [vendorId]="ctx.vendor.id"
+      [vendorName]="ctx.vendor.name"
+      [storeCode]="ctx.storeCode"
+      [brandColor]="brandColor(ctx)"
+      [contactPhone]="ctx.vendor.phone || ''"
+      (closed)="closeViewer()"
+      (productHydrated)="onProductHydrated($event)"
+      (addedToCart)="refreshSuggestions()"
+    />
+  </div>
+}

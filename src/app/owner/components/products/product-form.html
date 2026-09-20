@@ -1,0 +1,272 @@
+@if (isLoading()) {
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading...</span>
+  </div>
+} @else if (pageError()) {
+  <div class="state-message error">
+    <p>{{ pageError() }}</p>
+    <button type="button" class="btn btn-outline" (click)="goBack()">Back to Products</button>
+  </div>
+} @else {
+  <section class="product-form-page in-layout">
+    <div class="pfp-toolbar">
+      <button type="button" class="pfp-back" (click)="goBack()" [disabled]="isSubmitting()" aria-label="Back">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Back</span>
+      </button>
+    </div>
+
+    <form class="pfp-form" (ngSubmit)="submitProduct()">
+      <div class="pfp-layout">
+        <section class="pfp-section pfp-photos-card">
+          <div class="pfp-section-head">
+            <h4>Photos <em>*</em></h4>
+            <span>Drag to reorder · 1st = cover</span>
+          </div>
+
+          <div class="pfp-photos">
+            @if (photoSlots().length) {
+              <div class="pfp-photo-strip">
+                @for (slot of photoSlots(); track $index) {
+                  <div
+                    class="pfp-photo"
+                    [class.cover]="$index === 0"
+                    [class.existing]="isExistingPhoto(slot)"
+                    [class.dragging]="dragPhotoIndex() === $index"
+                    draggable="true"
+                    (dragstart)="onPhotoDragStart($index, $event)"
+                    (dragover)="onPhotoDragOver($event)"
+                    (drop)="onPhotoDrop($index, $event)"
+                    (dragend)="onPhotoDragEnd()"
+                  >
+                    @if (photoPreview(slot)) {
+                      <img [src]="photoPreview(slot)" [alt]="$index === 0 ? 'Cover' : 'Photo ' + ($index + 1)" />
+                    } @else {
+                      <div class="pfp-photo-placeholder" aria-hidden="true">
+                        <i class="fa-solid fa-image"></i>
+                      </div>
+                    }
+                    <span class="photo-order">{{ $index + 1 }}</span>
+                    @if ($index === 0) {
+                      <span class="primary-badge">Cover</span>
+                    }
+                    <button
+                      type="button"
+                      class="remove-img"
+                      (click)="confirmRemovePhoto($index); $event.stopPropagation()"
+                      aria-label="Remove photo"
+                      data-tooltip="Remove photo"
+                    >
+                      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                    @if ($index > 0) {
+                      <button
+                        type="button"
+                        class="move-img"
+                        (click)="movePhoto($index, $index - 1); $event.stopPropagation()"
+                        aria-label="Move earlier"
+                        data-tooltip="Move left"
+                      >
+                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                      </button>
+                    }
+                    @if ($index < photoSlots().length - 1) {
+                      <button
+                        type="button"
+                        class="move-img right"
+                        (click)="movePhoto($index, $index + 1); $event.stopPropagation()"
+                        aria-label="Move later"
+                        data-tooltip="Move right"
+                      >
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="pfp-photo-empty">
+                <i class="fa-solid fa-camera"></i>
+                <p>Upload product photos</p>
+              </div>
+            }
+
+            <label class="pfp-upload-btn">
+              <i class="fa-solid fa-plus"></i>
+              {{ photoSlots().length ? 'Add more' : 'Upload photos' }}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                multiple
+                (change)="onPhotosSelected($event)"
+                hidden
+              />
+            </label>
+            <small class="field-hint">JPG, PNG or WEBP · max 10MB each</small>
+          </div>
+        </section>
+
+        <section class="pfp-section pfp-fields-card">
+          <div class="form-row">
+            <label class="form-field form-field-span2">
+              <span>Product Name <em>*</em></span>
+              <input
+                type="text"
+                [(ngModel)]="productForm.name"
+                name="name"
+                placeholder="e.g. Classic Gold Ring"
+                required
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Category <em>*</em></span>
+              <select
+                [ngModel]="productForm.categoryId"
+                (ngModelChange)="onCategoryChange($event)"
+                name="categoryId"
+                required
+              >
+                <option [ngValue]="null" disabled>Select category</option>
+                @for (cat of categoryOptionsForForm(); track cat.id) {
+                  <option [ngValue]="cat.id">{{ cat.name }}</option>
+                }
+              </select>
+              @if (!categories().length) {
+                <small class="field-hint">Add categories in Product Options first.</small>
+              }
+            </label>
+
+            <label class="form-field">
+              <span>Metal <em>*</em></span>
+              <select
+                [ngModel]="productForm.metalTypeId"
+                (ngModelChange)="onMetalChange($event)"
+                name="metalTypeId"
+                required
+              >
+                <option [ngValue]="null" disabled>Select metal</option>
+                @for (metal of metalOptionsForForm(); track metal.id) {
+                  <option [ngValue]="metal.id">{{ metal.name }}</option>
+                }
+              </select>
+              @if (!metalTypes().length) {
+                <small class="field-hint">Add metal types in Product Options first.</small>
+              }
+            </label>
+
+            <label class="form-field">
+              <span>Price (Rs)</span>
+              <input
+                type="number"
+                [(ngModel)]="productForm.price"
+                name="price"
+                min="0"
+                inputmode="decimal"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Purity</span>
+              <select
+                [ngModel]="productForm.purityId"
+                (ngModelChange)="onPurityChange($event)"
+                name="purityId"
+              >
+                <option [ngValue]="null">None</option>
+                @for (p of purityOptionsForForm(); track p.id) {
+                  <option [ngValue]="p.id">{{ p.name }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Weight (Gm) <em>*</em></span>
+              <input
+                type="text"
+                [(ngModel)]="productForm.weight"
+                name="weight"
+                inputmode="decimal"
+                placeholder="e.g. 12"
+                required
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Product Code <em>*</em></span>
+              <input
+                type="text"
+                [(ngModel)]="productForm.sku"
+                name="sku"
+                placeholder="SKU / code"
+                required
+                [readonly]="mode() === 'edit'"
+              />
+              @if (mode() === 'edit') {
+                <small class="field-hint">SKU cannot be changed after create.</small>
+              }
+            </label>
+
+            <label class="form-field">
+              <span>Color</span>
+              <select
+                [ngModel]="productForm.colorId"
+                (ngModelChange)="onColorChange($event)"
+                name="colorId"
+              >
+                <option [ngValue]="null">None</option>
+                @for (c of colorOptionsForForm(); track c.id) {
+                  <option [ngValue]="c.id">{{ c.name }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="form-field">
+              <span>Stock <em>*</em></span>
+              <select [(ngModel)]="productForm.status" name="status">
+                @for (s of stockStatuses; track s.value) {
+                  <option [value]="s.value">{{ s.label }}</option>
+                }
+              </select>
+            </label>
+
+            <div class="form-row-status-desc">
+              <label class="form-field form-field-status-sm">
+                <span>Status</span>
+                <select
+                  [ngModel]="productForm.isActive ? 'active' : 'inactive'"
+                  (ngModelChange)="productForm.isActive = $event === 'active'"
+                  name="isActive"
+                  [disabled]="isSubmitting()"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label class="form-field form-field-desc">
+                <span>Description</span>
+                <textarea
+                  [(ngModel)]="productForm.description"
+                  name="description"
+                  rows="2"
+                  placeholder="Optional notes"
+                ></textarea>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="pfp-footer">
+        <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update Product' : 'Save Product') }}
+        </button>
+      </div>
+    </form>
+  </section>
+}

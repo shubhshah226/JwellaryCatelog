@@ -1,0 +1,354 @@
+@if (isLoading() && !products().length && !context()) {
+  <div class="public-state loading-state">
+    <div class="loader-ring"></div>
+    <p>Opening catalog…</p>
+  </div>
+} @else if (notFound()) {
+  <div class="public-state error-state">
+    <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
+    <h1>Link not found</h1>
+    <p>This catalog link is invalid or has expired. Please check the message you were sent.</p>
+  </div>
+} @else if (unavailableMessage()) {
+  <div class="public-state error-state">
+    <div class="error-ornament"><i class="fa-solid fa-gem"></i></div>
+    <h1>Catalog unavailable</h1>
+    <p>{{ unavailableMessage() }}</p>
+    @if (context()?.vendor?.phone; as phone) {
+      <a class="state-cta" [href]="'tel:' + phone">Call {{ context()!.vendor.name }}</a>
+    }
+  </div>
+} @else if (context(); as ctx) {
+  <div
+    class="catalog-page"
+    [style.--brand]="brandColor(ctx)"
+  >
+    @if (categoriesOpen()) {
+      <button
+        type="button"
+        class="cat-scrim"
+        (click)="closeCategories($event)"
+        aria-label="Close menu"
+      ></button>
+    }
+
+    <aside
+      class="cat-sidebar"
+      [class.open]="categoriesOpen()"
+      aria-label="Catalog menu"
+      [attr.aria-hidden]="!categoriesOpen()"
+    >
+      <div class="drawer-topbar">
+        <span class="drawer-topbar-label">Menu</span>
+        <button
+          type="button"
+          class="drawer-close"
+          (click)="closeCategories($event)"
+          aria-label="Close menu"
+          data-tooltip="Close menu"
+          data-tooltip-pos="bottom"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="side-brand">
+        @if (logoUrl(ctx); as logo) {
+          <img class="side-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
+        } @else {
+          <span class="side-logo-fallback">{{ vendorInitials(ctx.vendor) }}</span>
+        }
+        <h1 class="side-name">{{ ctx.vendor.name }}</h1>
+        @if (ctx.catalogTitle) {
+          <p class="side-tagline">{{ ctx.catalogTitle }}</p>
+        }
+        @if (ctx.vendor.phone) {
+          <a class="side-phone" [href]="'tel:' + ctx.vendor.phone">
+            <i class="fa-solid fa-phone" aria-hidden="true"></i>
+            {{ ctx.vendor.phone }}
+          </a>
+        }
+        @if (vendorAddress(ctx.vendor); as addr) {
+          <p class="side-address">
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            <span>{{ addr }}</span>
+          </p>
+        }
+      </div>
+
+      <div class="side-nav">
+        <h2>Categories</h2>
+        <label class="cat-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            [ngModel]="categorySearch()"
+            (ngModelChange)="categorySearch.set($event)"
+            placeholder="Find a category"
+          />
+        </label>
+        <nav class="cat-list" aria-label="Categories">
+          <button
+            type="button"
+            class="cat-item"
+            [class.active]="selectedCategory() === 'all'"
+            (click)="selectCategory('all')"
+          >
+            All pieces
+            <span class="cat-count">{{ totalCount() }}</span>
+          </button>
+          @for (cat of filteredCategories(); track cat) {
+            <button
+              type="button"
+              class="cat-item"
+              [class.active]="selectedCategory() === cat"
+              (click)="selectCategory(cat)"
+            >
+              {{ cat }}
+            </button>
+          }
+        </nav>
+      </div>
+    </aside>
+
+    <div class="catalog-shell">
+      <header class="biz-header">
+        <div class="header-lead">
+          <button
+            type="button"
+            class="mobile-cat-btn"
+            (click)="toggleCategories()"
+            [attr.aria-label]="categoriesOpen() ? 'Close categories' : 'Open categories'"
+            [attr.data-tooltip]="categoriesOpen() ? 'Close categories' : 'Open categories'"
+            data-tooltip-pos="bottom"
+          >
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="mobile-brand">
+            @if (logoUrl(ctx); as logo) {
+              <img class="mobile-logo" [src]="logo" [alt]="ctx.vendor.name" (error)="onLogoError()" />
+            } @else {
+              <span class="mobile-logo-fallback">{{ vendorInitials(ctx.vendor) }}</span>
+            }
+            <div class="mobile-brand-text">
+              <span class="mobile-brand-name">{{ ctx.vendor.name }}</span>
+              @if (shareCustomerName()) {
+                <span class="mobile-brand-sub">For {{ shareCustomerName() }}</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <label class="product-search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            [ngModel]="productSearch()"
+            (ngModelChange)="onProductSearch($event)"
+            placeholder="Search designs, SKU…"
+          />
+        </label>
+
+        <div class="header-actions-public">
+          @if (ctx.vendor.phone) {
+            <a
+              class="icon-action phone"
+              [href]="'tel:' + ctx.vendor.phone"
+              [attr.aria-label]="'Call ' + ctx.vendor.phone"
+              [attr.data-tooltip]="'Call ' + ctx.vendor.phone"
+              data-tooltip-pos="bottom"
+            >
+              <i class="fa-solid fa-phone" aria-hidden="true"></i>
+              <span class="action-label">{{ ctx.vendor.phone }}</span>
+            </a>
+          }
+          <a
+            class="icon-action cart"
+            [routerLink]="['/c', ctx.storeCode, 'cart']"
+            [attr.aria-label]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
+            [attr.data-tooltip]="'Interest list' + (cart.count() ? ' (' + cart.count() + ')' : '')"
+            data-tooltip-pos="bottom"
+          >
+            <i class="fa-regular fa-heart" aria-hidden="true"></i>
+            @if (cart.count()) {
+              <span class="cart-badge">{{ cart.count() }}</span>
+            }
+            <span class="action-label">Interest</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="catalog-main">
+        <section class="catalog-hero">
+          <div class="hero-copy">
+            <p class="hero-kicker">{{ ctx.vendor.name }}</p>
+            <h2>
+              {{ isSharedView() ? (shareLabel() || ctx.catalogTitle || 'Your collection') : activeCategoryLabel() }}
+            </h2>
+            @if (shareCustomerName()) {
+              <p class="hero-for">Curated for <strong>{{ shareCustomerName() }}</strong></p>
+            } @else if (ctx.catalogTitle && !isSharedView()) {
+              <p class="hero-for">{{ ctx.catalogTitle }}</p>
+            } @else {
+              <p class="hero-for">Browse pieces and save favourites to send one enquiry.</p>
+            }
+          </div>
+          <div class="hero-meta">
+            <span class="meta-pill">{{ totalCount() }} {{ totalCount() === 1 ? 'piece' : 'pieces' }}</span>
+            @if (selectedCategory() !== 'all') {
+              <button type="button" class="meta-clear" (click)="selectCategory('all')">
+                Clear filter
+              </button>
+            }
+          </div>
+        </section>
+
+        @if (categoryList().length) {
+          <div class="chip-rail" aria-label="Quick categories">
+            <button
+              type="button"
+              class="chip"
+              [class.active]="selectedCategory() === 'all'"
+              (click)="selectCategory('all')"
+            >
+              All
+            </button>
+            @for (cat of categoryList(); track cat) {
+              <button
+                type="button"
+                class="chip"
+                [class.active]="selectedCategory() === cat"
+                (click)="selectCategory(cat)"
+              >
+                {{ cat }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (products().length) {
+          @for (tick of [gridAnimTick()]; track tick) {
+            <div class="product-grid">
+              @for (product of products(); track product.id; let i = $index) {
+                <article
+                  class="product-card"
+                  [class.in-interest]="inInterestList(product.id)"
+                  [style.animation-delay]="cardDelay(i)"
+                  (click)="openProduct(product)"
+                >
+                  <div class="card-media">
+                    @if (product.category) {
+                      <span class="cat-badge">{{ product.category }}</span>
+                    }
+                    @if (inInterestList(product.id)) {
+                      <span class="interest-badge" aria-label="Already in your interest list">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i>
+                        Added
+                      </span>
+                    }
+                    @if (product.imageUrl) {
+                      <img
+                        [src]="product.imageUrl"
+                        [alt]="product.name"
+                        loading="lazy"
+                        (error)="onImgError($event)"
+                      />
+                    }
+                    <div class="ph" [class.visible]="!product.imageUrl"><i class="fa-solid fa-gem"></i></div>
+                    <span class="quick-view" aria-hidden="true">
+                      @if (inInterestList(product.id)) {
+                        <i class="fa-solid fa-check"></i>
+                        Added
+                      } @else {
+                        <i class="fa-regular fa-eye"></i>
+                        View
+                      }
+                    </span>
+                  </div>
+                  <div class="card-body">
+                    <h3>{{ product.name }}</h3>
+                    <div class="card-meta-row">
+                      <p class="sku">{{ skuLabel(product) }}</p>
+                      @if (product.price != null) {
+                        <p class="card-price">{{ product.price | number: '1.0-0' }}</p>
+                      }
+                    </div>
+                    @if (product.metalType || product.purity) {
+                      <p class="card-spec">
+                        {{ product.metalType }}{{ product.metalType && product.purity ? ' · ' : '' }}{{ product.purity }}
+                      </p>
+                    }
+                    @if (inInterestList(product.id)) {
+                      <p class="interest-status">
+                        <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                        In your interest list
+                      </p>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          }
+
+          @if (!isSharedView()) {
+            <div #loadMoreSentinel class="sentinel" aria-hidden="true"></div>
+            @if (isLoadingMore()) {
+              <div class="more-status">
+                <div class="loader-ring small"></div>
+                <span>Loading more…</span>
+              </div>
+            }
+          }
+        } @else if (isLoading()) {
+          <div class="empty">
+            <div class="loader-ring"></div>
+            <p>Loading products…</p>
+          </div>
+        } @else {
+          <div class="empty">
+            <span class="empty-ico"><i class="fa-solid fa-gem"></i></span>
+            <h3>No pieces found</h3>
+            <p>Try another category or clear your search.</p>
+            @if (selectedCategory() !== 'all' || productSearch()) {
+              <button type="button" class="empty-reset" (click)="selectCategory('all'); onProductSearch('')">
+                Reset filters
+              </button>
+            }
+          </div>
+        }
+      </main>
+
+      <nav class="mobile-dock" aria-label="Quick actions">
+        @if (ctx.vendor.phone) {
+          <a class="dock-btn call" [href]="'tel:' + ctx.vendor.phone">
+            <i class="fa-solid fa-phone" aria-hidden="true"></i>
+            Call
+          </a>
+        }
+        <button type="button" class="dock-btn cats" (click)="toggleCategories()">
+          <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+          Categories
+        </button>
+        <a class="dock-btn cart" [routerLink]="['/c', ctx.storeCode, 'cart']">
+          <i class="fa-regular fa-heart" aria-hidden="true"></i>
+          Interest
+          @if (cart.count()) {
+            <span class="dock-badge">{{ cart.count() }}</span>
+          }
+        </a>
+      </nav>
+    </div>
+
+    <app-product-viewer-modal
+      [open]="viewerOpen()"
+      [product]="selectedProduct()"
+      [vendorId]="ctx.vendor.id"
+      [vendorName]="ctx.vendor.name"
+      [storeCode]="ctx.storeCode"
+      [brandColor]="brandColor(ctx)"
+      [contactPhone]="ctx.vendor.phone || ''"
+      (closed)="closeViewer()"
+      (productHydrated)="onProductHydrated($event)"
+    />
+  </div>
+}

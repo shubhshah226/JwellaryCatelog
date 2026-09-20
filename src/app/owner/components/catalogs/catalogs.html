@@ -1,0 +1,48 @@
+<section class="vendor-page catalogs-page">
+  <div class="page-header">
+    <div>
+      <h2>Manage Catalogs</h2>
+      <p class="page-subtitle">
+        Create shareable catalogs from your products. You can also create one from Manage Products by selecting items.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary" (click)="openAddPage()">+ Add Catalog</button>
+    </div>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="inline-error">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn btn-outline" (click)="loadCatalogs()">Retry</button>
+    </div>
+  }
+
+  <div class="stats-row">
+    <article class="stat-card">
+      <p class="stat-label">Total</p>
+      <h3>{{ allCatalogs().length }}</h3>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Active</p>
+      <h3>{{ activeCount() }}</h3>
+    </article>
+    <article class="stat-card">
+      <p class="stat-label">Inactive</p>
+      <h3>{{ inactiveCount() }}</h3>
+    </article>
+  </div>
+
+  @if (isLoading()) {
+    <div class="state-message">
+      <div class="page-loader-ring" aria-hidden="true"></div>
+      <span>Loading catalogs...</span>
+    </div>
+  } @else {
+    <app-data-grid
+      [rows]="allCatalogs()"
+      [config]="gridConfig()"
+      (action)="onGridAction($event)"
+    />
+  }
+</section>

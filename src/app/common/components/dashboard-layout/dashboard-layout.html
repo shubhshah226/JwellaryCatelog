@@ -1,0 +1,199 @@
+<div class="dashboard-shell" [class.sidebar-open]="isSidebarOpen()" [class.sidebar-closed]="!isSidebarOpen()">
+  <button
+    type="button"
+    class="sidebar-backdrop"
+    (click)="closeSidebar()"
+    aria-label="Close menu"
+  ></button>
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      @if (!isAdmin && vendorLogo()) {
+        <img class="brand-logo" [src]="vendorLogo()" [alt]="vendorDisplayName()" (error)="onBrandLogoError()" />
+      } @else {
+        <div class="brand-icon">
+          <i class="fa-solid fa-gem" aria-hidden="true"></i>
+        </div>
+      }
+      <div class="brand-text">
+        @if (!isAdmin && vendorDisplayName()) {
+          <p class="brand-title">{{ vendorDisplayName() }}</p>
+          <p class="brand-subtitle">JEWELLERY CATALOG</p>
+        } @else {
+          <p class="brand-title">CATALOG</p>
+          <p class="brand-subtitle">MANAGEMENT SYSTEM</p>
+        }
+      </div>
+      <button type="button" class="sidebar-close-btn" (click)="closeSidebar()" aria-label="Close sidebar" data-tooltip="Close sidebar">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (item of visibleNavItems(); track item.label) {
+        <a
+          [routerLink]="item.route"
+          class="nav-item"
+          [class.active]="isNavActive(item.route)"
+          (click)="onNavItemClick()"
+        >
+          <span class="nav-icon" aria-hidden="true">
+            <i [class]="faIcon(item.icon)"></i>
+          </span>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    @if (!isAdmin) {
+      <div class="help-card">
+        <div class="help-icon" aria-hidden="true">
+          <i class="fa-solid fa-headset"></i>
+        </div>
+        <div>
+          <p class="help-title">Need Help?</p>
+          <a href="#" class="help-link" (click)="$event.preventDefault()">Contact Support</a>
+        </div>
+      </div>
+    }
+  </aside>
+
+  <div class="main-area">
+    <header class="top-header">
+      <div class="header-left">
+        <button
+          type="button"
+          class="menu-btn"
+          (click)="toggleSidebar()"
+          [attr.aria-expanded]="isSidebarOpen()"
+          aria-label="Toggle menu"
+          data-tooltip="Menu"
+          data-tooltip-pos="bottom"
+        >
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
+        </button>
+        <h1>{{ pageTitle() }}</h1>
+      </div>
+
+      <div class="header-right">
+        <button
+          type="button"
+          class="icon-btn theme-btn"
+          (click)="toggleTheme()"
+          [attr.aria-label]="themeService.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+          [attr.data-tooltip]="themeService.isDark() ? 'Light theme' : 'Dark theme'"
+          data-tooltip-pos="bottom"
+        >
+          @if (themeService.isDark()) {
+            <i class="fa-solid fa-sun" aria-hidden="true"></i>
+          } @else {
+            <i class="fa-solid fa-moon" aria-hidden="true"></i>
+          }
+        </button>
+
+        @if (!isAdmin) {
+          <div class="notification-wrap">
+            <button
+              type="button"
+              class="icon-btn notification-btn"
+              aria-label="Notifications"
+              data-tooltip="Notifications"
+              data-tooltip-pos="bottom"
+              [attr.aria-expanded]="notificationsOpen()"
+              (click)="toggleNotifications($event)"
+            >
+              <i class="fa-solid fa-bell" aria-hidden="true"></i>
+              @if (unreadBadge()) {
+                <span class="badge">{{ unreadBadge() }}</span>
+              }
+            </button>
+
+            @if (notificationsOpen()) {
+              <div class="notification-panel" (click)="$event.stopPropagation()" role="dialog" aria-label="Notifications">
+                <div class="notification-panel-head">
+                  <strong>Notifications</strong>
+                  <button
+                    type="button"
+                    class="mark-all-btn"
+                    (click)="markAllRead()"
+                    [disabled]="markReadBusy() || unreadCount() <= 0"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+
+                @if (notificationsLoading()) {
+                  <p class="notification-empty">Loading...</p>
+                } @else if (!unreadNotifications().length) {
+                  <p class="notification-empty">No new notifications.</p>
+                } @else {
+                  <ul class="notification-list">
+                    @for (item of unreadNotifications(); track item.id) {
+                      <li>
+                        <button
+                          type="button"
+                          class="notification-item unread"
+                          (click)="openNotification(item)"
+                        >
+                          <span class="notification-title">{{ item.title }}</span>
+                          @if (item.body) {
+                            <span class="notification-body">{{ item.body }}</span>
+                          }
+                          @if (notificationTime(item); as when) {
+                            <span class="notification-time">{{ when }}</span>
+                          }
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="user-menu-wrap">
+          <button
+            type="button"
+            class="user-profile user-menu-trigger"
+            [attr.aria-expanded]="userMenuOpen()"
+            aria-haspopup="menu"
+            aria-label="Account menu"
+            data-tooltip="Account"
+            data-tooltip-pos="bottom"
+            (click)="toggleUserMenu($event)"
+          >
+            <div class="avatar">{{ user?.firstName?.charAt(0) }}{{ user?.lastName?.charAt(0) }}</div>
+            <div class="user-info">
+              <p class="user-name">{{ user?.name }}</p>
+              <p class="user-role">{{ roleLabel }}</p>
+            </div>
+            <i class="fa-solid fa-chevron-down user-menu-caret" aria-hidden="true"></i>
+          </button>
+
+          @if (userMenuOpen()) {
+            <div class="user-menu-panel" role="menu" aria-label="Account" (click)="$event.stopPropagation()">
+              <div class="user-menu-identity">
+                <p class="user-name">{{ user?.name }}</p>
+                <p class="user-role">{{ roleLabel }}</p>
+              </div>
+              <button type="button" class="user-menu-item" role="menuitem" (click)="goToUserProfile()">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                <span>User Profile</span>
+              </button>
+            </div>
+          }
+        </div>
+
+        <button type="button" class="logout-btn" (click)="logout()" aria-label="Logout" data-tooltip="Logout" data-tooltip-pos="left">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+          <span class="logout-label">Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="dashboard-content" id="dashboard-scroll-root">
+      <router-outlet />
+    </main>
+  </div>
+</div>

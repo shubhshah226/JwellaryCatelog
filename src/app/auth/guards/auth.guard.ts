@@ -1,3 +1,7 @@
+/**
+ * Route guards for auth flows: redirect logged-in users away from login,
+ * require a session for protected routes, and enforce role-specific access.
+ */
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -16,6 +20,20 @@ export const loginGuard: CanActivateFn = async () => {
   return true;
 };
 
+/** Any authenticated user (superadmin, vendor, owner). */
+export const authGuard: CanActivateFn = async () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  await authService.ensureSessionLoaded();
+
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  return true;
+};
+
 export const roleGuard = (role: UserRole): CanActivateFn => {
   return async () => {
     const authService = inject(AuthService);
@@ -28,7 +46,7 @@ export const roleGuard = (role: UserRole): CanActivateFn => {
     }
 
     if (authService.getRole() !== role) {
-      return router.createUrlTree([authService.getDashboardRoute()]);
+      return router.createUrlTree(['/common/access-denied']);
     }
 
     return true;

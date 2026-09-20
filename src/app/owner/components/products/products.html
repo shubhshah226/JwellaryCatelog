@@ -1,0 +1,85 @@
+@if (isLoading()) {
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading products...</span>
+  </div>
+} @else if (errorMessage()) {
+  <div class="state-message error">
+    <p>{{ errorMessage() }}</p>
+    <button type="button" class="btn btn-outline" (click)="loadProducts()">Retry</button>
+  </div>
+} @else {
+  <section
+    class="vendor-page products-page"
+    [class.has-selection-bar]="selectedCount() > 0"
+  >
+    <div class="page-header">
+      <div>
+        <h2>Manage Products</h2>
+        <p class="page-subtitle">
+          Add designs, manage stock &amp; status, and select products to create a catalog.
+        </p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-primary" (click)="openAddPage()">+ Add Product</button>
+      </div>
+    </div>
+
+    <app-data-grid
+      [rows]="allProducts()"
+      [config]="gridConfig()"
+      (action)="onGridAction($event)"
+      (selectionChange)="onSelectionChange($event)"
+    >
+      <ng-template dataGridCell="photo" let-row>
+        <div
+          class="product-thumb"
+          [class.has-preview]="!!row.imageUrl"
+          (mouseenter)="onThumbEnter($event, row)"
+          (mousemove)="onThumbMove($event, row)"
+          (mouseleave)="hideImagePreview()"
+        >
+          @if (row.imageUrl) {
+            <img
+              [src]="row.imageUrl"
+              [alt]="row.name"
+              loading="lazy"
+              (error)="onThumbError($event)"
+            />
+          } @else {
+            <span class="product-thumb-fallback" aria-hidden="true">
+              <i class="fa-solid fa-gem"></i>
+            </span>
+          }
+        </div>
+      </ng-template>
+      <ng-template dataGridCell="price" let-row>
+        @if (row.price != null) {
+          {{ row.price | currency: 'INR' : 'symbol' : '1.0-0' }}
+        } @else {
+          <span class="muted">—</span>
+        }
+      </ng-template>
+    </app-data-grid>
+
+    @if (imagePreview(); as preview) {
+      <div class="product-image-preview" [ngStyle]="preview.style" role="img" [attr.aria-label]="preview.name">
+        <img [src]="preview.url" [alt]="preview.name" />
+        <p>{{ preview.name }}</p>
+      </div>
+    }
+
+    @if (selectedCount() > 0) {
+      <div class="share-sticky-bar">
+        <div class="share-sticky-info">
+          <strong>{{ selectedCount() }}</strong>
+          <span>selected</span>
+          <button type="button" class="btn-text" (click)="clearSelection()">Clear</button>
+        </div>
+        <button type="button" class="btn btn-primary share-sticky-btn" (click)="openCreateCatalog()">
+          Create Catalog
+        </button>
+      </div>
+    }
+  </section>
+}

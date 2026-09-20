@@ -1,0 +1,74 @@
+<section class="user-profile-page">
+  <div class="page-header">
+    <h2>User Profile</h2>
+    <p>Your account details from the platform.</p>
+  </div>
+
+  @if (isLoading()) {
+    <div class="state-message">
+      <div class="page-loader-ring" aria-hidden="true"></div>
+      <p>Loading profile...</p>
+    </div>
+  } @else if (loadFailed()) {
+    <div class="state-message error">
+      <p>Unable to load profile.</p>
+      <button type="button" class="retry-btn" (click)="loadProfile()">Retry</button>
+    </div>
+  } @else if (profile(); as p) {
+    <div class="profile-card">
+      <div class="profile-summary">
+        <div class="profile-avatar" aria-hidden="true">
+          {{ profileInitial(p.fullName) }}
+        </div>
+        <div class="profile-summary-text">
+          <p class="profile-summary-name">{{ p.fullName || '—' }}</p>
+          <p class="profile-summary-role">{{ formatRole(p.userRole) }}</p>
+        </div>
+      </div>
+
+      <dl class="detail-list">
+        <div class="detail-row">
+          <dt>Full Name</dt>
+          <dd>{{ p.fullName || '—' }}</dd>
+        </div>
+
+        <div class="detail-row">
+          <dt>Email</dt>
+          <dd>{{ p.email || '—' }}</dd>
+        </div>
+
+        <div class="detail-row">
+          <dt>User Role</dt>
+          <dd>{{ formatRole(p.userRole) }}</dd>
+        </div>
+
+        <div class="detail-row">
+          <dt>Account Status</dt>
+          <dd>{{ formatStatus(p.accountStatus) }}</dd>
+        </div>
+
+        <div class="detail-row">
+          <dt>User ID</dt>
+          <dd>{{ p.userId || '—' }}</dd>
+        </div>
+
+        @if (!isSuperAdmin(p.userRole)) {
+          <div class="detail-row">
+            <dt>Tenant ID</dt>
+            <dd>{{ p.tenantId || '—' }}</dd>
+          </div>
+
+          <div class="detail-row">
+            <dt>Business Name</dt>
+            <dd>{{ p.businessName || '—' }}</dd>
+          </div>
+        }
+
+        <div class="detail-row">
+          <dt>Last Login</dt>
+          <dd>{{ formatLastLogin(p.lastLoginAt) }}</dd>
+        </div>
+      </dl>
+    </div>
+  }
+</section>

@@ -1,0 +1,314 @@
+@if (isLoading()) {
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading leads...</span>
+  </div>
+} @else if (errorMessage()) {
+  <div class="state-message error">
+    <p>{{ errorMessage() }}</p>
+    <button type="button" class="btn btn-outline" (click)="loadLeads()">Retry</button>
+  </div>
+} @else {
+  <section class="vendor-page" [class.has-detail]="detailOpen()">
+    <div class="page-header">
+      <div>
+        <h2>Manage Leads</h2>
+        <p>
+          Enquiries from shared catalogs. Open a lead to see products, update status, or reopen the
+          customer link.
+        </p>
+      </div>
+      <button type="button" class="btn btn-outline" (click)="loadLeads()">Refresh</button>
+    </div>
+
+    <div class="stats-row">
+      <article class="stat-card">
+        <p class="stat-label">Total</p>
+        <h3>{{ allLeads().length }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">New</p>
+        <h3>{{ newCount() }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Contacted</p>
+        <h3>{{ contactedCount() }}</h3>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Won</p>
+        <h3>{{ wonCount() }}</h3>
+      </article>
+    </div>
+
+    <div class="filters-card">
+      <div class="filters-grid compact">
+        <div class="filter-search">
+          <span class="filter-icon" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            placeholder="Search by name, phone, catalog..."
+            [(ngModel)]="search"
+            (input)="applyFilters()"
+          />
+        </div>
+
+        <select [(ngModel)]="status" class="filter-select" (change)="applyFilters()">
+          <option value="all">All Status</option>
+          @for (opt of statusOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+
+        <div class="filter-actions">
+          <button type="button" class="btn btn-icon" (click)="resetFilters()" aria-label="Reset filters" data-tooltip="Reset filters">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrap desktop-only">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Catalog / Products</th>
+              <th>Note</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (lead of filteredLeads(); track lead.id) {
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-avatar">{{ lead.initials }}</div>
+                    <div>
+                      <p class="user-name">{{ lead.customerName }}</p>
+                      <p class="user-meta">{{ lead.catalogTitle || 'Catalog enquiry' }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="phone-cell">{{ formatPhone(lead.customerPhone) }}</td>
+                <td>{{ productSummary(lead) }}</td>
+                <td class="message-cell" [title]="lead.message">{{ lead.message || '—' }}</td>
+                <td>
+                  <span class="badge status-{{ lead.status }}">{{ formatStatus(lead.status) }}</span>
+                </td>
+                <td>
+                  <span class="time-ist">{{ formatLeadTime(lead) }}</span>
+                  @if (formatLeadRelative(lead)) {
+                    <span class="time-ago">{{ formatLeadRelative(lead) }}</span>
+                  }
+                </td>
+                <td>
+                  <button type="button" class="btn btn-primary btn-sm" (click)="openDetail(lead)">
+                    Open
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="empty-row">
+                  No leads yet. When a customer submits interest from a shared catalog, it appears here.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mobile-list">
+        @for (lead of filteredLeads(); track lead.id) {
+          <article class="ml-card lead-ml-card" (click)="openDetail(lead)">
+            <div class="lead-ml-top">
+              <div class="user-avatar">{{ lead.initials }}</div>
+              <div class="lead-ml-identity">
+                <p class="user-name">{{ lead.customerName }}</p>
+                <p class="user-meta">{{ formatPhone(lead.customerPhone) }}</p>
+                <div class="lead-ml-tags">
+                  <span class="badge status-{{ lead.status }}">{{ formatStatus(lead.status) }}</span>
+                  @if (lead.catalogTitle) {
+                    <span class="lead-ml-pill">{{ lead.catalogTitle }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="lead-ml-meta">
+              <div class="lead-ml-meta-item">
+                <span class="lead-ml-meta-label">Products</span>
+                <div class="lead-ml-meta-value">{{ productSummary(lead) }}</div>
+              </div>
+              <div class="lead-ml-meta-item">
+                <span class="lead-ml-meta-label">Received</span>
+                <div class="lead-ml-meta-value">
+                  {{ formatLeadTime(lead) }}
+                  @if (formatLeadRelative(lead)) {
+                    <small>{{ formatLeadRelative(lead) }}</small>
+                  }
+                </div>
+              </div>
+            </div>
+
+            @if (lead.message) {
+              <p class="ml-message">{{ lead.message }}</p>
+            }
+
+            <div class="lead-ml-footer">
+              <button
+                type="button"
+                class="lead-ml-open-btn"
+                (click)="openDetail(lead); $event.stopPropagation()"
+              >
+                <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                <span>Open</span>
+              </button>
+              @if (lead.customerPhone) {
+                <button
+                  type="button"
+                  class="lead-ml-call-btn"
+                  (click)="callCustomer(lead); $event.stopPropagation()"
+                >
+                  <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                  <span>Call</span>
+                </button>
+              }
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-mobile">
+            No leads yet. Shared-catalog enquiries will show up here.
+          </p>
+        }
+      </div>
+    </div>
+
+    @if (detailOpen() && activeLead(); as lead) {
+      <div class="drawer-backdrop" (click)="closeDetail()"></div>
+      <aside class="lead-drawer" role="dialog" aria-label="Lead detail">
+        <div class="drawer-header">
+          <div>
+            <h3>{{ lead.customerName }}</h3>
+            <p>{{ formatPhone(lead.customerPhone) }}</p>
+          </div>
+          <button type="button" class="drawer-close" (click)="closeDetail()" aria-label="Close" data-tooltip="Close">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          @if (detailLoading()) {
+            <div class="detail-loading">
+              <div class="page-loader-ring" aria-hidden="true"></div>
+              <span>Loading details...</span>
+            </div>
+          } @else {
+            <div class="detail-actions">
+              @if (lead.customerPhone) {
+                <button type="button" class="btn btn-outline btn-sm" (click)="callCustomer(lead)">
+                  <i class="fa-solid fa-phone"></i> Call
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" (click)="whatsappCustomer(lead)">
+                  <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                </button>
+              }
+              <button type="button" class="btn btn-outline btn-sm" (click)="openCatalog(lead)">
+                <i class="fa-solid fa-link"></i> Open catalog
+              </button>
+            </div>
+
+            <label class="status-field">
+              <span>Status</span>
+              <select
+                [ngModel]="lead.status"
+                (ngModelChange)="onStatusChange(lead, $event)"
+                [disabled]="statusSaving()"
+                name="leadStatus"
+              >
+                @for (opt of statusOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </label>
+
+            @if (lead.catalogTitle) {
+              <p class="detail-meta"><strong>Catalog:</strong> {{ lead.catalogTitle }}</p>
+            }
+            @if (lead.message) {
+              <p class="detail-note"><strong>Customer note:</strong> {{ lead.message }}</p>
+            }
+            <p class="detail-meta">
+              <strong>Received:</strong> {{ formatLeadTime(lead) }}
+              @if (formatLeadRelative(lead)) {
+                ({{ formatLeadRelative(lead) }})
+              }
+            </p>
+
+            <h4 class="items-title">
+              Interested products
+              <span>({{ itemCount(lead) }})</span>
+            </h4>
+
+            @if (lead.items?.length) {
+              <ul class="lead-items">
+                @for (item of lead.items; track item.productId) {
+                  <li class="lead-item">
+                    <div class="item-thumb">
+                      @if (item.imageUrl) {
+                        <img [src]="item.imageUrl" [alt]="item.productName" />
+                      } @else {
+                        <span><i class="fa-solid fa-gem"></i></span>
+                      }
+                    </div>
+                    <div class="item-info">
+                      <strong>{{ item.productName }}</strong>
+                      <span>
+                        {{ item.sku || '' }}
+                        @if (item.category) {
+                          · {{ item.category }}
+                        }
+                      </span>
+                      @if (item.metalType || item.purity || item.weight) {
+                        <span>
+                          {{ item.metalType || '' }}
+                          @if (item.purity) {
+                            · {{ item.purity }}
+                          }
+                          @if (item.weight) {
+                            · {{ item.weight }}g
+                          }
+                        </span>
+                      }
+                    </div>
+                    <div class="item-price">
+                      @if (item.priceOnRequest || item.price == null) {
+                        On request
+                      } @else {
+                        {{ item.price | currency: 'INR' : 'symbol' : '1.0-0' }}
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+              @if (lead.pricedItemCount && lead.totalPrice) {
+                <p class="detail-total">
+                  Quoted total:
+                  {{ lead.totalPrice | currency: 'INR' : 'symbol' : '1.0-0' }}
+                </p>
+              }
+            } @else {
+              <p class="detail-empty">No product lines on this enquiry.</p>
+            }
+          }
+        </div>
+      </aside>
+    }
+  </section>
+}

@@ -1,0 +1,469 @@
+@if (isLoading()) {
+  <div class="state-message">
+    <div class="page-loader-ring" aria-hidden="true"></div>
+    <span>Loading catalog...</span>
+  </div>
+} @else if (pageError()) {
+  <div class="state-message error">
+    <p>{{ pageError() }}</p>
+    <button type="button" class="btn btn-outline" (click)="goBack()">Back to Catalogs</button>
+  </div>
+} @else {
+  <section class="catalog-form-page" [class.products-step]="step() === 'products'">
+    <div class="mf-toolbar">
+      <button type="button" class="mf-back" (click)="goBack()" [disabled]="isSubmitting()" aria-label="Back">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="mf-back-label">{{ step() === 'products' ? 'Details' : 'Back' }}</span>
+      </button>
+      <div class="mf-title">
+        <h2>
+          @if (step() === 'details') {
+            {{ mode() === 'edit' ? 'Edit Catalog' : 'Add Catalog' }}
+          } @else {
+            Catalog Products
+          }
+        </h2>
+        <p>
+          @if (step() === 'details') {
+            Details first, then products
+          } @else {
+            {{ selectedCount() }} selected
+            @if (availableCount()) {
+              · {{ availableCount() }} available
+            }
+          }
+        </p>
+      </div>
+      <div class="step-pills" aria-label="Catalog steps">
+        <button
+          type="button"
+          class="step-pill"
+          [class.active]="step() === 'details'"
+          [disabled]="isSubmitting()"
+          (click)="goToDetailsStep()"
+        >
+          1. Details
+        </button>
+        <button
+          type="button"
+          class="step-pill"
+          [class.active]="step() === 'products'"
+          [disabled]="isSubmitting() || isRevoked()"
+          (click)="goToProductsStep()"
+        >
+          2. Products
+        </button>
+      </div>
+    </div>
+
+    @if (isRevoked()) {
+      <div class="inline-error">
+        This catalog is revoked. Create a new catalog instead of editing.
+      </div>
+    }
+
+    @if (step() === 'details') {
+      <form class="mf-form" (ngSubmit)="goToProductsStep()">
+        <section class="mf-card">
+          <h3 class="card-title">Details</h3>
+          <div class="form-row details-row">
+            <label class="form-field form-field-name">
+              <span>Catalog Name <em>*</em></span>
+              <input
+                type="text"
+                [(ngModel)]="formName"
+                name="catalogName"
+                placeholder="e.g. Catalog for Shubh"
+                required
+                autofocus
+                [disabled]="isRevoked()"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Customer name</span>
+              <input
+                type="text"
+                [(ngModel)]="formCustomerName"
+                name="customerName"
+                placeholder="Optional"
+                [disabled]="isRevoked()"
+              />
+            </label>
+
+            <label class="form-field">
+              <span>Customer phone</span>
+              <input
+                type="tel"
+                appPhoneDigits
+                inputmode="numeric"
+                maxlength="10"
+                [(ngModel)]="formCustomerPhone"
+                (ngModelChange)="onCustomerPhoneChange($event)"
+                name="customerPhone"
+                placeholder="10-digit mobile (optional)"
+                [disabled]="isRevoked()"
+              />
+              @if (customerPhoneError()) {
+                <small class="field-error">{{ customerPhoneError() }}</small>
+              }
+            </label>
+          </div>
+        </section>
+
+        <section class="mf-card">
+          <h3 class="card-title">Share options</h3>
+          <div class="form-row details-row">
+            <div class="toggle-field form-field-span2">
+              <div class="toggle-copy">
+                <span class="toggle-title">Show prices</span>
+                <span class="toggle-desc">When on, product prices are visible on the shared catalog link.</span>
+              </div>
+              <label class="switch" [class.on]="formPriceVisible">
+                <input
+                  type="checkbox"
+                  name="formPriceVisible"
+                  [(ngModel)]="formPriceVisible"
+                  [disabled]="isRevoked()"
+                />
+                <span class="switch-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="toggle-field form-field-span2">
+              <div class="toggle-copy">
+                <span class="toggle-title">Never expires</span>
+                <span class="toggle-desc">Keep the share link active until you revoke it.</span>
+              </div>
+              <label class="switch" [class.on]="formNeverExpires">
+                <input
+                  type="checkbox"
+                  name="formNeverExpires"
+                  [ngModel]="formNeverExpires"
+                  (ngModelChange)="onNeverExpiresChange($event)"
+                  [disabled]="isRevoked()"
+                />
+                <span class="switch-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            @if (!formNeverExpires) {
+              <label class="form-field">
+                <span>Expiry (days) <em>*</em></span>
+                <input
+                  type="number"
+                  name="formExpiryDays"
+                  min="1"
+                  [(ngModel)]="formExpiryDays"
+                  placeholder="e.g. 30"
+                  [disabled]="isRevoked()"
+                />
+                <small class="field-hint">Defaults from Business Profile catalog expiry.</small>
+              </label>
+            }
+          </div>
+        </section>
+
+        <section class="mf-card products-summary-card">
+          <div class="products-summary">
+            <div>
+              <h3 class="card-title">Products</h3>
+              <p class="card-sub">
+                @if (selectedCount()) {
+                  {{ selectedCount() }} product{{ selectedCount() === 1 ? '' : 's' }} on this catalog. Continue to review or add more.
+                } @else {
+                  On the next step you’ll see selected products and can add more.
+                }
+              </p>
+            </div>
+            @if (selectedCount()) {
+              <span class="selected-chip">{{ selectedCount() }} selected</span>
+            }
+          </div>
+        </section>
+
+        @if (mode() === 'edit' && shareLink() && !isRevoked()) {
+          <section class="mf-card share-card">
+            <div class="share-head">
+              <div>
+                <h3 class="card-title">Share link</h3>
+                <p class="card-sub">Anyone with this link can view the catalog products.</p>
+              </div>
+              <button type="button" class="btn btn-outline" (click)="copyShareLink()">
+                {{ shareCopied() ? 'Copied' : 'Copy link' }}
+              </button>
+            </div>
+            <code class="share-url">{{ shareLink() }}</code>
+          </section>
+        }
+
+        @if (formError()) {
+          <p class="form-error mf-error">{{ formError() }}</p>
+        }
+
+        <div class="mf-footer">
+          <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isRevoked()">
+            Next: Select Products
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+          </button>
+        </div>
+      </form>
+    } @else {
+      <form class="mf-form products-form" (ngSubmit)="submit()">
+        <div class="products-tabs mobile-only" role="tablist" aria-label="Catalog products">
+          <button
+            type="button"
+            role="tab"
+            class="products-tab"
+            [class.active]="productsPanel() === 'selected'"
+            [attr.aria-selected]="productsPanel() === 'selected'"
+            (click)="showSelectedPanel()"
+          >
+            On catalog
+            <span class="tab-count">{{ selectedCount() }}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="products-tab"
+            [class.active]="productsPanel() === 'add'"
+            [attr.aria-selected]="productsPanel() === 'add'"
+            [disabled]="isRevoked() || !availableCount()"
+            (click)="showAddPanel()"
+          >
+            Add more
+            <span class="tab-count">{{ availableCount() }}</span>
+          </button>
+        </div>
+
+        <div class="products-split">
+          <section
+            class="mf-card products-pane selected-pane"
+            [class.pane-hidden-mobile]="productsPanel() !== 'selected'"
+          >
+            <div class="products-head">
+              <div>
+                <h3 class="card-title">On this catalog</h3>
+                <p class="card-sub">
+                  @if (selectedCount()) {
+                    {{ selectedCount() }} product{{ selectedCount() === 1 ? '' : 's' }} · tap remove to take off
+                  } @else {
+                    Nothing here yet — use Available to add
+                  }
+                </p>
+              </div>
+              <div class="picker-actions">
+                @if (mode() === 'edit' && selectedCount()) {
+                  <button type="button" class="link-btn" (click)="resetSelectedToInitial()" [disabled]="isRevoked()">
+                    Reset list
+                  </button>
+                }
+              </div>
+            </div>
+
+            @if (selectedCount() > 8) {
+              <label class="product-search selected-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [ngModel]="selectedListSearch()"
+                  (ngModelChange)="selectedListSearch.set($event)"
+                  name="selectedListSearch"
+                  placeholder="Search selected..."
+                />
+              </label>
+            }
+
+            @if (loadingProducts()) {
+              <p class="picker-hint">Loading catalog products...</p>
+            } @else if (!selectedCount()) {
+              <div class="empty-selected">
+                <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+                <p>No products on this catalog yet.</p>
+                <p class="empty-hint">Pick products from <strong>Available to add</strong> on the right.</p>
+                <button
+                  type="button"
+                  class="btn btn-primary mobile-only-btn"
+                  (click)="showAddPanel()"
+                  [disabled]="isRevoked() || !availableCount()"
+                >
+                  <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                  Add products
+                </button>
+                @if (!allProducts().length) {
+                  <p class="picker-hint">Add products from Manage Products first.</p>
+                } @else if (!availableCount()) {
+                  <p class="picker-hint">No products left to add.</p>
+                }
+              </div>
+            } @else {
+              <div class="selected-products-list">
+                @for (product of selectedProducts(); track product.id) {
+                  <article class="selected-product-row">
+                    <div class="picker-thumb">
+                      @if (productImage(product); as img) {
+                        <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
+                        <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
+                      } @else {
+                        <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
+                      }
+                    </div>
+                    <div class="picker-info">
+                      <span class="picker-name">{{ product.name }}</span>
+                      <span class="picker-meta">{{ product.sku || ('#' + product.id.slice(0, 8)) }}</span>
+                      @if (product.accountStatus === 'inactive') {
+                        <span class="picker-hidden">Hidden from customers</span>
+                      } @else if (product.category) {
+                        <span class="picker-cat">{{ product.category }}</span>
+                      }
+                    </div>
+                    <button
+                      type="button"
+                      class="remove-product-btn"
+                      [disabled]="isRevoked()"
+                      (click)="removeSelectedProduct(product.id)"
+                      [attr.aria-label]="'Remove ' + product.name"
+                    >
+                      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                      <span>Remove</span>
+                    </button>
+                  </article>
+                } @empty {
+                  <p class="picker-hint">No selected products match your search.</p>
+                }
+              </div>
+            }
+          </section>
+
+          <section
+            class="mf-card products-pane add-pane"
+            [class.pane-hidden-mobile]="productsPanel() !== 'add'"
+          >
+            <div class="products-head">
+              <div>
+                <h3 class="card-title">Available to add</h3>
+                <p class="card-sub">Tap a product to add it to the catalog</p>
+              </div>
+              <div class="picker-actions">
+                @if (filteredAvailableProducts().length) {
+                  <button type="button" class="link-btn" (click)="addAllVisibleAvailable()" [disabled]="isRevoked()">
+                    Add all visible
+                  </button>
+                }
+                <button type="button" class="link-btn mobile-only" (click)="showSelectedPanel()">
+                  Done
+                </button>
+              </div>
+            </div>
+
+            <div class="add-pane-filters">
+              <label class="product-search">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <input
+                  type="search"
+                  [ngModel]="productSearch()"
+                  (ngModelChange)="productSearch.set($event)"
+                  name="addProductSearch"
+                  placeholder="Search name, SKU, category..."
+                />
+              </label>
+
+              <div class="add-pane-selects">
+                <select
+                  class="picker-filter-select"
+                  name="filterCategory"
+                  [ngModel]="filterCategory()"
+                  (ngModelChange)="filterCategory.set($event)"
+                >
+                  @for (opt of categoryFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="picker-filter-select"
+                  name="filterMetal"
+                  [ngModel]="filterMetal()"
+                  (ngModelChange)="filterMetal.set($event)"
+                >
+                  @for (opt of metalFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="picker-filter-select"
+                  name="filterStock"
+                  [ngModel]="filterStock()"
+                  (ngModelChange)="filterStock.set($event)"
+                >
+                  @for (opt of stockFilterOptions(); track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="add-pane-toolbar">
+                <span class="drawer-count">{{ filteredAvailableProducts().length }} showing</span>
+                @if (hasActiveFilters()) {
+                  <button type="button" class="link-btn" (click)="resetProductFilters()">Reset filters</button>
+                }
+              </div>
+            </div>
+
+            @if (!availableCount()) {
+              <p class="picker-hint">All products are already on this catalog.</p>
+            } @else if (!filteredAvailableProducts().length) {
+              <p class="picker-hint">No products match your filters.</p>
+            } @else {
+              <div class="available-image-grid">
+                @for (product of filteredAvailableProducts(); track product.id) {
+                  <button
+                    type="button"
+                    class="available-card"
+                    [disabled]="isRevoked()"
+                    (click)="addProductToCatalog(product.id)"
+                  >
+                    <div class="available-thumb">
+                      @if (productImage(product); as img) {
+                        <img [src]="img" [alt]="product.name" (error)="onProductImgError($event)" />
+                        <span class="picker-ph"><i class="fa-solid fa-gem"></i></span>
+                      } @else {
+                        <span class="picker-ph visible"><i class="fa-solid fa-gem"></i></span>
+                      }
+                      <span class="available-add-badge" aria-hidden="true">
+                        <i class="fa-solid fa-plus"></i>
+                      </span>
+                    </div>
+                    <span class="available-name">{{ product.name }}</span>
+                    <span class="available-meta">{{ product.sku || product.category || '' }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </section>
+        </div>
+
+        @if (formError()) {
+          <p class="form-error mf-error">{{ formError() }}</p>
+        }
+
+        <div class="mf-footer">
+          <button type="button" class="btn btn-outline" (click)="goBack()" [disabled]="isSubmitting()">
+            Back
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="isSubmitting() || isRevoked()"
+          >
+            {{ isSubmitting() ? 'Saving...' : (mode() === 'edit' ? 'Update Catalog' : 'Create Catalog') }}
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+}

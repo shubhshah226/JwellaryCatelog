@@ -1,0 +1,91 @@
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: var(--app-backdrop, rgba(0, 0, 0, 0.75));
+}
+
+.confirm-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 10051;
+  width: min(420px, calc(100% - 2rem));
+  transform: translate(-50%, -50%);
+  padding: 1.35rem 1.4rem 1.2rem;
+  border-radius: 14px;
+  background: var(--app-surface, #141414);
+  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 20px 50px var(--app-shadow, rgba(0, 0, 0, 0.6));
+  color: var(--app-text, #fff);
+}
+
+.confirm-modal h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.confirm-modal > p {
+  margin: 0 0 1.25rem;
+  color: var(--app-text-muted, #a3a3a3);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.45rem;
+  padding: 0.55rem 1.05rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+/* Cancel — outlined black/white */
+.btn-outline {
+  background: transparent;
+  border-color: var(--app-border-strong, rgba(255, 255, 255, 0.22));
+  color: var(--app-text, #ffffff);
+}
+
+.btn-outline:hover {
+  background: var(--app-hover-bg, rgba(255, 255, 255, 0.08));
+  border-color: var(--app-text, #ffffff);
+}
+
+/* Confirm — solid inverted (white on dark / black on light) */
+.btn-primary,
+.btn-danger {
+  background: var(--app-text, #ffffff);
+  color: var(--app-bg, #000000);
+  border-color: var(--app-text, #ffffff);
+}
+
+.btn-primary:hover,
+.btn-danger:hover {
+  opacity: 0.88;
+}
+
+@media (max-width: 480px) {
+  .confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-actions .btn {
+    width: 100%;
+  }
+}

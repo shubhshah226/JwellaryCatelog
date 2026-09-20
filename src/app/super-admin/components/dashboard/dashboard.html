@@ -1,0 +1,41 @@
+@if (isLoading()) {
+  <div class="loading-state">Loading dashboard...</div>
+} @else if (errorMessage()) {
+  <div class="error-state">{{ errorMessage() }}</div>
+} @else if (data(); as dashboard) {
+  <section class="dashboard-home">
+    <div class="welcome-row">
+      <div>
+        <h2>Welcome back, {{ dashboard.userName }}!</h2>
+        <p>Platform overview from the latest summary.</p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      @for (stat of dashboard.stats; track stat.label) {
+        <article class="stat-card">
+          <div class="stat-icon" [style.background]="stat.color + '22'" [style.color]="stat.color">
+            @switch (stat.icon) {
+              @case ('vendors') {
+                <i class="fa-solid fa-store"></i>
+              }
+              @case ('catalogs') {
+                <i class="fa-solid fa-folder-open"></i>
+              }
+              @case ('products') {
+                <i class="fa-solid fa-gem"></i>
+              }
+              @case ('enquiries') {
+                <i class="fa-solid fa-comments"></i>
+              }
+            }
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">{{ stat.label }}</p>
+            <h3>{{ stat.value | number }}</h3>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+}

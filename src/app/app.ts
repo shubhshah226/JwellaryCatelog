@@ -1,17 +1,36 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { GlobalLoader } from './core/components/global-loader/global-loader';
-import { ToastContainer } from './core/components/toast/toast-container';
+﻿import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
+import { ConfirmDialog } from './common/components/confirm-dialog/confirm-dialog';
+import { GlobalLoader } from './common/components/global-loader/global-loader';
+import { LoadingService } from './common/services/loading.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, GlobalLoader, ToastContainer],
+  imports: [RouterOutlet, GlobalLoader, ConfirmDialog],
   template: `
     <router-outlet></router-outlet>
     <app-global-loader></app-global-loader>
-    <app-toast-container></app-toast-container>
+    <app-confirm-dialog></app-confirm-dialog>
   `,
 })
 export class App {
+  private readonly router = inject(Router);
+  private readonly loading = inject(LoadingService);
+  private readonly destroyRef = inject(DestroyRef);
+
   protected readonly title = signal('jwellary-catelog');
+
+  constructor() {
+    // After each navigation, clear a stuck overlay only when no requests remain.
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        queueMicrotask(() => this.loading.reconcile());
+      });
+  }
 }
